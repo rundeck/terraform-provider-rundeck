@@ -44,6 +44,8 @@ The following arguments are supported:
 
 * `log_level` - (Optional) The log level that Rundeck should use for this job. Defaults to "INFO".
 
+* `schedule` - (Optional) The jobs schedule in Unix crontab format
+
 * `allow_concurrent_executions` - (Optional) Boolean defining whether two or more executions of
   this job can run concurrently. The default is `false`, meaning that jobs will only run
   sequentially.
