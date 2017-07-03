@@ -28,6 +28,9 @@ resource "rundeck_public_key" "anvils" {
 
 The following arguments are supported:
 
+* `delete` - (Computed) True if the key should be deleted when the resource is deleted. 
+  Defaults to true if key_material is provided in the configuration.
+
 * `path` - (Required) The path within the key store where the key will be stored. By convention
   this path name normally ends with ".pub" and otherwise has the same name as the associated
   private key.
