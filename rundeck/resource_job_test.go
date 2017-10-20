@@ -28,6 +28,19 @@ func TestAccJob_basic(t *testing.T) {
 						if expected := "Prints Hello World"; job.CommandSequence.Commands[0].Description != expected {
 							return fmt.Errorf("failed to set command description; expected %v, got %v", expected, job.CommandSequence.Commands[0].Description)
 						}
+
+						if expected := "echo Hello World"; job.CommandSequence.Commands[1].Script != expected {
+							return fmt.Errorf("failed to set command inline_script; expected %v, got %v", expected, job.CommandSequence.Commands[1].Script)
+						}
+
+						if expected := "sudo"; job.CommandSequence.Commands[1].ScriptInterpreter.InvocationString != expected {
+							return fmt.Errorf("failed to set command description; expected %v, got %v", expected, job.CommandSequence.Commands[1].ScriptInterpreter.InvocationString)
+						}
+
+						if expected := true; job.CommandSequence.Commands[1].ScriptInterpreter.ArgsQuoted != expected {
+							return fmt.Errorf("failed to set command description; expected %v, got %v", expected, job.CommandSequence.Commands[1].ScriptInterpreter.ArgsQuoted)
+						}
+
 						return nil
 					},
 				),
@@ -102,6 +115,12 @@ resource "rundeck_job" "test" {
   command {
     description = "Prints Hello World"
     shell_command = "echo Hello World"
+  }
+  command {
+    description = "Prints Hello World"
+    inline_script = "echo Hello World"
+    inline_script_invocation_string = "sudo"
+    inline_script_args_quoted = true
   }
 }
 `

@@ -133,6 +133,10 @@ The following arguments are supported:
 
 * `inline_script` gives a whole shell script, inline in the configuration, to execute on the nodes.
 
+* `inline_script_invocation_string` specifies how to invoke the script file.
+
+* `inline_script_args_quoted` whether the arguments passed to the invocation string should be quoted as one string
+
 * `script_file` and `script_file_args` together describe a script that is already pre-installed
   on the nodes which is to be executed.
 

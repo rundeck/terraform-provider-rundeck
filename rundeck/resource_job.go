@@ -197,6 +197,16 @@ func resourceRundeckJob() *schema.Resource {
 							Optional: true,
 						},
 
+						"inline_script_invocation_string": &schema.Schema{
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+
+						"inline_script_args_quoted": &schema.Schema{
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+
 						"script_file": &schema.Schema{
 							Type:     schema.TypeString,
 							Optional: true,
@@ -368,9 +378,13 @@ func jobFromResourceData(d *schema.ResourceData) (*rundeck.JobDetail, error) {
 	for _, commandI := range commandConfigs {
 		commandMap := commandI.(map[string]interface{})
 		command := rundeck.JobCommand{
-			Description:    commandMap["description"].(string),
-			ShellCommand:   commandMap["shell_command"].(string),
-			Script:         commandMap["inline_script"].(string),
+			Description:  commandMap["description"].(string),
+			ShellCommand: commandMap["shell_command"].(string),
+			Script:       commandMap["inline_script"].(string),
+			ScriptInterpreter: &rundeck.JobCommandScriptInterpreter{
+				InvocationString: commandMap["inline_script_invocation_string"].(string),
+				ArgsQuoted:       commandMap["inline_script_args_quoted"].(bool),
+			},
 			ScriptFile:     commandMap["script_file"].(string),
 			ScriptFileArgs: commandMap["script_file_args"].(string),
 		}
@@ -591,6 +605,11 @@ func jobToResourceData(job *rundeck.JobDetail, d *schema.ResourceData) error {
 						"config": map[string]string(command.NodeStepPlugin.Config),
 					},
 				}
+			}
+
+			if command.ScriptInterpreter != nil {
+				commandConfigI["inline_script_invocation_string"] = command.ScriptInterpreter.InvocationString
+				commandConfigI["inline_script_args_quoted"] = command.ScriptInterpreter.ArgsQuoted
 			}
 
 			commandConfigsI = append(commandConfigsI, commandConfigI)
