@@ -79,6 +79,9 @@ The following arguments are supported:
 
 * `node_filter_exclude_precedence`: (Optional) Boolean controlling a deprecated Rundeck feature that controls
   whether node exclusions take priority over inclusions.
+  
+* `nodes_selected_by_default`: (Optional) Boolean controlling whether nodes that match the node_query_filter are
+  selected by default or not 
 
 * `option`: (Optional) Nested block defining an option a user may set when executing this job. A
   job may have any number of options. The structure of this nested block is described below.
