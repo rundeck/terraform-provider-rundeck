@@ -28,6 +28,9 @@ func TestAccJob_basic(t *testing.T) {
 						if expected := "Prints Hello World"; job.CommandSequence.Commands[0].Description != expected {
 							return fmt.Errorf("failed to set command description; expected %v, got %v", expected, job.CommandSequence.Commands[0].Description)
 						}
+						if expected := true; job.NodesSelectedByDefault != expected {
+							return fmt.Errorf("failed to set node selected by default; expected %v, got %v", expected, job.NodesSelectedByDefault)
+						}
 						return nil
 					},
 				),
@@ -91,6 +94,7 @@ resource "rundeck_job" "test" {
   name = "basic-job"
   description = "A basic job"
   node_filter_query = "example"
+  nodes_selected_by_default = true
   allow_concurrent_executions = 1
   max_thread_count = 1
   rank_order = "ascending"
