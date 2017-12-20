@@ -538,7 +538,9 @@ func jobToResourceData(job *rundeck.JobDetail, d *schema.ResourceData) error {
 		d.Set("node_filter_exclude_precedence", job.NodeFilter.ExcludePrecedence)
 	}
 
-	d.Set("nodes_selected_by_default", job.NodesSelectedByDefault)
+	if job.NodesSelectedByDefault {
+		d.Set("nodes_selected_by_default", job.NodesSelectedByDefault)
+	}
 
 	optionConfigsI := []interface{}{}
 	if job.OptionsConfig != nil {
