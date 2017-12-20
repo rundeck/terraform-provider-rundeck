@@ -11,15 +11,15 @@
 		{
 			"checksumSHA1": "+2yCNqbcf7VcavAptooQReTGiHY=",
 			"path": "github.com/apparentlymart/go-rundeck-api",
-			"revision": "f6af74d34d1ef69a511c59173876fc1174c11f0d",
-			"revisionTime": "2016-08-26T14:30:32Z"
+			"revision": "2c962acae81080a937c350a5bea054c239f27a81",
+			"revisionTime": "2017-07-05T17:22:45Z"
 		},
 		{
-			"checksumSHA1": "Z1MQQMA4d9pKVHeoC3H+DdK583s=",
+			"checksumSHA1": "uZt5wSURm4Iz1mdLuauSE8RhCeA=",
 			"comment": "v0.0.1-1-g43fcd8f",
 			"path": "github.com/apparentlymart/go-rundeck-api/rundeck",
-			"revision": "f6af74d34d1ef69a511c59173876fc1174c11f0d",
-			"revisionTime": "2016-08-26T14:30:32Z"
+			"revision": "2c962acae81080a937c350a5bea054c239f27a81",
+			"revisionTime": "2017-07-05T17:22:45Z"
 		},
 		{
 			"checksumSHA1": "fFU9OeM0pKWGL3D+Fa3PmHSjjLg=",

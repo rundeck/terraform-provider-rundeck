@@ -466,11 +466,11 @@ func jobFromResourceData(d *schema.ResourceData) (*rundeck.JobDetail, error) {
 
 	if d.Get("node_filter_query").(string) != "" {
 		job.NodeFilter = &rundeck.JobNodeFilter{
-			ExcludePrecedence: d.Get("node_filter_exclude_precedence").(bool),
-			Query:             d.Get("node_filter_query").(string),
+			Query: d.Get("node_filter_query").(string),
 		}
 	}
 
+	// By default rundeck will set this option to false
 	if d.Get("nodes_selected_by_default").(bool) {
 		job.NodesSelectedByDefault = true
 	}
@@ -531,11 +531,10 @@ func jobToResourceData(job *rundeck.JobDetail, d *schema.ResourceData) error {
 		d.Set("rank_order", nil)
 	}
 
-	d.Set("node_filter_query", nil)
-	d.Set("node_filter_exclude_precedence", nil)
 	if job.NodeFilter != nil {
 		d.Set("node_filter_query", job.NodeFilter.Query)
-		d.Set("node_filter_exclude_precedence", job.NodeFilter.ExcludePrecedence)
+	} else {
+		d.Set("node_filter_query", nil)
 	}
 
 	if job.NodesSelectedByDefault {

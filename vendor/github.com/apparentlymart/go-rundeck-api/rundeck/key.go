@@ -61,6 +61,14 @@ func (c *Client) ReplacePrivateKey(path string, content string) error {
 	return c.createOrReplacePublicKey("PUT", path, "application/octet-stream", content)
 }
 
+func (c *Client) CreatePassword(path string, content string) error {
+	return c.createOrReplacePublicKey("POST", path, "application/x-rundeck-data-password", content)
+}
+
+func (c *Client) ReplacePassword(path string, content string) error {
+	return c.createOrReplacePublicKey("PUT", path, "application/x-rundeck-data-password", content)
+}
+
 func (c *Client) createOrReplacePublicKey(method string, path string, contentType string, content string) error {
 	req := &request{
 		Method: method,
