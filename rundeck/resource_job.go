@@ -56,6 +56,12 @@ func resourceRundeckJob() *schema.Resource {
 				Optional: true,
 			},
 
+			"execution_enabled": &schema.Schema{
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  true,
+			},
+
 			"max_thread_count": &schema.Schema{
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -108,6 +114,12 @@ func resourceRundeckJob() *schema.Resource {
 			"schedule": &schema.Schema{
 				Type:     schema.TypeString,
 				Optional: true,
+			},
+
+			"schedule_enabled": &schema.Schema{
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  true,
 			},
 
 			"option": &schema.Schema{
@@ -355,6 +367,7 @@ func jobFromResourceData(d *schema.ResourceData) (*rundeck.JobDetail, error) {
 		Description:               d.Get("description").(string),
 		LogLevel:                  d.Get("log_level").(string),
 		AllowConcurrentExecutions: d.Get("allow_concurrent_executions").(bool),
+		ExecutionEnabled:          d.Get("execution_enabled").(bool),
 		Dispatch: &rundeck.JobDispatch{
 			MaxThreadCount:  d.Get("max_thread_count").(int),
 			ContinueOnError: d.Get("continue_on_error").(bool),
@@ -476,6 +489,7 @@ func jobFromResourceData(d *schema.ResourceData) (*rundeck.JobDetail, error) {
 	}
 
 	if d.Get("schedule").(string) != "" {
+		job.ScheduleEnabled = d.Get("schedule_enabled").(bool)
 		schedule := strings.Split(d.Get("schedule").(string), " ")
 		if len(schedule) != 7 {
 			return nil, fmt.Errorf("Rundeck schedule must be formated like a cron expression, as defined here: http://www.quartz-scheduler.org/documentation/quartz-2.2.x/tutorials/tutorial-lesson-06.html")
@@ -519,6 +533,7 @@ func jobToResourceData(job *rundeck.JobDetail, d *schema.ResourceData) error {
 	d.Set("description", job.Description)
 	d.Set("log_level", job.LogLevel)
 	d.Set("allow_concurrent_executions", job.AllowConcurrentExecutions)
+	d.Set("execution_enabled", job.ExecutionEnabled)
 	if job.Dispatch != nil {
 		d.Set("max_thread_count", job.Dispatch.MaxThreadCount)
 		d.Set("continue_on_error", job.Dispatch.ContinueOnError)
@@ -625,6 +640,7 @@ func jobToResourceData(job *rundeck.JobDetail, d *schema.ResourceData) error {
 		schedule = append(schedule, job.Schedule.Year.Year)
 
 		d.Set("schedule", strings.Join(schedule, " "))
+		d.Set("schedule_enabled", job.ScheduleEnabled)
 	}
 
 	return nil
