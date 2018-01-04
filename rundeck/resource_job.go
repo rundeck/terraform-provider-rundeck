@@ -109,6 +109,7 @@ func resourceRundeckJob() *schema.Resource {
 			"nodes_selected_by_default": &schema.Schema{
 				Type:     schema.TypeBool,
 				Optional: true,
+				Default:  true,
 			},
 
 			"schedule": &schema.Schema{
@@ -483,10 +484,7 @@ func jobFromResourceData(d *schema.ResourceData) (*rundeck.JobDetail, error) {
 		}
 	}
 
-	// By default rundeck will set this option to false
-	if d.Get("nodes_selected_by_default").(bool) {
-		job.NodesSelectedByDefault = true
-	}
+	job.NodesSelectedByDefault = d.Get("nodes_selected_by_default")
 
 	if d.Get("schedule").(string) != "" {
 		job.ScheduleEnabled = d.Get("schedule_enabled").(bool)
@@ -552,9 +550,7 @@ func jobToResourceData(job *rundeck.JobDetail, d *schema.ResourceData) error {
 		d.Set("node_filter_query", nil)
 	}
 
-	if job.NodesSelectedByDefault {
-		d.Set("nodes_selected_by_default", job.NodesSelectedByDefault)
-	}
+	d.Set("nodes_selected_by_default", job.NodesSelectedByDefault)
 
 	optionConfigsI := []interface{}{}
 	if job.OptionsConfig != nil {
