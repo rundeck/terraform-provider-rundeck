@@ -484,7 +484,7 @@ func jobFromResourceData(d *schema.ResourceData) (*rundeck.JobDetail, error) {
 		}
 	}
 
-	job.NodesSelectedByDefault = d.Get("nodes_selected_by_default")
+	job.NodesSelectedByDefault = d.Get("nodes_selected_by_default").(bool)
 
 	if d.Get("schedule").(string) != "" {
 		job.ScheduleEnabled = d.Get("schedule_enabled").(bool)
