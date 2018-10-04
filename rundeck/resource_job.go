@@ -100,6 +100,11 @@ func resourceRundeckJob() *schema.Resource {
 				Optional: true,
 			},
 
+			"nodes_selected_by_default": &schema.Schema{
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+
 			"schedule": &schema.Schema{
 				Type:     schema.TypeString,
 				Optional: true,
@@ -356,6 +361,7 @@ func jobFromResourceData(d *schema.ResourceData) (*rundeck.JobDetail, error) {
 			RankAttribute:   d.Get("rank_attribute").(string),
 			RankOrder:       d.Get("rank_order").(string),
 		},
+		NodesSelectedByDefault: d.Get("nodes_selected_by_default").(bool),
 	}
 
 	sequence := &rundeck.JobCommandSequence{
@@ -528,6 +534,7 @@ func jobToResourceData(job *rundeck.JobDetail, d *schema.ResourceData) error {
 		d.Set("node_filter_query", job.NodeFilter.Query)
 		d.Set("node_filter_exclude_precedence", job.NodeFilter.ExcludePrecedence)
 	}
+	d.Set("nodes_selected_by_default", job.NodesSelectedByDefault)
 
 	optionConfigsI := []interface{}{}
 	if job.OptionsConfig != nil {
