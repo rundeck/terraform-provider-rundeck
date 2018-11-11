@@ -46,9 +46,13 @@ The following arguments are supported:
 
 * `schedule` - (Optional) The jobs schedule in Unix crontab format
 
+* `schedule_enabled` - (Optional) Set to false if you don't want the schedule to be active.
+
 * `allow_concurrent_executions` - (Optional) Boolean defining whether two or more executions of
   this job can run concurrently. The default is `false`, meaning that jobs will only run
   sequentially.
+
+* `execution_enabled` - (Optional) Set to false if you don't want the job to be active. No execution will be possible. The default is `true`.
 
 * `max_thread_count` - (Optional) The maximum number of threads to use to execute this job, which
   controls on how many nodes the commands can be run simulateneously. Defaults to 1, meaning that
@@ -79,6 +83,8 @@ The following arguments are supported:
 
 * `node_filter_exclude_precedence`: (Optional) Boolean controlling a deprecated Rundeck feature that controls
   whether node exclusions take priority over inclusions.
+
+* `nodes_selected_by_default`: (Optional) Boolean selecting or not nodes by default. The default is true. 
 
 * `option`: (Optional) Nested block defining an option a user may set when executing this job. A
   job may have any number of options. The structure of this nested block is described below.
