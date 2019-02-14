@@ -91,7 +91,7 @@ resource "rundeck_job" "test" {
   name = "basic-job"
   description = "A basic job"
   node_filter_query = "example"
-  allow_concurrent_executions = 1
+  allow_concurrent_executions = true
   max_thread_count = 1
   rank_order = "ascending"
   schedule = "0 0 12 * * * *"
