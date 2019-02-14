@@ -1,4 +1,7 @@
-## 0.1.1 (Unreleased)
+## 1.0.0-beta1 (Unreleased)
+
+* This release has no changes to functionality since 0.1.0 because this provider is archived, but it introduces compatibility with Terraform v0.12.0.
+
 ## 0.1.0 (June 21, 2017)
 
 NOTES:
