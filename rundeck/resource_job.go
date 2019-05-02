@@ -18,11 +18,6 @@ func resourceRundeckJob() *schema.Resource {
 		Read:   ReadJob,
 
 		Schema: map[string]*schema.Schema{
-			"id": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-
 			"name": {
 				Type:     schema.TypeString,
 				Required: true,
@@ -279,7 +274,6 @@ func CreateJob(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	d.SetId(jobSummary.ID)
-	d.Set("id", jobSummary.ID)
 
 	return ReadJob(d, meta)
 }
@@ -298,7 +292,6 @@ func UpdateJob(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	d.SetId(jobSummary.ID)
-	d.Set("id", jobSummary.ID)
 
 	return ReadJob(d, meta)
 }
@@ -496,7 +489,6 @@ func jobFromResourceData(d *schema.ResourceData) (*rundeck.JobDetail, error) {
 func jobToResourceData(job *rundeck.JobDetail, d *schema.ResourceData) error {
 
 	d.SetId(job.ID)
-	d.Set("id", job.ID)
 	d.Set("name", job.Name)
 	d.Set("group_name", job.GroupName)
 

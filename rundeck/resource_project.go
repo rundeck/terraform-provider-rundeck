@@ -125,7 +125,6 @@ func CreateProject(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	d.SetId(project.Name)
-	d.Set("id", project.Name)
 
 	return UpdateProject(d, meta)
 }
