@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/apparentlymart/go-rundeck-api/rundeck"
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/terraform"
+	"github.com/rundeck/go-rundeck/rundeck"
 )
 
 func TestAccJob_basic(t *testing.T) {
-	var job rundeck.JobDetail
+	var job JobDetail
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -36,14 +36,14 @@ func TestAccJob_basic(t *testing.T) {
 	})
 }
 
-func testAccJobCheckDestroy(job *rundeck.JobDetail) resource.TestCheckFunc {
+func testAccJobCheckDestroy(job *JobDetail) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		client := testAccProvider.Meta().(*rundeck.Client)
-		_, err := client.GetJob(job.ID)
+		client := testAccProvider.Meta().(*rundeck.BaseClient)
+		_, err := GetJob(client, job.ID)
 		if err == nil {
 			return fmt.Errorf("key still exists")
 		}
-		if _, ok := err.(*rundeck.NotFoundError); !ok {
+		if _, ok := err.(*NotFoundError); !ok {
 			return fmt.Errorf("got something other than NotFoundError (%v) when getting key", err)
 		}
 
@@ -51,7 +51,7 @@ func testAccJobCheckDestroy(job *rundeck.JobDetail) resource.TestCheckFunc {
 	}
 }
 
-func testAccJobCheckExists(rn string, job *rundeck.JobDetail) resource.TestCheckFunc {
+func testAccJobCheckExists(rn string, job *JobDetail) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[rn]
 		if !ok {
@@ -62,8 +62,8 @@ func testAccJobCheckExists(rn string, job *rundeck.JobDetail) resource.TestCheck
 			return fmt.Errorf("job id not set")
 		}
 
-		client := testAccProvider.Meta().(*rundeck.Client)
-		gotJob, err := client.GetJob(rs.Primary.ID)
+		client := testAccProvider.Meta().(*rundeck.BaseClient)
+		gotJob, err := GetJob(client, rs.Primary.ID)
 		if err != nil {
 			return fmt.Errorf("error getting job details: %s", err)
 		}

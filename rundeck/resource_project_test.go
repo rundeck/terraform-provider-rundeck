@@ -1,10 +1,11 @@
 package rundeck
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
-	"github.com/apparentlymart/go-rundeck-api/rundeck"
+	"github.com/rundeck/go-rundeck/rundeck"
 
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/terraform"
@@ -23,14 +24,16 @@ func TestAccProject_basic(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccProjectCheckExists("rundeck_project.main", &project),
 					func(s *terraform.State) error {
-						if expected := "terraform-acc-test-basic"; project.Name != expected {
+						projectConfig := project.Config.(map[string]interface{})
+
+						if expected := "terraform-acc-test-basic"; *project.Name != expected {
 							return fmt.Errorf("wrong name; expected %v, got %v", expected, project.Name)
 						}
-						if expected := "baz"; project.Config["foo.bar"] != expected {
-							return fmt.Errorf("wrong foo.bar config; expected %v, got %v", expected, project.Config["foo.bar"])
+						if expected := "baz"; projectConfig["foo.bar"] != expected {
+							return fmt.Errorf("wrong foo.bar config; expected %v, got %v", expected, projectConfig["foo.bar"])
 						}
-						if expected := "file"; project.Config["resources.source.1.type"] != expected {
-							return fmt.Errorf("wrong resources.source.1.type config; expected %v, got %v", expected, project.Config["resources.source.1.type"])
+						if expected := "file"; projectConfig["resources.source.1.type"] != expected {
+							return fmt.Errorf("wrong resources.source.1.type config; expected %v, got %v", expected, projectConfig["resources.source.1.type"])
 						}
 						return nil
 					},
@@ -42,12 +45,13 @@ func TestAccProject_basic(t *testing.T) {
 
 func testAccProjectCheckDestroy(project *rundeck.Project) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		client := testAccProvider.Meta().(*rundeck.Client)
-		_, err := client.GetProject(project.Name)
+		client := testAccProvider.Meta().(*rundeck.BaseClient)
+		ctx := context.Background()
+		resp, err := client.ProjectGet(ctx, *project.Name)
 		if err == nil {
 			return fmt.Errorf("project still exists")
 		}
-		if _, ok := err.(*rundeck.NotFoundError); !ok {
+		if resp.StatusCode != 404 {
 			return fmt.Errorf("got something other than NotFoundError (%v) when getting project", err)
 		}
 
@@ -66,13 +70,14 @@ func testAccProjectCheckExists(rn string, project *rundeck.Project) resource.Tes
 			return fmt.Errorf("project id not set")
 		}
 
-		client := testAccProvider.Meta().(*rundeck.Client)
-		gotProject, err := client.GetProject(rs.Primary.ID)
+		client := testAccProvider.Meta().(*rundeck.BaseClient)
+		ctx := context.Background()
+		gotProject, err := client.ProjectGet(ctx, rs.Primary.ID)
 		if err != nil {
 			return fmt.Errorf("error getting project: %s", err)
 		}
 
-		*project = *gotProject
+		*project = gotProject
 
 		return nil
 	}

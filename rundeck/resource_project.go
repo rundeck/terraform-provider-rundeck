@@ -1,6 +1,7 @@
 package rundeck
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strconv"
@@ -8,7 +9,7 @@ import (
 
 	"github.com/hashicorp/terraform/helper/schema"
 
-	"github.com/apparentlymart/go-rundeck-api/rundeck"
+	"github.com/rundeck/go-rundeck/rundeck"
 )
 
 var projectConfigAttributes = map[string]string{
@@ -107,7 +108,7 @@ func resourceRundeckProject() *schema.Resource {
 }
 
 func CreateProject(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.Client)
+	client := meta.(*rundeck.BaseClient)
 
 	// Rundeck's model is a little inconsistent in that we can create
 	// a project via a high-level structure but yet we must update
@@ -116,21 +117,25 @@ func CreateProject(d *schema.ResourceData, meta interface{}) error {
 	// and then delegate to UpdateProject to fill in the rest of the
 	// configuration via the raw config properties.
 
-	project, err := client.CreateProject(&rundeck.Project{
-		Name: d.Get("name").(string),
+	name := d.Get("name").(string)
+
+	ctx := context.Background()
+	_, err := client.ProjectCreate(ctx, rundeck.ProjectCreateRequest{
+		Name: &name,
 	})
 
 	if err != nil {
 		return err
 	}
 
-	d.SetId(project.Name)
+	d.SetId(name)
+	d.Set("id", name)
 
 	return UpdateProject(d, meta)
 }
 
 func UpdateProject(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.Client)
+	client := meta.(*rundeck.BaseClient)
 
 	// In Rundeck, updates are always in terms of the low-level config
 	// properties map, so we need to transform our data structure
@@ -167,7 +172,8 @@ func UpdateProject(d *schema.ResourceData, meta interface{}) error {
 		}
 	}
 
-	err := client.SetProjectConfig(projectName, updateMap)
+	ctx := context.Background()
+	_, err := client.ProjectConfigUpdate(ctx, projectName, updateMap)
 
 	if err != nil {
 		return err
@@ -177,28 +183,31 @@ func UpdateProject(d *schema.ResourceData, meta interface{}) error {
 }
 
 func ReadProject(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.Client)
+	client := meta.(*rundeck.BaseClient)
 
 	name := d.Id()
-	project, err := client.GetProject(name)
+	ctx := context.Background()
+	project, err := client.ProjectGet(ctx, name)
 
 	if err != nil {
 		return err
 	}
 
+	projectConfig := project.Config.(map[string]interface{})
+
 	for configKey, attrKey := range projectConfigAttributes {
 		d.Set(projectConfigAttributes[configKey], nil)
-		if v, ok := project.Config[configKey]; ok {
+		if v, ok := projectConfig[configKey]; ok {
 			d.Set(attrKey, v)
 			// Remove this key so it won't get included in extra_config
 			// later.
-			delete(project.Config, configKey)
+			delete(projectConfig, configKey)
 		}
 	}
 
 	resourceSourceMap := map[int]interface{}{}
 	configMaps := map[int]interface{}{}
-	for configKey, v := range project.Config {
+	for configKey, v := range projectConfig {
 		if strings.HasPrefix(configKey, "resources.source.") {
 			nameParts := strings.Split(configKey, ".")
 
@@ -238,7 +247,7 @@ func ReadProject(d *schema.ResourceData, meta interface{}) error {
 
 			// Remove this key so it won't get included in extra_config
 			// later.
-			delete(project.Config, configKey)
+			delete(projectConfig, configKey)
 		}
 	}
 
@@ -256,8 +265,8 @@ func ReadProject(d *schema.ResourceData, meta interface{}) error {
 
 	extraConfig := map[string]string{}
 	dotReplacer := strings.NewReplacer(".", "/")
-	for k, v := range project.Config {
-		extraConfig[dotReplacer.Replace(k)] = v
+	for k, v := range projectConfig {
+		extraConfig[dotReplacer.Replace(k)] = v.(string)
 	}
 	d.Set("extra_config", extraConfig)
 
@@ -268,16 +277,19 @@ func ReadProject(d *schema.ResourceData, meta interface{}) error {
 }
 
 func ProjectExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	client := meta.(*rundeck.Client)
+	client := meta.(*rundeck.BaseClient)
 
 	name := d.Id()
-	_, err := client.GetProject(name)
+	ctx := context.Background()
+	resp, err := client.ProjectGet(ctx, name)
 
-	if _, ok := err.(rundeck.NotFoundError); ok {
+	// if _, ok := err.(rundeck.NotFoundError); ok {
+	// 	return false, nil
+	// }
+
+	if resp.StatusCode == 404 {
 		return false, nil
-	}
-
-	if err != nil {
+	} else if err != nil {
 		return false, err
 	}
 
@@ -285,8 +297,11 @@ func ProjectExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 }
 
 func DeleteProject(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.Client)
+	client := meta.(*rundeck.BaseClient)
 
 	name := d.Id()
-	return client.DeleteProject(name)
+	ctx := context.Background()
+	_, err := client.ProjectDelete(ctx, name)
+
+	return err
 }

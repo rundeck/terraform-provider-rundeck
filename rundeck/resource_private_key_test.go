@@ -1,18 +1,19 @@
 package rundeck
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
 
-	"github.com/apparentlymart/go-rundeck-api/rundeck"
+	"github.com/rundeck/go-rundeck/rundeck"
 
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/terraform"
 )
 
 func TestAccPrivateKey_basic(t *testing.T) {
-	var key rundeck.KeyMeta
+	var key rundeck.StorageKeyListResponse
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -24,17 +25,17 @@ func TestAccPrivateKey_basic(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccPrivateKeyCheckExists("rundeck_private_key.test", &key),
 					func(s *terraform.State) error {
-						if expected := "keys/terraform_acceptance_tests/private_key"; key.Path != expected {
-							return fmt.Errorf("wrong path; expected %v, got %v", expected, key.Path)
+						if expected := "keys/terraform_acceptance_tests/private_key"; *key.Path != expected {
+							return fmt.Errorf("wrong path; expected %v, got %v", expected, *key.Path)
 						}
-						if !strings.HasSuffix(key.URL, "/storage/keys/terraform_acceptance_tests/private_key") {
+						if !strings.HasSuffix(*key.URL, "/storage/keys/terraform_acceptance_tests/private_key") {
 							return fmt.Errorf("wrong URL; expected to end with the key path")
 						}
-						if expected := "file"; key.ResourceType != expected {
-							return fmt.Errorf("wrong resource type; expected %v, got %v", expected, key.ResourceType)
+						if expected := "file"; *key.Type != expected {
+							return fmt.Errorf("wrong resource type; expected %v, got %v", expected, *key.Type)
 						}
-						if expected := "private"; key.KeyType != expected {
-							return fmt.Errorf("wrong key type; expected %v, got %v", expected, key.KeyType)
+						if expected := rundeck.Private; key.Meta.RundeckKeyType != expected {
+							return fmt.Errorf("wrong key type; expected %v, got %v", expected, key.Meta.RundeckKeyType)
 						}
 						// Rundeck won't let us re-retrieve a private key payload, so we can't test
 						// that the key material was submitted and stored correctly.
@@ -46,14 +47,17 @@ func TestAccPrivateKey_basic(t *testing.T) {
 	})
 }
 
-func testAccPrivateKeyCheckDestroy(key *rundeck.KeyMeta) resource.TestCheckFunc {
+func testAccPrivateKeyCheckDestroy(key *rundeck.StorageKeyListResponse) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		client := testAccProvider.Meta().(*rundeck.Client)
-		_, err := client.GetKeyMeta(key.Path)
-		if err == nil {
+		client := testAccProvider.Meta().(*rundeck.BaseClient)
+		ctx := context.Background()
+
+		resp, err := client.StorageKeyGetMetadata(ctx, *key.Path)
+
+		if resp.StatusCode == 200 {
 			return fmt.Errorf("key still exists")
 		}
-		if _, ok := err.(*rundeck.NotFoundError); !ok {
+		if resp.StatusCode != 404 {
 			return fmt.Errorf("got something other than NotFoundError (%v) when getting key", err)
 		}
 
@@ -61,7 +65,7 @@ func testAccPrivateKeyCheckDestroy(key *rundeck.KeyMeta) resource.TestCheckFunc 
 	}
 }
 
-func testAccPrivateKeyCheckExists(rn string, key *rundeck.KeyMeta) resource.TestCheckFunc {
+func testAccPrivateKeyCheckExists(rn string, key *rundeck.StorageKeyListResponse) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[rn]
 		if !ok {
@@ -72,13 +76,14 @@ func testAccPrivateKeyCheckExists(rn string, key *rundeck.KeyMeta) resource.Test
 			return fmt.Errorf("key id not set")
 		}
 
-		client := testAccProvider.Meta().(*rundeck.Client)
-		gotKey, err := client.GetKeyMeta(rs.Primary.ID)
-		if err != nil {
+		client := testAccProvider.Meta().(*rundeck.BaseClient)
+		ctx := context.Background()
+		gotKey, err := client.StorageKeyGetMetadata(ctx, rs.Primary.ID)
+		if gotKey.StatusCode == 404 || err != nil {
 			return fmt.Errorf("error getting key metadata: %s", err)
 		}
 
-		*key = *gotKey
+		*key = gotKey
 
 		return nil
 	}

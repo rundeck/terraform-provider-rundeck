@@ -1,10 +1,14 @@
 package rundeck
 
 import (
+	"net/url"
+
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
 
-	"github.com/apparentlymart/go-rundeck-api/rundeck"
+	// "github.com/apparentlymart/go-rundeck-api/rundeck"
+	"github.com/rundeck/go-rundeck/rundeck"
+	"github.com/rundeck/go-rundeck/rundeck/auth"
 )
 
 func Provider() terraform.ResourceProvider {
@@ -34,6 +38,7 @@ func Provider() terraform.ResourceProvider {
 			"rundeck_job":         resourceRundeckJob(),
 			"rundeck_private_key": resourceRundeckPrivateKey(),
 			"rundeck_public_key":  resourceRundeckPublicKey(),
+			"rundeck_acl_policy":  resourceRundeckAclPolicy(),
 		},
 
 		ConfigureFunc: providerConfigure,
@@ -41,11 +46,16 @@ func Provider() terraform.ResourceProvider {
 }
 
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
-	config := &rundeck.ClientConfig{
-		BaseURL:            d.Get("url").(string),
-		AuthToken:          d.Get("auth_token").(string),
-		AllowUnverifiedSSL: d.Get("allow_unverified_ssl").(bool),
+	apiURL, error := url.Parse(d.Get("url").(string))
+
+	if error != nil {
+		return nil, error
 	}
 
-	return rundeck.NewClient(config)
+	token := d.Get("auth_token").(string)
+
+	client := rundeck.NewRundeckWithBaseURI(apiURL.String())
+	client.Authorizer = &auth.TokenAuthorizer{Token: token}
+
+	return &client, nil
 }
