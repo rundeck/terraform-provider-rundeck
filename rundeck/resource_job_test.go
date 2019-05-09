@@ -36,6 +36,21 @@ func TestAccJob_basic(t *testing.T) {
 	})
 }
 
+func TestAccJob_Idempotency(t *testing.T) {
+	var job JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobCheckDestroy(&job),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_noNodeFilterQuery,
+			},
+		},
+	})
+}
+
 func testAccJobCheckDestroy(job *JobDetail) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		client := testAccProvider.Meta().(*rundeck.BaseClient)
@@ -102,6 +117,38 @@ resource "rundeck_job" "test" {
   command {
     description = "Prints Hello World"
     shell_command = "echo Hello World"
+  }
+}
+`
+
+const testAccJobConfig_noNodeFilterQuery = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-job"
+  description = "parent project for job acceptance tests"
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourcexml"
+        file = "/tmp/terraform-acc-tests.xml"
+    }
+  }
+}
+resource "rundeck_job" "test" {
+  name = "idempotency-test"
+  project_name = "${rundeck_project.test.name}"
+  description = "Testing idempotency"
+  allow_concurrent_executions = "false"
+
+  option {
+    name = "instance_count"
+    default_value = "2"
+    required = "true"
+    value_choices = ["1,2,3,4,5,6,7,8,9"]
+    require_predefined_choice = "true"
+  }
+
+  command {
+    shell_command = "echo hello"
   }
 }
 `
