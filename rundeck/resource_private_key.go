@@ -11,8 +11,6 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 
 	"github.com/rundeck/go-rundeck/rundeck"
-
-	"github.com/Azure/go-autorest/autorest"
 )
 
 func resourceRundeckPrivateKey() *schema.Resource {
@@ -56,21 +54,23 @@ func CreateOrUpdatePrivateKey(d *schema.ResourceData, meta interface{}) error {
 	keyMaterial := d.Get("key_material").(string)
 
 	var err error
-	var resp autorest.Response
 
 	ctx := context.Background()
 
 	keyMaterialReader := ioutil.NopCloser(strings.NewReader(keyMaterial))
 
 	if d.Id() != "" {
-		resp, err = client.StorageKeyUpdate(ctx, path, keyMaterialReader, "application/octect-stream")
+		resp, err := client.StorageKeyUpdate(ctx, path, keyMaterialReader, "application/octect-stream")
+		if resp.StatusCode == 409 || err != nil {
+			return fmt.Errorf("Error updating or adding key: Key exists")
+		}
 	} else {
-		resp, err = client.StorageKeyCreate(ctx, path, keyMaterialReader, "application/octet-stream")
+		resp, err := client.StorageKeyCreate(ctx, path, keyMaterialReader, "application/octet-stream")
+		if resp.StatusCode == 409 || err != nil {
+			return fmt.Errorf("Error updating or adding key: Key exists")
+		}
 	}
 
-	if resp.StatusCode == 409 || err != nil {
-		return fmt.Errorf("Error updating or adding key: Key exists")
-	}
 	if err != nil {
 		return err
 	}
