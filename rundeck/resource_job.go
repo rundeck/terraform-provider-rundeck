@@ -459,6 +459,13 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 			ExcludePrecedence: d.Get("node_filter_exclude_precedence").(bool),
 			Query:             d.Get("node_filter_query").(string),
 		}
+
+		job.Dispatch = &JobDispatch{
+			MaxThreadCount:  d.Get("max_thread_count").(int),
+			ContinueOnError: d.Get("continue_on_error").(bool),
+			RankAttribute:   d.Get("rank_attribute").(string),
+			RankOrder:       d.Get("rank_order").(string),
+		}
 	}
 
 	if d.Get("schedule").(string) != "" {
@@ -504,16 +511,17 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 	d.Set("description", job.Description)
 	d.Set("log_level", job.LogLevel)
 	d.Set("allow_concurrent_executions", job.AllowConcurrentExecutions)
+
 	if job.Dispatch != nil {
 		d.Set("max_thread_count", job.Dispatch.MaxThreadCount)
 		d.Set("continue_on_error", job.Dispatch.ContinueOnError)
 		d.Set("rank_attribute", job.Dispatch.RankAttribute)
 		d.Set("rank_order", job.Dispatch.RankOrder)
 	} else {
-		d.Set("max_thread_count", nil)
+		d.Set("max_thread_count", 1)
 		d.Set("continue_on_error", nil)
 		d.Set("rank_attribute", nil)
-		d.Set("rank_order", nil)
+		d.Set("rank_order", "ascending")
 	}
 
 	d.Set("node_filter_query", nil)
