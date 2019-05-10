@@ -1,9 +1,14 @@
 package rundeck
 
 import (
+	"context"
+	"fmt"
+	"io/ioutil"
+	"strings"
+
 	"github.com/hashicorp/terraform/helper/schema"
 
-	"github.com/apparentlymart/go-rundeck-api/rundeck"
+	"github.com/rundeck/go-rundeck/rundeck"
 )
 
 func resourceRundeckPublicKey() *schema.Resource {
@@ -45,13 +50,19 @@ func resourceRundeckPublicKey() *schema.Resource {
 }
 
 func CreatePublicKey(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.Client)
+	client := meta.(*rundeck.BaseClient)
+	ctx := context.Background()
 
 	path := d.Get("path").(string)
 	keyMaterial := d.Get("key_material").(string)
 
+	keyMaterialReader := ioutil.NopCloser(strings.NewReader(keyMaterial))
+
 	if keyMaterial != "" {
-		err := client.CreatePublicKey(path, keyMaterial)
+		resp, err := client.StorageKeyCreate(ctx, path, keyMaterialReader, "application/pgp-keys")
+		if resp.StatusCode == 409 {
+			err = fmt.Errorf("Conflict creating key at : %s", path)
+		}
 		if err != nil {
 			return err
 		}
@@ -64,13 +75,19 @@ func CreatePublicKey(d *schema.ResourceData, meta interface{}) error {
 }
 
 func UpdatePublicKey(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.Client)
+	client := meta.(*rundeck.BaseClient)
+	ctx := context.Background()
 
 	if d.HasChange("key_material") {
 		path := d.Get("path").(string)
 		keyMaterial := d.Get("key_material").(string)
 
-		err := client.ReplacePublicKey(path, keyMaterial)
+		keyMaterialReader := ioutil.NopCloser(strings.NewReader(keyMaterial))
+
+		resp, err := client.StorageKeyUpdate(ctx, path, keyMaterialReader, "application/pgp-keys")
+		if resp.StatusCode == 409 || err != nil {
+			return fmt.Errorf("Error updating or adding key: Key exists")
+		}
 		if err != nil {
 			return err
 		}
@@ -80,7 +97,8 @@ func UpdatePublicKey(d *schema.ResourceData, meta interface{}) error {
 }
 
 func DeletePublicKey(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.Client)
+	client := meta.(*rundeck.BaseClient)
+	ctx := context.Background()
 
 	path := d.Id()
 
@@ -93,7 +111,7 @@ func DeletePublicKey(d *schema.ResourceData, meta interface{}) error {
 		// that's okay since our Exists implementation makes sure that we
 		// won't try to delete a key of the wrong type since we'll pretend
 		// that it's already been deleted.
-		err := client.DeleteKey(path)
+		_, err := client.StorageKeyDelete(ctx, path)
 		if err != nil {
 			return err
 		}
@@ -104,40 +122,48 @@ func DeletePublicKey(d *schema.ResourceData, meta interface{}) error {
 }
 
 func ReadPublicKey(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.Client)
+	client := meta.(*rundeck.BaseClient)
+	ctx := context.Background()
 
 	path := d.Id()
 
-	key, err := client.GetKeyMeta(path)
+	key, err := client.StorageKeyGetMetadata(ctx, path)
+	if key.StatusCode == 404 {
+		err = fmt.Errorf("Key not found at: %s", path)
+	}
+
 	if err != nil {
 		return err
 	}
 
-	keyMaterial, err := client.GetKeyContent(path)
+	resp, err := client.StorageKeyGetMaterial(ctx, path)
 	if err != nil {
 		return err
 	}
 
-	d.Set("key_material", keyMaterial)
-	d.Set("url", key.URL)
+	keyMaterial, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	d.Set("key_material", string(keyMaterial))
+	d.Set("url", *key.URL)
 
 	return nil
 }
 
 func PublicKeyExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	client := meta.(*rundeck.Client)
+	client := meta.(*rundeck.BaseClient)
+	ctx := context.Background()
 
 	path := d.Id()
 
-	key, err := client.GetKeyMeta(path)
-	if err != nil {
-		if _, ok := err.(rundeck.NotFoundError); ok {
-			err = nil
-		}
+	resp, err := client.StorageKeyGetMetadata(ctx, path)
+	if resp.StatusCode == 404 || err != nil {
 		return false, err
 	}
 
-	if key.KeyType != "public" {
+	if resp.Meta.RundeckKeyType != rundeck.Public {
 		// If the key type isn't public then as far as this resource is
 		// concerned it doesn't exist. (We'll fail properly when we try to
 		// create a key where one already exists.)

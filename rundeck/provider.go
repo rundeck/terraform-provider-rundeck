@@ -1,10 +1,15 @@
 package rundeck
 
 import (
+	"fmt"
+	"net/url"
+
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
 
-	"github.com/apparentlymart/go-rundeck-api/rundeck"
+	// "github.com/apparentlymart/go-rundeck-api/rundeck"
+	"github.com/rundeck/go-rundeck/rundeck"
+	"github.com/rundeck/go-rundeck/rundeck/auth"
 )
 
 func Provider() terraform.ResourceProvider {
@@ -16,16 +21,17 @@ func Provider() terraform.ResourceProvider {
 				DefaultFunc: schema.EnvDefaultFunc("RUNDECK_URL", nil),
 				Description: "URL of the root of the target Rundeck server.",
 			},
+			"api_version": {
+				Type:        schema.TypeString,
+				Required:    true,
+				DefaultFunc: schema.EnvDefaultFunc("RUNDECK_API_VERSION", "14"),
+				Description: "API Version of the target Rundeck server.",
+			},
 			"auth_token": {
 				Type:        schema.TypeString,
 				Required:    true,
 				DefaultFunc: schema.EnvDefaultFunc("RUNDECK_AUTH_TOKEN", nil),
 				Description: "Auth token to use with the Rundeck API.",
-			},
-			"allow_unverified_ssl": {
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Description: "If set, the Rundeck client will permit unverifiable SSL certificates.",
 			},
 		},
 
@@ -34,6 +40,7 @@ func Provider() terraform.ResourceProvider {
 			"rundeck_job":         resourceRundeckJob(),
 			"rundeck_private_key": resourceRundeckPrivateKey(),
 			"rundeck_public_key":  resourceRundeckPublicKey(),
+			"rundeck_acl_policy":  resourceRundeckAclPolicy(),
 		},
 
 		ConfigureFunc: providerConfigure,
@@ -41,11 +48,21 @@ func Provider() terraform.ResourceProvider {
 }
 
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
-	config := &rundeck.ClientConfig{
-		BaseURL:            d.Get("url").(string),
-		AuthToken:          d.Get("auth_token").(string),
-		AllowUnverifiedSSL: d.Get("allow_unverified_ssl").(bool),
+	urlP, _ := d.Get("url").(string)
+	apiVersion, _ := d.Get("api_version").(string)
+
+	apiURLString := fmt.Sprintf("%s/api/%s", urlP, apiVersion)
+
+	apiURL, error := url.Parse(apiURLString)
+
+	if error != nil {
+		return nil, error
 	}
 
-	return rundeck.NewClient(config)
+	token := d.Get("auth_token").(string)
+
+	client := rundeck.NewRundeckWithBaseURI(apiURL.String())
+	client.Authorizer = &auth.TokenAuthorizer{Token: token}
+
+	return &client, nil
 }

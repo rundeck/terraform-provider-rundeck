@@ -19,12 +19,12 @@ The provider configuration block accepts the following arguments:
 * ``url`` - (Required) The root URL of a Rundeck server. May alternatively be set via the
   ``RUNDECK_URL`` environment variable.
 
+* ``api_version`` - (Optional) The API version of the server. Defaults to `14`, the
+  minium supported version. May alternatively be set via the ``RUNDECK_API_VERSION``
+  environment variable. 
+
 * ``auth_token`` - (Required) The API auth token to use when making requests. May alternatively
   be set via the ``RUNDECK_AUTH_TOKEN`` environment variable.
-
-* ``allow_unverified_ssl`` - (Optional) Boolean that can be set to ``true`` to disable SSL
-  certificate verification. This should be used with care as it could allow an attacker to
-  intercept your auth token.
 
 Use the navigation to the left to read about the available resources.
 
@@ -32,8 +32,9 @@ Use the navigation to the left to read about the available resources.
 
 ```hcl
 provider "rundeck" {
-  url        = "http://rundeck.example.com/"
-  auth_token = "abcd1234"
+  url         = "http://rundeck.example.com/"
+  api_version = "26"
+  auth_token  = "abcd1234"
 }
 
 resource "rundeck_project" "anvils" {
@@ -73,5 +74,15 @@ resource "rundeck_public_key" "anvils" {
 resource "rundeck_private_key" "anvils" {
   path         = "anvils/id_rsa"
   key_material = "${file(\"id_rsa.pub\")}"
+}
+
+data "local_file" "acl" {
+  filename = "${path.module}/acl.yaml"
+}
+
+resource "rundeck_acl_policy" "example" {
+  name = "ExampleAcl.aclpolicy"
+
+  policy = "${data.local_file.acl.content}"
 }
 ```

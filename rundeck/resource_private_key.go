@@ -1,12 +1,16 @@
 package rundeck
 
 import (
+	"context"
 	"crypto/sha1"
 	"encoding/hex"
+	"fmt"
+	"io/ioutil"
+	"strings"
 
 	"github.com/hashicorp/terraform/helper/schema"
 
-	"github.com/apparentlymart/go-rundeck-api/rundeck"
+	"github.com/rundeck/go-rundeck/rundeck"
 )
 
 func resourceRundeckPrivateKey() *schema.Resource {
@@ -44,17 +48,27 @@ func resourceRundeckPrivateKey() *schema.Resource {
 }
 
 func CreateOrUpdatePrivateKey(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.Client)
+	client := meta.(*rundeck.BaseClient)
 
 	path := d.Get("path").(string)
 	keyMaterial := d.Get("key_material").(string)
 
 	var err error
 
+	ctx := context.Background()
+
+	keyMaterialReader := ioutil.NopCloser(strings.NewReader(keyMaterial))
+
 	if d.Id() != "" {
-		err = client.ReplacePrivateKey(path, keyMaterial)
+		resp, err := client.StorageKeyUpdate(ctx, path, keyMaterialReader, "application/octect-stream")
+		if resp.StatusCode == 409 || err != nil {
+			return fmt.Errorf("Error updating or adding key: Key exists")
+		}
 	} else {
-		err = client.CreatePrivateKey(path, keyMaterial)
+		resp, err := client.StorageKeyCreate(ctx, path, keyMaterialReader, "application/octet-stream")
+		if resp.StatusCode == 409 || err != nil {
+			return fmt.Errorf("Error updating or adding key: Key exists")
+		}
 	}
 
 	if err != nil {
@@ -67,7 +81,8 @@ func CreateOrUpdatePrivateKey(d *schema.ResourceData, meta interface{}) error {
 }
 
 func DeletePrivateKey(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.Client)
+	client := meta.(*rundeck.BaseClient)
+	ctx := context.Background()
 
 	path := d.Id()
 
@@ -75,7 +90,7 @@ func DeletePrivateKey(d *schema.ResourceData, meta interface{}) error {
 	// that's okay since our Exists implementation makes sure that we
 	// won't try to delete a key of the wrong type since we'll pretend
 	// that it's already been deleted.
-	err := client.DeleteKey(path)
+	_, err := client.StorageKeyDelete(ctx, path)
 	if err != nil {
 		return err
 	}
@@ -91,19 +106,20 @@ func ReadPrivateKey(d *schema.ResourceData, meta interface{}) error {
 }
 
 func PrivateKeyExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	client := meta.(*rundeck.Client)
+	client := meta.(*rundeck.BaseClient)
+	ctx := context.Background()
 
 	path := d.Id()
 
-	key, err := client.GetKeyMeta(path)
+	resp, err := client.StorageKeyGetMetadata(ctx, path)
 	if err != nil {
-		if _, ok := err.(rundeck.NotFoundError); ok {
+		if resp.StatusCode != 404 {
 			err = nil
 		}
 		return false, err
 	}
 
-	if key.KeyType != "private" {
+	if resp.Meta.RundeckKeyType != rundeck.Private {
 		// If the key type isn't public then as far as this resource is
 		// concerned it doesn't exist. (We'll fail properly when we try to
 		// create a key where one already exists.)

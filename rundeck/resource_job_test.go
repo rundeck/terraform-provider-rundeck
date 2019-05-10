@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/apparentlymart/go-rundeck-api/rundeck"
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/terraform"
+	"github.com/rundeck/go-rundeck/rundeck"
 )
 
 func TestAccJob_basic(t *testing.T) {
-	var job rundeck.JobDetail
+	var job JobDetail
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -36,14 +36,29 @@ func TestAccJob_basic(t *testing.T) {
 	})
 }
 
-func testAccJobCheckDestroy(job *rundeck.JobDetail) resource.TestCheckFunc {
+func TestAccJob_Idempotency(t *testing.T) {
+	var job JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobCheckDestroy(&job),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_noNodeFilterQuery,
+			},
+		},
+	})
+}
+
+func testAccJobCheckDestroy(job *JobDetail) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		client := testAccProvider.Meta().(*rundeck.Client)
-		_, err := client.GetJob(job.ID)
+		client := testAccProvider.Meta().(*rundeck.BaseClient)
+		_, err := GetJob(client, job.ID)
 		if err == nil {
 			return fmt.Errorf("key still exists")
 		}
-		if _, ok := err.(*rundeck.NotFoundError); !ok {
+		if _, ok := err.(*NotFoundError); !ok {
 			return fmt.Errorf("got something other than NotFoundError (%v) when getting key", err)
 		}
 
@@ -51,7 +66,7 @@ func testAccJobCheckDestroy(job *rundeck.JobDetail) resource.TestCheckFunc {
 	}
 }
 
-func testAccJobCheckExists(rn string, job *rundeck.JobDetail) resource.TestCheckFunc {
+func testAccJobCheckExists(rn string, job *JobDetail) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[rn]
 		if !ok {
@@ -62,8 +77,8 @@ func testAccJobCheckExists(rn string, job *rundeck.JobDetail) resource.TestCheck
 			return fmt.Errorf("job id not set")
 		}
 
-		client := testAccProvider.Meta().(*rundeck.Client)
-		gotJob, err := client.GetJob(rs.Primary.ID)
+		client := testAccProvider.Meta().(*rundeck.BaseClient)
+		gotJob, err := GetJob(client, rs.Primary.ID)
 		if err != nil {
 			return fmt.Errorf("error getting job details: %s", err)
 		}
@@ -102,6 +117,38 @@ resource "rundeck_job" "test" {
   command {
     description = "Prints Hello World"
     shell_command = "echo Hello World"
+  }
+}
+`
+
+const testAccJobConfig_noNodeFilterQuery = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-job"
+  description = "parent project for job acceptance tests"
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourcexml"
+        file = "/tmp/terraform-acc-tests.xml"
+    }
+  }
+}
+resource "rundeck_job" "test" {
+  name = "idempotency-test"
+  project_name = "${rundeck_project.test.name}"
+  description = "Testing idempotency"
+  allow_concurrent_executions = "false"
+
+  option {
+    name = "instance_count"
+    default_value = "2"
+    required = "true"
+    value_choices = ["1,2,3,4,5,6,7,8,9"]
+    require_predefined_choice = "true"
+  }
+
+  command {
+    shell_command = "echo hello"
   }
 }
 `

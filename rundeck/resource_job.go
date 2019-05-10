@@ -1,12 +1,12 @@
 package rundeck
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/hashicorp/terraform/helper/schema"
-
-	"github.com/apparentlymart/go-rundeck-api/rundeck"
+	"github.com/rundeck/go-rundeck/rundeck"
 )
 
 func resourceRundeckJob() *schema.Resource {
@@ -261,14 +261,14 @@ func resourceRundeckJobPluginResource() *schema.Resource {
 }
 
 func CreateJob(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.Client)
+	client := meta.(*rundeck.BaseClient)
 
 	job, err := jobFromResourceData(d)
 	if err != nil {
 		return err
 	}
 
-	jobSummary, err := client.CreateJob(job)
+	jobSummary, err := importJob(client, job, "create")
 	if err != nil {
 		return err
 	}
@@ -279,14 +279,14 @@ func CreateJob(d *schema.ResourceData, meta interface{}) error {
 }
 
 func UpdateJob(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.Client)
+	client := meta.(*rundeck.BaseClient)
 
 	job, err := jobFromResourceData(d)
 	if err != nil {
 		return err
 	}
 
-	jobSummary, err := client.CreateOrUpdateJob(job)
+	jobSummary, err := importJob(client, job, "update")
 	if err != nil {
 		return err
 	}
@@ -297,9 +297,10 @@ func UpdateJob(d *schema.ResourceData, meta interface{}) error {
 }
 
 func DeleteJob(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.Client)
+	client := meta.(*rundeck.BaseClient)
+	ctx := context.Background()
 
-	err := client.DeleteJob(d.Id())
+	_, err := client.JobDelete(ctx, d.Id())
 	if err != nil {
 		return err
 	}
@@ -310,23 +311,30 @@ func DeleteJob(d *schema.ResourceData, meta interface{}) error {
 }
 
 func JobExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	client := meta.(*rundeck.Client)
+	client := meta.(*rundeck.BaseClient)
+	ctx := context.Background()
 
-	_, err := client.GetJob(d.Id())
+	resp, err := client.JobGet(ctx, d.Id(), "")
 	if err != nil {
-		if _, ok := err.(rundeck.NotFoundError); ok {
-			err = nil
+		if _, ok := err.(*NotFoundError); ok == true {
+			return false, nil
 		}
 		return false, err
 	}
+	if resp.StatusCode == 200 {
+		return true, nil
+	}
+	if resp.StatusCode == 404 {
+		return false, nil
+	}
 
-	return true, nil
+	return false, fmt.Errorf("Error checking if job exists: (%v)", err)
 }
 
 func ReadJob(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.Client)
+	client := meta.(*rundeck.BaseClient)
 
-	job, err := client.GetJob(d.Id())
+	job, err := GetJob(client, d.Id())
 	if err != nil {
 		return err
 	}
@@ -334,8 +342,8 @@ func ReadJob(d *schema.ResourceData, meta interface{}) error {
 	return jobToResourceData(job, d)
 }
 
-func jobFromResourceData(d *schema.ResourceData) (*rundeck.JobDetail, error) {
-	job := &rundeck.JobDetail{
+func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
+	job := &JobDetail{
 		ID:                        d.Id(),
 		Name:                      d.Get("name").(string),
 		GroupName:                 d.Get("group_name").(string),
@@ -343,7 +351,7 @@ func jobFromResourceData(d *schema.ResourceData) (*rundeck.JobDetail, error) {
 		Description:               d.Get("description").(string),
 		LogLevel:                  d.Get("log_level").(string),
 		AllowConcurrentExecutions: d.Get("allow_concurrent_executions").(bool),
-		Dispatch: &rundeck.JobDispatch{
+		Dispatch: &JobDispatch{
 			MaxThreadCount:  d.Get("max_thread_count").(int),
 			ContinueOnError: d.Get("continue_on_error").(bool),
 			RankAttribute:   d.Get("rank_attribute").(string),
@@ -351,16 +359,16 @@ func jobFromResourceData(d *schema.ResourceData) (*rundeck.JobDetail, error) {
 		},
 	}
 
-	sequence := &rundeck.JobCommandSequence{
+	sequence := &JobCommandSequence{
 		ContinueOnError:  d.Get("continue_on_error").(bool),
 		OrderingStrategy: d.Get("command_ordering_strategy").(string),
-		Commands:         []rundeck.JobCommand{},
+		Commands:         []JobCommand{},
 	}
 
 	commandConfigs := d.Get("command").([]interface{})
 	for _, commandI := range commandConfigs {
 		commandMap := commandI.(map[string]interface{})
-		command := rundeck.JobCommand{
+		command := JobCommand{
 			Description:    commandMap["description"].(string),
 			ShellCommand:   commandMap["shell_command"].(string),
 			Script:         commandMap["inline_script"].(string),
@@ -374,11 +382,11 @@ func jobFromResourceData(d *schema.ResourceData) (*rundeck.JobDetail, error) {
 		}
 		if len(jobRefsI) > 0 {
 			jobRefMap := jobRefsI[0].(map[string]interface{})
-			command.Job = &rundeck.JobCommandJobRef{
+			command.Job = &JobCommandJobRef{
 				Name:           jobRefMap["name"].(string),
 				GroupName:      jobRefMap["group_name"].(string),
 				RunForEachNode: jobRefMap["run_for_each_node"].(bool),
-				Arguments:      rundeck.JobCommandJobRefArguments(jobRefMap["args"].(string)),
+				Arguments:      JobCommandJobRefArguments(jobRefMap["args"].(string)),
 			}
 		}
 
@@ -393,7 +401,7 @@ func jobFromResourceData(d *schema.ResourceData) (*rundeck.JobDetail, error) {
 			for k, v := range configI {
 				config[k] = v.(string)
 			}
-			command.StepPlugin = &rundeck.JobPlugin{
+			command.StepPlugin = &JobPlugin{
 				Type:   stepPluginMap["type"].(string),
 				Config: config,
 			}
@@ -410,7 +418,7 @@ func jobFromResourceData(d *schema.ResourceData) (*rundeck.JobDetail, error) {
 			for k, v := range configI {
 				config[k] = v.(string)
 			}
-			command.NodeStepPlugin = &rundeck.JobPlugin{
+			command.NodeStepPlugin = &JobPlugin{
 				Type:   stepPluginMap["type"].(string),
 				Config: config,
 			}
@@ -422,16 +430,16 @@ func jobFromResourceData(d *schema.ResourceData) (*rundeck.JobDetail, error) {
 
 	optionConfigsI := d.Get("option").([]interface{})
 	if len(optionConfigsI) > 0 {
-		optionsConfig := &rundeck.JobOptions{
+		optionsConfig := &JobOptions{
 			PreserveOrder: d.Get("preserve_options_order").(bool),
-			Options:       []rundeck.JobOption{},
+			Options:       []JobOption{},
 		}
 		for _, optionI := range optionConfigsI {
 			optionMap := optionI.(map[string]interface{})
-			option := rundeck.JobOption{
+			option := JobOption{
 				Name:                    optionMap["name"].(string),
 				DefaultValue:            optionMap["default_value"].(string),
-				ValueChoices:            rundeck.JobValueChoices([]string{}),
+				ValueChoices:            JobValueChoices([]string{}),
 				ValueChoicesURL:         optionMap["value_choices_url"].(string),
 				RequirePredefinedChoice: optionMap["require_predefined_choice"].(bool),
 				ValidationRegex:         optionMap["validation_regex"].(string),
@@ -453,9 +461,16 @@ func jobFromResourceData(d *schema.ResourceData) (*rundeck.JobDetail, error) {
 	}
 
 	if d.Get("node_filter_query").(string) != "" {
-		job.NodeFilter = &rundeck.JobNodeFilter{
+		job.NodeFilter = &JobNodeFilter{
 			ExcludePrecedence: d.Get("node_filter_exclude_precedence").(bool),
 			Query:             d.Get("node_filter_query").(string),
+		}
+
+		job.Dispatch = &JobDispatch{
+			MaxThreadCount:  d.Get("max_thread_count").(int),
+			ContinueOnError: d.Get("continue_on_error").(bool),
+			RankAttribute:   d.Get("rank_attribute").(string),
+			RankOrder:       d.Get("rank_order").(string),
 		}
 	}
 
@@ -464,20 +479,20 @@ func jobFromResourceData(d *schema.ResourceData) (*rundeck.JobDetail, error) {
 		if len(schedule) != 7 {
 			return nil, fmt.Errorf("Rundeck schedule must be formated like a cron expression, as defined here: http://www.quartz-scheduler.org/documentation/quartz-2.2.x/tutorials/tutorial-lesson-06.html")
 		}
-		job.Schedule = &rundeck.JobSchedule{
-			Time: rundeck.JobScheduleTime{
+		job.Schedule = &JobSchedule{
+			Time: JobScheduleTime{
 				Seconds: schedule[0],
 				Minute:  schedule[1],
 				Hour:    schedule[2],
 			},
-			Month: rundeck.JobScheduleMonth{
+			Month: JobScheduleMonth{
 				Day:   schedule[3],
 				Month: schedule[4],
 			},
-			WeekDay: &rundeck.JobScheduleWeekDay{
+			WeekDay: &JobScheduleWeekDay{
 				Day: schedule[5],
 			},
-			Year: rundeck.JobScheduleYear{
+			Year: JobScheduleYear{
 				Year: schedule[6],
 			},
 		}
@@ -486,7 +501,7 @@ func jobFromResourceData(d *schema.ResourceData) (*rundeck.JobDetail, error) {
 	return job, nil
 }
 
-func jobToResourceData(job *rundeck.JobDetail, d *schema.ResourceData) error {
+func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 
 	d.SetId(job.ID)
 	d.Set("name", job.Name)
@@ -502,16 +517,17 @@ func jobToResourceData(job *rundeck.JobDetail, d *schema.ResourceData) error {
 	d.Set("description", job.Description)
 	d.Set("log_level", job.LogLevel)
 	d.Set("allow_concurrent_executions", job.AllowConcurrentExecutions)
+
 	if job.Dispatch != nil {
 		d.Set("max_thread_count", job.Dispatch.MaxThreadCount)
 		d.Set("continue_on_error", job.Dispatch.ContinueOnError)
 		d.Set("rank_attribute", job.Dispatch.RankAttribute)
 		d.Set("rank_order", job.Dispatch.RankOrder)
 	} else {
-		d.Set("max_thread_count", nil)
+		d.Set("max_thread_count", 1)
 		d.Set("continue_on_error", nil)
 		d.Set("rank_attribute", nil)
-		d.Set("rank_order", nil)
+		d.Set("rank_order", "ascending")
 	}
 
 	d.Set("node_filter_query", nil)

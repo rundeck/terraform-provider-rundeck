@@ -1,4 +1,11 @@
-## 0.2.0 (Unreleased)
+## 0.2.0 (May 10, 2019)
+
+### Added:
+* ACL Policy resource
+* API Version provider option
+
+### FIXED:
+* Idempotency issue when node filter not set on job
 
 ## 0.1.0 (June 21, 2017)
 
