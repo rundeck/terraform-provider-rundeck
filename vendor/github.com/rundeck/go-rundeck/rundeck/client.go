@@ -3968,7 +3968,7 @@ func NewWithBaseURI(baseURI string, ) BaseClient {
         err = autorest.Respond(
         resp,
         client.ByInspecting(),
-        azure.WithErrorUnlessStatusCode(http.StatusOK),
+        azure.WithErrorUnlessStatusCode(http.StatusOK,http.StatusNotFound),
         autorest.ByUnmarshallingJSON(&result),
         autorest.ByClosing())
         result.Response = autorest.Response{Response: resp}

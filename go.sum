@@ -193,6 +193,8 @@ github.com/rundeck/go-rundeck/rundeck v0.0.0-20190509013643-e000811d1074 h1:EK9v
 github.com/rundeck/go-rundeck/rundeck v0.0.0-20190509013643-e000811d1074/go.mod h1:LwGKo0Rgd/scx5Z1OYIns6i0T9FxI/BUJ37+9TQa/9Y=
 github.com/rundeck/go-rundeck/rundeck v0.0.0-20190510010836-61d02fc73e46 h1:CoMVwAa/maqAYePNcrdYlEVCxj2l2bk68Dh7i6fkKPU=
 github.com/rundeck/go-rundeck/rundeck v0.0.0-20190510010836-61d02fc73e46/go.mod h1:LwGKo0Rgd/scx5Z1OYIns6i0T9FxI/BUJ37+9TQa/9Y=
+github.com/rundeck/go-rundeck/rundeck v0.0.0-20190510195016-2cf9670bbcc4 h1:cHYuiq43YzTvI4TrNN0it8EuOGwXihXdoV/q/1fn9BY=
+github.com/rundeck/go-rundeck/rundeck v0.0.0-20190510195016-2cf9670bbcc4/go.mod h1:LwGKo0Rgd/scx5Z1OYIns6i0T9FxI/BUJ37+9TQa/9Y=
 github.com/ryanuber/columnize v0.0.0-20161220214920-0fbbb3f0e3fb/go.mod h1:sm1tb6uqfes/u+d4ooFouqFdy9/2g9QGwK3SQygK0Ts=
 github.com/satori/go.uuid v0.0.0-20160927100844-b061729afc07/go.mod h1:dA0hQrYB0VpLJoorglMZABFdXlWrHn1NEOzdhQKdks0=
 github.com/satori/uuid v0.0.0-20160927100844-b061729afc07/go.mod h1:B8HLsPLik/YNn6KKWVMDJ8nzCL8RP5WyfsnmvnAEwIU=

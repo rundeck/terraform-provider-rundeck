@@ -24,6 +24,7 @@ func Provider() terraform.ResourceProvider {
 			"api_version": {
 				Type:        schema.TypeString,
 				Required:    true,
+				DefaultFunc: schema.EnvDefaultFunc("RUNDECK_API_VERSION", nil),
 				Description: "API Version of the target Rundeck server.",
 			},
 			"auth_token": {

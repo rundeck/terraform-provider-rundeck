@@ -48,14 +48,14 @@ func testAccProjectCheckDestroy(project *rundeck.Project) resource.TestCheckFunc
 		client := testAccProvider.Meta().(*rundeck.BaseClient)
 		ctx := context.Background()
 		resp, err := client.ProjectGet(ctx, *project.Name)
-		if err == nil {
+		if err == nil && resp.StatusCode == 200 {
 			return fmt.Errorf("project still exists")
 		}
-		if resp.StatusCode != 404 {
-			return fmt.Errorf("got something other than NotFoundError (%v) when getting project", err)
+		if resp.StatusCode == 404 {
+			return nil
 		}
 
-		return nil
+		return fmt.Errorf("Error checking if project destroyed: (%v)", err)
 	}
 }
 

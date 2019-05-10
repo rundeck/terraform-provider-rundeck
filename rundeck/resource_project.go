@@ -290,8 +290,6 @@ func ProjectExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 		return false, err
 	}
 
-	fmt.Println("Exists")
-
 	if resp.StatusCode == 404 {
 
 		return false, nil

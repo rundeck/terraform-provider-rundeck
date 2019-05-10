@@ -45,10 +45,13 @@ func CreateAclPolicy(d *schema.ResourceData, meta interface{}) error {
 		Contents: &policy,
 	}
 
-	_, err := client.SystemACLPolicyCreate(ctx, name, req)
-
+	resp, err := client.SystemACLPolicyCreate(ctx, name, req)
 	if err != nil {
 		return err
+	}
+
+	if resp.StatusCode == 409 || resp.StatusCode == 400 {
+		return fmt.Errorf("Error creating ACL policy: (%v)", resp.Value)
 	}
 
 	d.SetId(name)
