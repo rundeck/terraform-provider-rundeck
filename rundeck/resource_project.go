@@ -193,6 +193,10 @@ func ReadProject(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 
+	if project.StatusCode == 404 {
+		return fmt.Errorf("Project not found: (%s)", name)
+	}
+
 	projectConfig := project.Config.(map[string]interface{})
 
 	for configKey, attrKey := range projectConfigAttributes {
@@ -282,15 +286,15 @@ func ProjectExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 	name := d.Id()
 	ctx := context.Background()
 	resp, err := client.ProjectGet(ctx, name)
+	if err != nil {
+		return false, err
+	}
 
-	// if _, ok := err.(rundeck.NotFoundError); ok {
-	// 	return false, nil
-	// }
+	fmt.Println("Exists")
 
 	if resp.StatusCode == 404 {
+
 		return false, nil
-	} else if err != nil {
-		return false, err
 	}
 
 	return true, nil

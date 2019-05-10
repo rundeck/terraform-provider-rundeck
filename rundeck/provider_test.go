@@ -95,4 +95,7 @@ func testAccPreCheck(t *testing.T) {
 	if v := os.Getenv("RUNDECK_AUTH_TOKEN"); v == "" {
 		t.Fatal("RUNDECK_AUTH_TOKEN must be set for acceptance tests")
 	}
+	if v := os.Getenv("RUNDECK_API_VERSION"); v == "" {
+		t.Fatal("RUNDECK_API_VERSION must be set for acceptance tests")
+	}
 }

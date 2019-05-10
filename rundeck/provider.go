@@ -1,6 +1,7 @@
 package rundeck
 
 import (
+	"fmt"
 	"net/url"
 
 	"github.com/hashicorp/terraform/helper/schema"
@@ -20,16 +21,16 @@ func Provider() terraform.ResourceProvider {
 				DefaultFunc: schema.EnvDefaultFunc("RUNDECK_URL", nil),
 				Description: "URL of the root of the target Rundeck server.",
 			},
+			"api_version": {
+				Type:        schema.TypeString,
+				Required:    true,
+				Description: "API Version of the target Rundeck server.",
+			},
 			"auth_token": {
 				Type:        schema.TypeString,
 				Required:    true,
 				DefaultFunc: schema.EnvDefaultFunc("RUNDECK_AUTH_TOKEN", nil),
 				Description: "Auth token to use with the Rundeck API.",
-			},
-			"allow_unverified_ssl": {
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Description: "If set, the Rundeck client will permit unverifiable SSL certificates.",
 			},
 		},
 
@@ -46,7 +47,12 @@ func Provider() terraform.ResourceProvider {
 }
 
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
-	apiURL, error := url.Parse(d.Get("url").(string))
+	urlP, _ := d.Get("url").(string)
+	apiVersion, _ := d.Get("api_version").(string)
+
+	apiURLString := fmt.Sprintf("%s/api/%s", urlP, apiVersion)
+
+	apiURL, error := url.Parse(apiURLString)
 
 	if error != nil {
 		return nil, error

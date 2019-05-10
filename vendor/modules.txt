@@ -186,7 +186,7 @@ github.com/posener/complete
 github.com/posener/complete/cmd/install
 github.com/posener/complete/cmd
 github.com/posener/complete/match
-# github.com/rundeck/go-rundeck/rundeck v0.0.0-20190509013643-e000811d1074
+# github.com/rundeck/go-rundeck/rundeck v0.0.0-20190510010836-61d02fc73e46
 github.com/rundeck/go-rundeck/rundeck
 github.com/rundeck/go-rundeck/rundeck/auth
 # github.com/ulikunitz/xz v0.5.4

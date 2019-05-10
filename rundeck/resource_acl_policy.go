@@ -2,6 +2,7 @@ package rundeck
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/rundeck/go-rundeck/rundeck"
@@ -88,6 +89,10 @@ func ReadAclPolicy(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 
+	if resp.StatusCode == 404 {
+		return fmt.Errorf("ACL policy not found: (%s)", name)
+	}
+
 	d.Set("policy", *resp.Contents)
 
 	return nil
@@ -100,10 +105,13 @@ func AclPolicyExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 	name := d.Id()
 
 	resp, err := client.SystemACLPolicyGet(ctx, name)
-
-	if err == nil && resp.StatusCode == 200 {
+	if err != nil {
+		return false, err
+	}
+	if resp.StatusCode == 200 {
 		return true, nil
-	} else if err != nil && resp.StatusCode == 404 {
+	}
+	if resp.StatusCode == 404 {
 		return false, nil
 	}
 

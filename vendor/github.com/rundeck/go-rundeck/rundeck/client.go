@@ -1230,7 +1230,7 @@ func NewWithBaseURI(baseURI string, ) BaseClient {
         err = autorest.Respond(
         resp,
         client.ByInspecting(),
-        azure.WithErrorUnlessStatusCode(http.StatusOK))
+        azure.WithErrorUnlessStatusCode(http.StatusOK,http.StatusNotFound))
         result.Response = autorest.Response{Response: resp}
             return
         }
@@ -2266,7 +2266,7 @@ func NewWithBaseURI(baseURI string, ) BaseClient {
         err = autorest.Respond(
         resp,
         client.ByInspecting(),
-        azure.WithErrorUnlessStatusCode(http.StatusOK),
+        azure.WithErrorUnlessStatusCode(http.StatusOK,http.StatusNotFound),
         autorest.ByUnmarshallingJSON(&result.Value),
         autorest.ByClosing())
         result.Response = autorest.Response{Response: resp}
@@ -2543,13 +2543,13 @@ func NewWithBaseURI(baseURI string, ) BaseClient {
         }
 
     // ProjectCreate sends the project create request.
-    func (client BaseClient) ProjectCreate(ctx context.Context, projectCreateRequest ProjectCreateRequest) (result autorest.Response, err error) {
+    func (client BaseClient) ProjectCreate(ctx context.Context, projectCreateRequest ProjectCreateRequest) (result SetObject, err error) {
         if tracing.IsEnabled() {
             ctx = tracing.StartSpan(ctx, fqdn + "/BaseClient.ProjectCreate")
             defer func() {
                 sc := -1
-                if result.Response != nil {
-                    sc = result.Response.StatusCode
+                if result.Response.Response != nil {
+                    sc = result.Response.Response.StatusCode
                 }
                 tracing.EndSpan(ctx, sc, err)
             }()
@@ -2562,7 +2562,7 @@ func NewWithBaseURI(baseURI string, ) BaseClient {
 
                 resp, err := client.ProjectCreateSender(req)
                 if err != nil {
-                result.Response = resp
+                result.Response = autorest.Response{Response: resp}
                 err = autorest.NewErrorWithError(err, "rundeck.BaseClient", "ProjectCreate", resp, "Failure sending request")
                 return
                 }
@@ -2595,13 +2595,14 @@ func NewWithBaseURI(baseURI string, ) BaseClient {
 
     // ProjectCreateResponder handles the response to the ProjectCreate request. The method always
     // closes the http.Response Body.
-    func (client BaseClient) ProjectCreateResponder(resp *http.Response) (result autorest.Response, err error) {
+    func (client BaseClient) ProjectCreateResponder(resp *http.Response) (result SetObject, err error) {
         err = autorest.Respond(
         resp,
         client.ByInspecting(),
-        azure.WithErrorUnlessStatusCode(http.StatusOK,http.StatusCreated),
+        azure.WithErrorUnlessStatusCode(http.StatusOK,http.StatusCreated,http.StatusConflict),
+        autorest.ByUnmarshallingJSON(&result.Value),
         autorest.ByClosing())
-        result.Response = resp
+        result.Response = autorest.Response{Response: resp}
             return
         }
 
@@ -2729,7 +2730,7 @@ func NewWithBaseURI(baseURI string, ) BaseClient {
         err = autorest.Respond(
         resp,
         client.ByInspecting(),
-        azure.WithErrorUnlessStatusCode(http.StatusOK),
+        azure.WithErrorUnlessStatusCode(http.StatusOK,http.StatusNotFound),
         autorest.ByUnmarshallingJSON(&result),
         autorest.ByClosing())
         result.Response = autorest.Response{Response: resp}
@@ -4029,7 +4030,7 @@ func NewWithBaseURI(baseURI string, ) BaseClient {
         err = autorest.Respond(
         resp,
         client.ByInspecting(),
-        azure.WithErrorUnlessStatusCode(http.StatusOK),
+        azure.WithErrorUnlessStatusCode(http.StatusOK,http.StatusNotFound),
         autorest.ByUnmarshallingJSON(&result),
         autorest.ByClosing())
         result.Response = autorest.Response{Response: resp}

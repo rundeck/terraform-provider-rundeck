@@ -315,6 +315,12 @@ func JobExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 	ctx := context.Background()
 
 	resp, err := client.JobGet(ctx, d.Id(), "")
+	if err != nil {
+		if _, ok := err.(*NotFoundError); ok == true {
+			return false, nil
+		}
+		return false, err
+	}
 	if resp.StatusCode == 200 {
 		return true, nil
 	}

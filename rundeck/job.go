@@ -356,6 +356,9 @@ func GetJob(c *rundeck.BaseClient, id string) (*JobDetail, error) {
 	ctx := context.Background()
 	jobList := &jobDetailList{}
 	resp, err := c.JobGet(ctx, id, "")
+	if err != nil {
+		return nil, err
+	}
 	if resp.StatusCode == 404 {
 		return nil, &NotFoundError{}
 	}
@@ -364,9 +367,6 @@ func GetJob(c *rundeck.BaseClient, id string) (*JobDetail, error) {
 	}
 
 	respBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
 
 	xml.Unmarshal(respBytes, jobList)
 
