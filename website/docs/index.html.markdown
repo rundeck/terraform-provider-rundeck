@@ -19,6 +19,10 @@ The provider configuration block accepts the following arguments:
 * ``url`` - (Required) The root URL of a Rundeck server. May alternatively be set via the
   ``RUNDECK_URL`` environment variable.
 
+* ``api_version`` - (Optional) The API version of the server. Defaults to `14`, the
+  minium supported version. May alternatively be set via the ``RUNDECK_API_VERSION``
+  environment variable. 
+
 * ``auth_token`` - (Required) The API auth token to use when making requests. May alternatively
   be set via the ``RUNDECK_AUTH_TOKEN`` environment variable.
 
