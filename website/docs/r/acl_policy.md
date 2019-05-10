@@ -8,7 +8,7 @@ description: |-
 
 # rundeck\_acl_policy
 
-The acl_policy resource allows Rundeck projects to be managed by Terraform.
+The acl policy resource allows Rundeck projects to be managed by Terraform.
 
 ## Example Usage
 
