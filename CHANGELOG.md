@@ -1,4 +1,4 @@
-## 0.2.0 (Unreleased)
+## 0.2.0 (May 13, 2019)
 
 ### Added:
 * ACL Policy resource
