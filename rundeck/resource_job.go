@@ -40,6 +40,12 @@ func resourceRundeckJob() *schema.Resource {
 				Required: true,
 			},
 
+			"execution_enabled": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  true,
+			},
+
 			"log_level": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -349,6 +355,7 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 		GroupName:                 d.Get("group_name").(string),
 		ProjectName:               d.Get("project_name").(string),
 		Description:               d.Get("description").(string),
+		ExecutionEnabled:          d.Get("execution_enabled").(bool),
 		LogLevel:                  d.Get("log_level").(string),
 		AllowConcurrentExecutions: d.Get("allow_concurrent_executions").(bool),
 		Dispatch: &JobDispatch{
@@ -515,6 +522,7 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 	}
 
 	d.Set("description", job.Description)
+	d.Set("execution_enabled", job.ExecutionEnabled)
 	d.Set("log_level", job.LogLevel)
 	d.Set("allow_concurrent_executions", job.AllowConcurrentExecutions)
 

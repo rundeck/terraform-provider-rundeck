@@ -39,6 +39,8 @@ The following arguments are supported:
 
 * `project_name` - (Required) The name of the project that this job should belong to.
 
+* `execution_enabled` - (Optional) If you want job execution to be enabled or disabled. Defaults to `true`.
+
 * `group_name` - (Optional) The name of a group within the project in which to place the job.
   Setting this creates collapsable subcategories within the Rundeck UI's project job index.
 
