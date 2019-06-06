@@ -93,6 +93,7 @@ const testAccJobConfig_basic = `
 resource "rundeck_project" "test" {
   name = "terraform-acc-test-job"
   description = "parent project for job acceptance tests"
+
   resource_model_source {
     type = "file"
     config = {
@@ -105,6 +106,7 @@ resource "rundeck_job" "test" {
   project_name = "${rundeck_project.test.name}"
   name = "basic-job"
   description = "A basic job"
+  execution_enabled = true
   node_filter_query = "example"
   allow_concurrent_executions = 1
   max_thread_count = 1
@@ -137,6 +139,7 @@ resource "rundeck_job" "test" {
   name = "idempotency-test"
   project_name = "${rundeck_project.test.name}"
   description = "Testing idempotency"
+  execution_enabled = false
   allow_concurrent_executions = "false"
 
   option {
