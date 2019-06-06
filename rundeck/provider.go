@@ -7,7 +7,6 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
 
-	// "github.com/apparentlymart/go-rundeck-api/rundeck"
 	"github.com/rundeck/go-rundeck/rundeck"
 	"github.com/rundeck/go-rundeck/rundeck/auth"
 )
