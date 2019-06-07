@@ -609,7 +609,6 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 
 				switch jobType {
 				case "on_success":
-					fmt.Println("on_success")
 					if jobNotification.OnSuccess != nil {
 						return nil, fmt.Errorf("A block with %s already exists", jobType)
 					}
@@ -628,9 +627,7 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 					jobNotification.OnStart = &notification
 					job.Notification = &jobNotification
 				default:
-					fmt.Println("default")
-					fmt.Println(jobType)
-					return nil, fmt.Errorf("The notification type is not one of the ones included")
+					return nil, fmt.Errorf("The notification type is not one of `on_success`, `on_failure`, `on_start`")
 				}
 			}
 		} else {
@@ -787,8 +784,10 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 // Helper function for three different notifications
 func readNotification(notification *Notification, notificationType string) map[string]interface{} {
 	notificationConfigI := map[string]interface{}{
-		"type":         notificationType,
-		"webhook_urls": notification.WebHook.Urls,
+		"type": notificationType,
+	}
+	if notification.WebHook != nil {
+		notificationConfigI["webhok_urls"] = notification.WebHook.Urls
 	}
 	if notification.Email != nil {
 		notificationConfigI["email"] = []interface{}{
