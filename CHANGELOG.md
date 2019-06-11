@@ -1,4 +1,12 @@
 ## 0.2.1 (Unreleased)
+
+### Added
+* Job Schedule Enabled argument
+* Job Execution Enabled argument
+
+### FIXED:
+* Executions and schedules getting disabled due to missing defaults
+
 ## 0.2.0 (May 13, 2019)
 
 ### Added:
