@@ -106,6 +106,12 @@ func resourceRundeckJob() *schema.Resource {
 				Optional: true,
 			},
 
+			"schedule_enabled": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  true,
+			},
+
 			"option": {
 				// This is a list because order is important when preserve_options_order is
 				// set. When it's not set the order is unimportant but preserved by Rundeck/
@@ -356,6 +362,7 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 		ProjectName:               d.Get("project_name").(string),
 		Description:               d.Get("description").(string),
 		ExecutionEnabled:          d.Get("execution_enabled").(bool),
+		ScheduleEnabled:           d.Get("schedule_enabled").(bool),
 		LogLevel:                  d.Get("log_level").(string),
 		AllowConcurrentExecutions: d.Get("allow_concurrent_executions").(bool),
 		Dispatch: &JobDispatch{
@@ -523,6 +530,7 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 
 	d.Set("description", job.Description)
 	d.Set("execution_enabled", job.ExecutionEnabled)
+	d.Set("schedule_enabled", job.ScheduleEnabled)
 	d.Set("log_level", job.LogLevel)
 	d.Set("allow_concurrent_executions", job.AllowConcurrentExecutions)
 
