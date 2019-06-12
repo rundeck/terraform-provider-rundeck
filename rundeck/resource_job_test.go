@@ -223,7 +223,7 @@ resource "rundeck_job" "test" {
   description = "A basic job"
   execution_enabled = true
   node_filter_query = "example"
-  allow_concurrent_executions = 1
+  allow_concurrent_executions = true
   max_thread_count = 1
   rank_order = "ascending"
   schedule = "0 0 12 * * * *"
@@ -263,7 +263,7 @@ resource "rundeck_job" "test" {
   description = "A basic job"
   execution_enabled = true
   node_filter_query = "example"
-  allow_concurrent_executions = 1
+  allow_concurrent_executions = true
   max_thread_count = 1
   rank_order = "ascending"
   schedule = "0 0 12 * * * *"
