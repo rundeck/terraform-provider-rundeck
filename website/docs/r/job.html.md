@@ -54,6 +54,8 @@ The following arguments are supported:
 
 * `schedule` - (Optional) The jobs schedule in Unix crontab format
 
+* `schedule_enabled` - (Optional) Sets the job schedule to be enabled or disabled. Defaults to `true`.
+
 * `allow_concurrent_executions` - (Optional) Boolean defining whether two or more executions of
   this job can run concurrently. The default is `false`, meaning that jobs will only run
   sequentially.
