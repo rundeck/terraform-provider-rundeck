@@ -26,6 +26,12 @@ resource "rundeck_job" "bounceweb" {
     command {
         shell_command = "sudo service anvils restart"
     }
+    notification {
+        type = "on_success"
+        email {
+            recipients = ["example@foo.bar"]
+        }
+    }
 }
 ```
 
@@ -89,6 +95,8 @@ The following arguments are supported:
 
 * `command`: (Required) Nested block defining one step in the job workflow. A job must have one or
   more commands. The structure of this nested block is described below.
+
+* `notification`: (Optional) Nested block defining notifications on the job workflow. The structure of this nested block is described below.
 
 `option` blocks have the following structure:
 
@@ -166,6 +174,30 @@ A command's `step_plugin` or `node_step_plugin` block both have the following st
 * `type`: (Required) The name of the plugin to execute.
 
 * `config`: (Optional) Map of arbitrary configuration parameters for the selected plugin.
+
+`notification` blocks have the following structure:
+
+* `type`: (Required) The name of the type of notification. Can be of type `on_success`, `on_failure`, `on_start`.
+
+* `email`: (Optional) block listed below to send emails as notificiation.
+
+* `webhook_urls`: (Optional) A list of urls to send a webhook notification.
+
+* `plugin`: (Optional) A block listed below to send notifications using a plugin.
+
+A notification's `email` block has the following structure:
+
+* `attach_log`: (Optional) A boolean to attach log to email or not. Defaults to false.
+
+* `recipients`: (Required) A list of recipients to receive email.
+
+* `subject`: (Optional) Name of email subject.
+
+A notification's `plugin` block has the following structure:
+
+* `type` - (Required) The name of the plugin to use.
+
+* `config` - (Required) Map of arbitrary configuration properties for the selected plugin.
 
 ## Attributes Reference
 

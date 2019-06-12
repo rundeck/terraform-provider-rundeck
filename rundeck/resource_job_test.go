@@ -2,6 +2,7 @@ package rundeck
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform/helper/resource"
@@ -89,6 +90,38 @@ func testAccJobCheckExists(rn string, job *JobDetail) resource.TestCheckFunc {
 	}
 }
 
+func TestAccJobNotification_wrongType(t *testing.T) {
+	var job JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobCheckDestroy(&job),
+		Steps: []resource.TestStep{
+			{
+				Config:      testAccJobNotification_wrong_type,
+				ExpectError: regexp.MustCompile("The notification type is not one of `on_success`, `on_failure`, `on_start`"),
+			},
+		},
+	})
+}
+
+func TestAccJobNotification_multiple(t *testing.T) {
+	var job JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobCheckDestroy(&job),
+		Steps: []resource.TestStep{
+			{
+				Config:      testAccJobNotification_multiple,
+				ExpectError: regexp.MustCompile("A block with on_success already exists"),
+			},
+		},
+	})
+}
+
 const testAccJobConfig_basic = `
 resource "rundeck_project" "test" {
   name = "terraform-acc-test-job"
@@ -120,6 +153,12 @@ resource "rundeck_job" "test" {
   command {
     description = "Prints Hello World"
     shell_command = "echo Hello World"
+  }
+  notification {
+	  type = "on_success"
+	  email {
+		  recipients = ["foo@foo.bar"]
+	  }
   }
 }
 `
@@ -153,6 +192,100 @@ resource "rundeck_job" "test" {
 
   command {
     shell_command = "echo hello"
+  }
+
+  notification {
+	  type = "on_success"
+	  email {
+		  recipients = ["foo@foo.bar"]
+	  }
+	  webhook_urls = ["http://localhost/testing"]
+  }
+}
+`
+
+const testAccJobNotification_wrong_type = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-job"
+  description = "parent project for job acceptance tests"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourcexml"
+        file = "/tmp/terraform-acc-tests.xml"
+    }
+  }
+}
+resource "rundeck_job" "test" {
+  project_name = "${rundeck_project.test.name}"
+  name = "basic-job"
+  description = "A basic job"
+  execution_enabled = true
+  node_filter_query = "example"
+  allow_concurrent_executions = 1
+  max_thread_count = 1
+  rank_order = "ascending"
+  schedule = "0 0 12 * * * *"
+  option {
+    name = "foo"
+    default_value = "bar"
+  }
+  command {
+    description = "Prints Hello World"
+    shell_command = "echo Hello World"
+  }
+  notification {
+	  type = "on_testing"
+	  email {
+		  recipients = ["foo@foo.bar"]
+	  }
+  }
+}
+`
+
+const testAccJobNotification_multiple = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-job"
+  description = "parent project for job acceptance tests"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourcexml"
+        file = "/tmp/terraform-acc-tests.xml"
+    }
+  }
+}
+resource "rundeck_job" "test" {
+  project_name = "${rundeck_project.test.name}"
+  name = "basic-job"
+  description = "A basic job"
+  execution_enabled = true
+  node_filter_query = "example"
+  allow_concurrent_executions = 1
+  max_thread_count = 1
+  rank_order = "ascending"
+  schedule = "0 0 12 * * * *"
+  option {
+    name = "foo"
+    default_value = "bar"
+  }
+  command {
+    description = "Prints Hello World"
+    shell_command = "echo Hello World"
+  }
+  notification {
+	  type = "on_success"
+	  email {
+		  recipients = ["foo@foo.bar"]
+	  }
+  }
+  notification {
+	  type = "on_success"
+	  email {
+		  recipients = ["foo@foo.bar"]
+	  }
   }
 }
 `

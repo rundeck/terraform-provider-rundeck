@@ -106,10 +106,60 @@ func resourceRundeckJob() *schema.Resource {
 				Optional: true,
 			},
 
-			"schedule_enabled": {
+      "schedule_enabled": {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Default:  true,
+			},
+
+			"notification": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"type": {
+							Type:        schema.TypeString,
+							Required:    true,
+							Description: "Option of `on_success`, `on_failure`, `on_start`",
+						},
+						"email": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"attach_log": {
+										Type:     schema.TypeBool,
+										Optional: true,
+										Default:  false,
+									},
+									"recipients": {
+										Type:     schema.TypeList,
+										Required: true,
+										Elem: &schema.Schema{
+											Type: schema.TypeString,
+										},
+									},
+									"subject": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+								},
+							},
+						},
+						"webhook_urls": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+						},
+						"plugin": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem:     resourceRundeckJobPluginResource(),
+						},
+					},
+				},
 			},
 
 			"option": {
@@ -511,6 +561,88 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 			},
 		}
 	}
+	notificationsConfigI := d.Get("notification").([]interface{})
+	if len(notificationsConfigI) > 0 {
+		if len(notificationsConfigI) <= 3 {
+			jobNotification := JobNotification{}
+			// test if unique
+			for _, notificationI := range notificationsConfigI {
+				notification := Notification{}
+				notificationMap := notificationI.(map[string]interface{})
+				jobType := notificationMap["type"].(string)
+
+				// Get email notification data
+				notificationEmailsI := notificationMap["email"].([]interface{})
+				if len(notificationEmailsI) > 0 {
+					notificationEmailI := notificationEmailsI[0].(map[string]interface{})
+					email := EmailNotification{
+						AttachLog:  notificationEmailI["attach_log"].(bool),
+						Recipients: NotificationEmails([]string{}),
+						Subject:    notificationEmailI["subject"].(string),
+					}
+					for _, iv := range notificationEmailI["recipients"].([]interface{}) {
+						email.Recipients = append(email.Recipients, iv.(string))
+					}
+					notification.Email = &email
+				}
+
+				// Webhook notification
+				webHookUrls := notificationMap["webhook_urls"].([]interface{})
+				if len(webHookUrls) > 0 {
+					webHook := &WebHookNotification{
+						Urls: NotificationUrls([]string{}),
+					}
+					for _, iv := range webHookUrls {
+						webHook.Urls = append(webHook.Urls, iv.(string))
+					}
+					notification.WebHook = webHook
+				}
+
+				// plugin Notification
+				notificationPluginsI := notificationMap["plugin"].([]interface{})
+				if len(notificationPluginsI) > 1 {
+					return nil, fmt.Errorf("rundeck command may have no more than one notification plugin")
+				}
+				if len(notificationPluginsI) > 0 {
+					notificationPluginMap := notificationPluginsI[0].(map[string]interface{})
+					configI := notificationPluginMap["config"].(map[string]interface{})
+					config := map[string]string{}
+					for k, v := range configI {
+						config[k] = v.(string)
+					}
+					notification.Plugin = &JobPlugin{
+						Type:   notificationPluginMap["type"].(string),
+						Config: config,
+					}
+				}
+
+				switch jobType {
+				case "on_success":
+					if jobNotification.OnSuccess != nil {
+						return nil, fmt.Errorf("A block with %s already exists", jobType)
+					}
+					jobNotification.OnSuccess = &notification
+					job.Notification = &jobNotification
+				case "on_failure":
+					if jobNotification.OnFailure != nil {
+						return nil, fmt.Errorf("A block with %s already exists", jobType)
+					}
+					jobNotification.OnFailure = &notification
+					job.Notification = &jobNotification
+				case "on_start":
+					if jobNotification.OnStart != nil {
+						return nil, fmt.Errorf("A block with %s already exists", jobType)
+					}
+					jobNotification.OnStart = &notification
+					job.Notification = &jobNotification
+				default:
+					return nil, fmt.Errorf("The notification type is not one of `on_success`, `on_failure`, `on_start`")
+				}
+			}
+		} else {
+			return nil, fmt.Errorf("Can only have up to three notfication blocks, `on_success`, `on_failure`, `on_start`")
+		}
+	}
 
 	return job, nil
 }
@@ -638,6 +770,51 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 
 		d.Set("schedule", strings.Join(schedule, " "))
 	}
+	notificationConfigsI := []interface{}{}
+	if job.Notification != nil {
+		if job.Notification.OnSuccess != nil {
+			notificationConfigI := readNotification(job.Notification.OnSuccess, "on_success")
+			notificationConfigsI = append(notificationConfigsI, notificationConfigI)
+		}
+		if job.Notification.OnFailure != nil {
+			notificationConfigI := readNotification(job.Notification.OnFailure, "on_failure")
+			notificationConfigsI = append(notificationConfigsI, notificationConfigI)
+		}
+		if job.Notification.OnStart != nil {
+			notificationConfigI := readNotification(job.Notification.OnStart, "on_start")
+			notificationConfigsI = append(notificationConfigsI, notificationConfigI)
+		}
+	}
+
+	d.Set("notification", notificationConfigsI)
 
 	return nil
+}
+
+// Helper function for three different notifications
+func readNotification(notification *Notification, notificationType string) map[string]interface{} {
+	notificationConfigI := map[string]interface{}{
+		"type": notificationType,
+	}
+	if notification.WebHook != nil {
+		notificationConfigI["webhok_urls"] = notification.WebHook.Urls
+	}
+	if notification.Email != nil {
+		notificationConfigI["email"] = []interface{}{
+			map[string]interface{}{
+				"attach_log": notification.Email.AttachLog,
+				"subject":    notification.Email.Subject,
+				"recipients": notification.Email.Recipients,
+			},
+		}
+	}
+	if notification.Plugin != nil {
+		notificationConfigI["plugin"] = []interface{}{
+			map[string]interface{}{
+				"type":   notification.Plugin.Type,
+				"config": map[string]string(notification.Plugin.Config),
+			},
+		}
+	}
+	return notificationConfigI
 }
