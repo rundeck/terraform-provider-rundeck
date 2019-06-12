@@ -1,7 +1,13 @@
-## 0.2.2 (Unreleased)
+## 0.3.0 (Unreleased)
+
+### Added:
+
+* **Terraform 0.12** update Terraform SDK to 0.12.1 ([#25](https://github.com/terraform-providers/terraform-provider-rundeck/pull/25))
+* resource/job: Add attribute `notification` ([#24](https://github.com/terraform-providers/terraform-provider-rundeck/pull/24))
+
 ## 0.2.1 (June 12, 2019)
 
-### Added
+### Added:
 * Job Schedule Enabled argument
 * Job Execution Enabled argument
 
