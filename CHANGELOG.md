@@ -1,4 +1,4 @@
-## 0.2.1 (Unreleased)
+## 0.2.1 (June 12, 2019)
 
 ### Added
 * Job Schedule Enabled argument
