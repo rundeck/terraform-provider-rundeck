@@ -99,7 +99,6 @@ by:
 const testAccAclPolicyConfig_basic = `
 resource "rundeck_acl_policy" "test" {
 	name = "TerraformBasicAcl.aclpolicy"
-	policy = <<EOF
-%sEOF
+	policy = %q
 }
 `
