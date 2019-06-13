@@ -165,7 +165,7 @@ resource "rundeck_job" "test" {
 
 const testAccJobConfig_noNodeFilterQuery = `
 resource "rundeck_project" "test" {
-  name = "terraform-acc-test-job"
+  name = "terraform-acc-test-job-node-filter"
   description = "parent project for job acceptance tests"
   resource_model_source {
     type = "file"
@@ -206,7 +206,7 @@ resource "rundeck_job" "test" {
 
 const testAccJobNotification_wrong_type = `
 resource "rundeck_project" "test" {
-  name = "terraform-acc-test-job"
+  name = "terraform-acc-test-job-notification-wrong"
   description = "parent project for job acceptance tests"
 
   resource_model_source {
@@ -246,7 +246,7 @@ resource "rundeck_job" "test" {
 
 const testAccJobNotification_multiple = `
 resource "rundeck_project" "test" {
-  name = "terraform-acc-test-job"
+  name = "terraform-acc-test-job-notification-multi"
   description = "parent project for job acceptance tests"
 
   resource_model_source {
