@@ -106,7 +106,7 @@ func resourceRundeckJob() *schema.Resource {
 				Optional: true,
 			},
 
-      "schedule_enabled": {
+			"schedule_enabled": {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Default:  true,
