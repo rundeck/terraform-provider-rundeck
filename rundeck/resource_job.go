@@ -285,6 +285,22 @@ func resourceRundeckJob() *schema.Resource {
 										Type:     schema.TypeString,
 										Optional: true,
 									},
+									"nodefilters": {
+										Type:     schema.TypeMap,
+										Optional: true,
+										Elem: &schema.Resource{
+											Schema: map[string]*schema.Schema{
+												"excludeprecedence": {
+													Type:     schema.TypeString,
+													Optional: true,
+												},
+												"filter": {
+													Type:     schema.TypeString,
+													Optional: true,
+												},
+											},
+										},
+									},
 								},
 							},
 						},
@@ -451,6 +467,15 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 				GroupName:      jobRefMap["group_name"].(string),
 				RunForEachNode: jobRefMap["run_for_each_node"].(bool),
 				Arguments:      JobCommandJobRefArguments(jobRefMap["args"].(string)),
+				NodeFilter:     &JobNodeFilter{},
+				//NodeFilter:     jobRefMap["nodefilters"].(map[string]interface{}),
+			}
+			nodeFilterMap := jobRefMap["nodefilters"].(map[string]interface{})
+			if nodeFilterMap["filter"] != nil {
+				command.Job.NodeFilter.Query = nodeFilterMap["filter"].(string)
+			}
+			if nodeFilterMap["excludeprecedence"] != nil {
+				command.Job.NodeFilter.ExcludePrecedence = nodeFilterMap["excludeprecedence"].(bool)
 			}
 		}
 
@@ -730,6 +755,7 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 						"group_name":        command.Job.GroupName,
 						"run_for_each_node": command.Job.RunForEachNode,
 						"args":              command.Job.Arguments,
+						"nodefilters":       command.Job.NodeFilter,
 					},
 				}
 			}

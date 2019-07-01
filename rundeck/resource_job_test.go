@@ -37,6 +37,33 @@ func TestAccJob_basic(t *testing.T) {
 	})
 }
 
+func TestAccJob_cmd_nodefilter(t *testing.T) {
+	var job JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobCheckDestroy(&job),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_cmd_nodefilter,
+				Check: resource.ComposeTestCheckFunc(
+					testAccJobCheckExists("rundeck_job.test", &job),
+					func(s *terraform.State) error {
+						if expected := "basic-job-with-node-filter"; job.Name != expected {
+							return fmt.Errorf("wrong name; expected %v, got %v", expected, job.Name)
+						}
+						if expected := "name: tacobell"; job.CommandSequence.Commands[0].Job.NodeFilter.Query != expected {
+							return fmt.Errorf("failed to set job node filter; expected %v, got %v", expected, job.CommandSequence.Commands[0].Job.NodeFilter.Query)
+						}
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
+
 func TestAccJob_Idempotency(t *testing.T) {
 	var job JobDetail
 
@@ -167,6 +194,54 @@ resource "rundeck_job" "test" {
     default_value = "bar"
   }
   command {
+    description = "Prints Hello World"
+    shell_command = "echo Hello World"
+  }
+  notification {
+	  type = "on_success"
+	  email {
+		  recipients = ["foo@foo.bar"]
+	  }
+  }
+}
+`
+
+const testAccJobConfig_cmd_nodefilter = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-job"
+  description = "parent project for job acceptance tests"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourcexml"
+        file = "/tmp/terraform-acc-tests.xml"
+    }
+  }
+}
+resource "rundeck_job" "test" {
+  project_name = "${rundeck_project.test.name}"
+  name = "basic-job-with-node-filter"
+  description = "A basic job"
+  execution_enabled = true
+  node_filter_query = "example"
+  allow_concurrent_executions = true
+  max_thread_count = 1
+  rank_order = "ascending"
+	schedule = "0 0 12 * * * *"
+	schedule_enabled = true
+  option {
+    name = "foo"
+    default_value = "bar"
+  }
+  command {
+    job {
+      name = "Other Job Name"
+      run_for_each_node = true
+      nodefilters = {
+        filter: "name: tacobell"
+      }
+    }
     description = "Prints Hello World"
     shell_command = "echo Hello World"
   }
