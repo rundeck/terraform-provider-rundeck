@@ -327,11 +327,12 @@ type jobImportResult struct {
 }
 
 type JobDispatch struct {
-	ExcludePrecedence *Boolean `xml:"excludePrecedence"`
-	MaxThreadCount    int      `xml:"threadcount,omitempty"`
-	ContinueOnError   bool     `xml:"keepgoing"`
-	RankAttribute     string   `xml:"rankAttribute,omitempty"`
-	RankOrder         string   `xml:"rankOrder,omitempty"`
+	ExcludePrecedence        *Boolean `xml:"excludePrecedence"`
+	MaxThreadCount           int      `xml:"threadcount,omitempty"`
+	ContinueOnError          bool     `xml:"keepgoing"`
+	RankAttribute            string   `xml:"rankAttribute,omitempty"`
+	RankOrder                string   `xml:"rankOrder,omitempty"`
+	SuccessOnEmptyNodeFilter bool     `xml:"successOnEmptyNodeFilter,omitempty"`
 }
 
 // GetJobSummariesForProject returns summaries of the jobs belonging to the named project.

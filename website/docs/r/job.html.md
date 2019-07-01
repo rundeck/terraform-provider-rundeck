@@ -74,6 +74,9 @@ The following arguments are supported:
 * `rank_order` - (Optional) Keyword deciding which direction the nodes are sorted in terms of
   the chosen `rank_attribute`. May be either "ascending" (the default) or "descending".
 
+* `success_on_empty_node_filter` - (Optional) Boolean determining if an empty node filter yields
+  a successful result.
+
 * `preserve_options_order`: (Optional) Boolean controlling whether the configured options will
   be presented in their configuration order when shown in the Rundeck UI. The default is `false`,
   which means that the options will be displayed in alphabetical order by name.

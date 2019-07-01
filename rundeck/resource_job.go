@@ -79,6 +79,11 @@ func resourceRundeckJob() *schema.Resource {
 				Optional: true,
 			},
 
+			"success_on_empty_node_filter": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+
 			"preserve_options_order": {
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -438,6 +443,10 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 			RankOrder:       d.Get("rank_order").(string),
 		},
 	}
+	successOnEmpty := d.Get("success_on_empty_node_filter")
+	if successOnEmpty != nil {
+		job.Dispatch.SuccessOnEmptyNodeFilter = successOnEmpty.(bool)
+	}
 
 	sequence := &JobCommandSequence{
 		ContinueOnError:  d.Get("continue_on_error").(bool),
@@ -560,6 +569,11 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 			ContinueOnError: d.Get("continue_on_error").(bool),
 			RankAttribute:   d.Get("rank_attribute").(string),
 			RankOrder:       d.Get("rank_order").(string),
+		}
+
+		successOnEmpty := d.Get("success_on_empty_node_filter")
+		if successOnEmpty != nil {
+			job.Dispatch.SuccessOnEmptyNodeFilter = successOnEmpty.(bool)
 		}
 	}
 
