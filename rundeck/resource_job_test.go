@@ -29,6 +29,9 @@ func TestAccJob_basic(t *testing.T) {
 						if expected := "Prints Hello World"; job.CommandSequence.Commands[0].Description != expected {
 							return fmt.Errorf("failed to set command description; expected %v, got %v", expected, job.CommandSequence.Commands[0].Description)
 						}
+						if job.Dispatch.SuccessOnEmptyNodeFilter != true {
+							return fmt.Errorf("failed to set success_on_empty_node_filter; expected true, got %v", job.Dispatch.SuccessOnEmptyNodeFilter)
+						}
 						return nil
 					},
 				),
@@ -185,6 +188,7 @@ resource "rundeck_job" "test" {
   execution_enabled = true
   node_filter_query = "example"
   allow_concurrent_executions = true
+  success_on_empty_node_filter = true
   max_thread_count = 1
   rank_order = "ascending"
 	schedule = "0 0 12 * * * *"
