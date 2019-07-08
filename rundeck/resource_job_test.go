@@ -149,6 +149,10 @@ resource "rundeck_job" "test" {
   option {
     name = "foo"
     default_value = "bar"
+  } 
+  orchestrator {
+    type = "subset"
+    count = 1
   }
   command {
     description = "Prints Hello World"

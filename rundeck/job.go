@@ -67,6 +67,7 @@ type JobDetail struct {
 	Timeout                   string              `xml:"timeout,omitempty"`
 	Retry                     string              `xml:"retry,omitempty"`
 	NodeFilter                *JobNodeFilter      `xml:"nodefilters,omitempty"`
+	Orchestrator              *JobOrchestrator    `xml:"orchestrator,omitempty"`
 
 	/* If Dispatch is enabled, nodesSelectedByDefault is always present with true/false.
 	 * by this reason omitempty cannot be present.
@@ -305,6 +306,18 @@ type JobPluginConfig map[string]string
 type JobNodeFilter struct {
 	ExcludePrecedence bool   `xml:"excludeprecedence"`
 	Query             string `xml:"filter,omitempty"`
+}
+
+// JobOrchestratorConfig Contains the options for the Job Orchestrators
+type JobOrchestratorConfig struct {
+	Count   int `xml:"count,omitempty"`
+	Percent int `xml:"percent,omitempty"`
+}
+
+// JobOrchestrator describes how to schedule the jobs, in what order, and on how many nodes
+type JobOrchestrator struct {
+	Config JobOrchestratorConfig `xml:"configuration"`
+	Type   string                `xml:"type"`
 }
 
 type jobImportResults struct {
