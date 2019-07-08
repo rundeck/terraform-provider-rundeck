@@ -56,6 +56,8 @@ The following arguments are supported:
 
 * `schedule` - (Optional) The jobs schedule in Unix crontab format
 
+* `orchestrator` - (Optional) The orchestrator for the job, described below.
+
 * `schedule_enabled` - (Optional) Sets the job schedule to be enabled or disabled. Defaults to `true`.
 
 * `time_zone` - (Optional) A valid Time Zone, either an abbreviation such as "PST", a full name such as
@@ -71,7 +73,7 @@ The following arguments are supported:
   once.
 
 * `max_thread_count` - (Optional) The maximum number of threads to use to execute this job, which
-  controls on how many nodes the commands can be run simulateneously. Defaults to 1, meaning that
+  controls on how many nodes the commands can be run simultaneously. Defaults to 1, meaning that
   the nodes will be visited sequentially.
 
 * `continue_on_error` - (Optional) Boolean defining whether Rundeck will continue to run
@@ -126,6 +128,12 @@ The following arguments are supported:
 
 * `notification`: (Optional) Nested block defining notifications on the job workflow. The structure of this nested block
   is described below.
+
+`orchestrator` blocks have the following structure:
+
+* `type`: (Required) The type of orchestrator to use (subset, tiered, maxPercentage)
+
+* `value`: (Optional) The value for the orchestrator (not used in tiered)
 
 `option` blocks have the following structure:
 
