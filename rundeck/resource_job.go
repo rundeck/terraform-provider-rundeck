@@ -477,7 +477,6 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 				RunForEachNode: jobRefMap["run_for_each_node"].(bool),
 				Arguments:      JobCommandJobRefArguments(jobRefMap["args"].(string)),
 				NodeFilter:     &JobNodeFilter{},
-				//NodeFilter:     jobRefMap["nodefilters"].(map[string]interface{}),
 			}
 			nodeFilterMap := jobRefMap["nodefilters"].(map[string]interface{})
 			if nodeFilterMap["filter"] != nil {
