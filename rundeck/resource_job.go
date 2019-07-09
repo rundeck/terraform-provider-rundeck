@@ -516,6 +516,9 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 			}
 
 			for _, iv := range optionMap["value_choices"].([]interface{}) {
+				if iv == nil {
+					return nil, fmt.Errorf("Argument \"value_choices\" can not have empty values; try \"required\"")
+				}
 				option.ValueChoices = append(option.ValueChoices, iv.(string))
 			}
 
