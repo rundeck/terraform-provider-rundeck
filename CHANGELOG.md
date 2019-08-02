@@ -1,4 +1,4 @@
-## 0.4.0 (Unreleased)
+## 0.4.0 (August 02, 2019)
 
 ### Added:
 * Job reference node filter override [#27](https://github.com/terraform-providers/terraform-provider-rundeck/pull/27)
