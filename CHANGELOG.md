@@ -1,4 +1,11 @@
 ## 0.4.0 (Unreleased)
+
+### Added:
+* Job reference node filter override [#27](https://github.com/terraform-providers/terraform-provider-rundeck/pull/27)
+
+### Fixed:
+* Handle empty value options gracefully [#28](https://github.com/terraform-providers/terraform-provider-rundeck/pull/28)
+
 ## 0.3.0 (June 13, 2019)
 
 ### Added:
