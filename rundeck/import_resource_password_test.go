@@ -25,7 +25,7 @@ func TestAccRundeckPassword_Import(t *testing.T) {
 				ImportStateCheck: resource.ImportStateCheckFunc(
 					func(s []*terraform.InstanceState) error {
 						if expected := "THIS_WILL_CHANGE"; s[0].Attributes["password"] != expected {
-							return fmt.Errorf("Password can't be read from rundeck. Should be set to THIS_WILL_CHANGE to delete/create imported password")
+							return fmt.Errorf("Password can't be read from rundeck. Should be set to THIS_WILL_CHANGE to overwrite imported password")
 						}
 						return nil
 					},
