@@ -2,8 +2,6 @@ package rundeck
 
 import (
 	"context"
-	"crypto/sha1"
-	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -13,13 +11,16 @@ import (
 	"github.com/rundeck/go-rundeck/rundeck"
 )
 
-func resourceRundeckPrivateKey() *schema.Resource {
+func resourceRundeckPassword() *schema.Resource {
 	return &schema.Resource{
 		Create: CreateOrUpdatePassword,
 		Update: CreateOrUpdatePassword,
 		Delete: DeletePassword,
 		Exists: PasswordExists,
 		Read:   ReadPassword,
+		Importer: &schema.ResourceImporter{
+			State: resourcePasswordImport,
+		},
 
 		Schema: map[string]*schema.Schema{
 			"path": {
@@ -119,4 +120,20 @@ func PasswordExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 	}
 
 	return true, nil
+}
+
+// The below does a faux import. It will look for the secret and if it finds it exists it will make record it
+func resourcePasswordImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+	path := d.Id()
+
+	exists, err := PasswordExists(d, meta)
+	if !exists {
+		return nil, fmt.Errorf("Unable to find password with pat %q: %q", path, err)
+	}
+
+	d.Set("path", path)
+	d.Set("password", "THIS_WILL_CHANGE")
+	d.SetId(path)
+
+	return []*schema.ResourceData{d}, nil
 }
