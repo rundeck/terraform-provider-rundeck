@@ -140,6 +140,8 @@ The following arguments are supported:
 * `exposed_to_scripts`: (Optional) Boolean controlling whether the value of this option is available
   to scripts executed by job commands. Defaults to `false`.
 
+* `storage_path`: (Optional) String of the path where the key is stored on rundeck.
+
 `command` blocks must have any one of the following combinations of arguments as contents:
 
 * `description`: (Optional) gives a description to the command block.

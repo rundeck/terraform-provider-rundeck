@@ -236,6 +236,10 @@ func resourceRundeckJob() *schema.Resource {
 							Type:     schema.TypeBool,
 							Optional: true,
 						},
+						"storage_path": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
 					},
 				},
 			},
@@ -546,6 +550,7 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 				MultiValueDelimiter:     optionMap["multi_value_delimiter"].(string),
 				ObscureInput:            optionMap["obscure_input"].(bool),
 				ValueIsExposedToScripts: optionMap["exposed_to_scripts"].(bool),
+				StoragePath:             optionMap["storage_path"].(string),
 			}
 
 			for _, iv := range optionMap["value_choices"].([]interface{}) {
@@ -743,6 +748,7 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 				"multi_value_delimiter":     option.MultiValueDelimiter,
 				"obscure_input":             option.ObscureInput,
 				"exposed_to_scripts":        option.ValueIsExposedToScripts,
+				"storage_path":              option.StoragePath,
 			}
 			optionConfigsI = append(optionConfigsI, optionConfigI)
 		}
