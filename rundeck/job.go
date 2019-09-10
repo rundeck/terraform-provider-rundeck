@@ -58,6 +58,7 @@ type JobDetail struct {
 	ProjectName               string              `xml:"context>project,omitempty"`
 	OptionsConfig             *JobOptions         `xml:"context>options,omitempty"`
 	Description               string              `xml:"description"`
+	DefaultTab                string              `xml:"defaultTab"`
 	ExecutionEnabled          bool                `xml:"executionEnabled"`
 	LogLevel                  string              `xml:"loglevel,omitempty"`
 	AllowConcurrentExecutions bool                `xml:"multipleExecutions,omitempty"`
@@ -323,6 +324,7 @@ type jobImportResult struct {
 	Name        string `xml:"name"`
 	GroupName   string `xml:"group,omitempty"`
 	ProjectName string `xml:"context>project,omitempty"`
+	DefaultTab  string `xml:"defaultTab,omitempty"`
 	Error       string `xml:"error"`
 }
 
