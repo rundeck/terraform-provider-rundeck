@@ -240,6 +240,18 @@ func resourceRundeckJob() *schema.Resource {
 				},
 			},
 
+			"retry": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  0,
+			},
+
+			"retry_delay": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "0",
+			},
+
 			"command": {
 				Type:     schema.TypeList,
 				Required: true,
@@ -436,6 +448,10 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 		ScheduleEnabled:           d.Get("schedule_enabled").(bool),
 		LogLevel:                  d.Get("log_level").(string),
 		AllowConcurrentExecutions: d.Get("allow_concurrent_executions").(bool),
+		Retry: &JobRetry{
+			Retry: d.Get("retry").(int),
+			Delay: d.Get("retry_delay").(string),
+		},
 		Dispatch: &JobDispatch{
 			MaxThreadCount:  d.Get("max_thread_count").(int),
 			ContinueOnError: d.Get("continue_on_error").(bool),
@@ -706,6 +722,13 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 	d.Set("schedule_enabled", job.ScheduleEnabled)
 	d.Set("log_level", job.LogLevel)
 	d.Set("allow_concurrent_executions", job.AllowConcurrentExecutions)
+
+	d.Set("retry_delay", nil)
+	d.Set("retry", nil)
+	if job.Retry != nil {
+		d.Set("retry", job.Retry.Retry)
+		d.Set("retry_delay", job.Retry.Delay)
+	}
 
 	if job.Dispatch != nil {
 		d.Set("max_thread_count", job.Dispatch.MaxThreadCount)
