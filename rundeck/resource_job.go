@@ -552,6 +552,12 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 				ValueIsExposedToScripts: optionMap["exposed_to_scripts"].(bool),
 				StoragePath:             optionMap["storage_path"].(string),
 			}
+			if option.StoragePath != "" && option.ObscureInput == false {
+				return nil, fmt.Errorf("Argument \"obscure_input\" must be set to `true` when \"storage_path\" is not empty.")
+			}
+			if option.ValueIsExposedToScripts && option.ObscureInput == false {
+				return nil, fmt.Errorf("Argument \"obscure_input\" must be set to `true` when \"exposed_to_scripts\" is set to true.")
+			}
 
 			for _, iv := range optionMap["value_choices"].([]interface{}) {
 				if iv == nil {
