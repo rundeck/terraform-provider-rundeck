@@ -252,6 +252,12 @@ func resourceRundeckJob() *schema.Resource {
 				Default:  "0",
 			},
 
+			"timeout": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "0",
+			},
+
 			"command": {
 				Type:     schema.TypeList,
 				Required: true,
@@ -452,6 +458,7 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 			Retry: d.Get("retry").(int),
 			Delay: d.Get("retry_delay").(string),
 		},
+		Timeout: d.Get("timeout").(string),
 		Dispatch: &JobDispatch{
 			MaxThreadCount:  d.Get("max_thread_count").(int),
 			ContinueOnError: d.Get("continue_on_error").(bool),
@@ -729,6 +736,8 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 		d.Set("retry", job.Retry.Retry)
 		d.Set("retry_delay", job.Retry.Delay)
 	}
+
+	d.Set("timeout", job.Timeout)
 
 	if job.Dispatch != nil {
 		d.Set("max_thread_count", job.Dispatch.MaxThreadCount)

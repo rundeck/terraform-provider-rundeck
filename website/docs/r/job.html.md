@@ -56,6 +56,8 @@ The following arguments are supported:
 
 * `retry_delay` - (Optional) The time between the failed execution and the retry. Time in seconds, or specify time units: "120m", "2h", "3d". Use "0" to indicate no delay. `retry` must also be set. Defaults to "0".
 
+* `timeout` - (Optional) The maximum time for an execution to run. Time in seconds, or specify time units: "120m", "2h", "3d". Use blank or 0 to indicate no timeout. Defaults to "0".
+
 * `schedule` - (Optional) The jobs schedule in Unix crontab format
 
 * `schedule_enabled` - (Optional) Sets the job schedule to be enabled or disabled. Defaults to `true`.
