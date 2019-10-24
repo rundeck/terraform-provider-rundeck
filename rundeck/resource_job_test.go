@@ -281,7 +281,7 @@ resource "rundeck_job" "test" {
     name = "instance_count"
     default_value = "2"
     required = "true"
-    value_choices = ["1,2,3,4,5,6,7,8,9"]
+    value_choices = ["1","2","3","4","5","6","7","8","9"]
     require_predefined_choice = "true"
   }
 
