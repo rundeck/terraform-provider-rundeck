@@ -715,6 +715,7 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 		d.Set("continue_on_error", job.Dispatch.ContinueOnError)
 		d.Set("rank_attribute", job.Dispatch.RankAttribute)
 		d.Set("rank_order", job.Dispatch.RankOrder)
+		d.Set("success_on_empty_node_filter", job.Dispatch.SuccessOnEmptyNodeFilter)
 	} else {
 		d.Set("max_thread_count", 1)
 		d.Set("continue_on_error", nil)
