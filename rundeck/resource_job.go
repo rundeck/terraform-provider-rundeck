@@ -242,6 +242,7 @@ func resourceRundeckJob() *schema.Resource {
 					},
 				},
 			},
+
 			"command": {
 				Type:     schema.TypeList,
 				Required: true,
