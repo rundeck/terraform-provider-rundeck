@@ -16,6 +16,9 @@ func resourceRundeckJob() *schema.Resource {
 		Delete: DeleteJob,
 		Exists: JobExists,
 		Read:   ReadJob,
+		Importer: &schema.ResourceImporter{
+			State: resourceJobImport,
+		},
 
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -239,7 +242,6 @@ func resourceRundeckJob() *schema.Resource {
 					},
 				},
 			},
-
 			"command": {
 				Type:     schema.TypeList,
 				Required: true,
@@ -737,7 +739,7 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 				"value_choices_url":         option.ValueChoicesURL,
 				"require_predefined_choice": option.RequirePredefinedChoice,
 				"validation_regex":          option.ValidationRegex,
-				"decription":                option.Description,
+				"description":               option.Description,
 				"required":                  option.IsRequired,
 				"allow_multiple_values":     option.AllowsMultipleValues,
 				"multi_value_delimiter":     option.MultiValueDelimiter,
@@ -859,4 +861,30 @@ func readNotification(notification *Notification, notificationType string) map[s
 		}
 	}
 	return notificationConfigI
+}
+
+func resourceJobImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+	idAttr := strings.SplitN(d.Id(), "/", 2)
+	var jobID string
+	var projectName string
+
+	if len(idAttr) == 2 {
+		projectName = idAttr[0]
+		jobID = idAttr[1]
+	} else {
+		return nil, fmt.Errorf("invalid id %q specified, should be in format \"projectName/JobUUID\" for import", d.Id())
+	}
+	d.SetId(jobID)
+
+	err := ReadJob(d, meta)
+	if err != nil {
+		return nil, err
+	}
+	// Get the information out of the api if available.
+	// Otherwise use information supplied by user.
+	if d.Get("project_name") == "" {
+		d.Set("project_name", projectName)
+	}
+
+	return []*schema.ResourceData{d}, nil
 }
