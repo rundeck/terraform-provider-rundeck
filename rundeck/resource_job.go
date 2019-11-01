@@ -476,6 +476,7 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 		if len(jobRefsI) > 1 {
 			return nil, fmt.Errorf("rundeck command may have no more than one job")
 		}
+
 		if len(jobRefsI) > 0 {
 			jobRefMap := jobRefsI[0].(map[string]interface{})
 			command.Job = &JobCommandJobRef{
@@ -778,13 +779,19 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 			}
 
 			if command.Job != nil {
+
+				var nodeFilterMap map[string]interface{}
+				if command.Job.NodeFilter != nil {
+					nodeFilterMap = make(map[string]interface{})
+					nodeFilterMap["filter"] = command.Job.NodeFilter.Query
+				}
 				commandConfigI["job"] = []interface{}{
 					map[string]interface{}{
 						"name":              command.Job.Name,
 						"group_name":        command.Job.GroupName,
 						"run_for_each_node": command.Job.RunForEachNode,
 						"args":              command.Job.Arguments,
-						"nodefilters":       command.Job.NodeFilter,
+						"nodefilters":       nodeFilterMap,
 					},
 				}
 			}
