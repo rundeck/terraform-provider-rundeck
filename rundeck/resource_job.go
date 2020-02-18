@@ -801,12 +801,16 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 		schedule = append(schedule, job.Schedule.Time.Seconds)
 		schedule = append(schedule, job.Schedule.Time.Minute)
 		schedule = append(schedule, job.Schedule.Time.Hour)
-		schedule = append(schedule, job.Schedule.Month.Day)
+		if job.Schedule.DayOfMonth != nil {
+			schedule = append(schedule, job.Schedule.Month.Day)
+		} else {
+			schedule = append(schedule, "?")
+		}
 		schedule = append(schedule, job.Schedule.Month.Month)
 		if job.Schedule.WeekDay != nil {
 			schedule = append(schedule, job.Schedule.WeekDay.Day)
 		} else {
-			schedule = append(schedule, "*")
+			schedule = append(schedule, "?")
 		}
 		schedule = append(schedule, job.Schedule.Year.Year)
 
