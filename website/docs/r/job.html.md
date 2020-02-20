@@ -221,3 +221,11 @@ A notification's `plugin` block has the following structure:
 The following attribute is exported:
 
 * `id` - A unique identifier for the job.
+
+## Import
+
+Rundeck job can be imported using the project and job uuid, e.g.
+
+```
+$ terraform import rundeck_job.my_job project_name/JOB-UUID
+```
