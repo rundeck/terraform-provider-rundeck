@@ -29,6 +29,9 @@ func resourceRundeckProject() *schema.Resource {
 		Delete: DeleteProject,
 		Exists: ProjectExists,
 		Read:   ReadProject,
+		Importer: &schema.ResourceImporter{
+			State: resourceProjectImport,
+		},
 
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -306,4 +309,24 @@ func DeleteProject(d *schema.ResourceData, meta interface{}) error {
 	_, err := client.ProjectDelete(ctx, name)
 
 	return err
+}
+
+func resourceProjectImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+	name := d.Id()
+
+	ok, err := ProjectExists(d, meta)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, fmt.Errorf("Project doesn't exist. Please try again.")
+	}
+	d.SetId(name)
+
+	err = ReadProject(d, meta)
+	if err != nil {
+		return nil, err
+	}
+
+	return []*schema.ResourceData{d}, nil
 }
