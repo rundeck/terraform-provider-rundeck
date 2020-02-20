@@ -88,3 +88,11 @@ The following attributes are exported:
 * `name` - The unique name that identifies the project, as set in the arguments.
 * `ui_url` - The URL of the index page for this project in the Rundeck UI.
 
+
+## Import
+
+Rundeck Project can be imported using the `name`, e.g.
+
+```
+$ terraform import rundeck_project.main project-name
+```
