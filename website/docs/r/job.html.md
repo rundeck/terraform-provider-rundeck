@@ -52,6 +52,8 @@ The following arguments are supported:
 
 * `log_level` - (Optional) The log level that Rundeck should use for this job. Defaults to "INFO".
 
+* `timeout` - (Optional) The maximum time for an execution to run. Time in seconds, or specify time units: "120m", "2h", "3d". Use blank or 0 to indicate no timeout.
+
 * `schedule` - (Optional) The jobs schedule in Unix crontab format
 
 * `schedule_enabled` - (Optional) Sets the job schedule to be enabled or disabled. Defaults to `true`.
@@ -171,7 +173,7 @@ A command's `job` block has the following structure:
 
 * `args`: (Optional) A string giving the arguments to pass to the target job, using
   [Rundeck's job arguments syntax](http://rundeck.org/docs/manual/jobs.html#job-reference-step).
-  
+
 * `nodefilters`: (Optional) A map for overriding the referenced job's node filters.
 
 A command's `nodefilters` block has the following structure:
