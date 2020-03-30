@@ -835,7 +835,7 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 				}
 			}
 
-			if command.ErrorHandler != nil {
+			if command.ErrorHandler != nil && command.ErrorHandler.NodeStepPlugin != nil {
 				commandConfigI["errorhandler"] = []interface{}{
 					map[string]interface{}{
 						"keepgoingonsuccess": command.ErrorHandler.ContinueOnError,
