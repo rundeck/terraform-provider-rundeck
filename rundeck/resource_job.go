@@ -195,6 +195,7 @@ func resourceRundeckJob() *schema.Resource {
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 							},
+							Computed: true,
 						},
 
 						"value_choices_url": {
