@@ -94,9 +94,11 @@ type Notification struct {
 }
 
 type EmailNotification struct {
-	AttachLog  bool               `xml:"attachLog,attr,omitempty"`
-	Recipients NotificationEmails `xml:"recipients,attr"`
-	Subject    string             `xml:"subject,attr"`
+	AttachLog       bool               `xml:"attachLog,attr,omitempty"`
+	AttachLogInFile bool               `xml:"attachLogInFile,attr,omitempty"`
+	AttachLogInline bool               `xml:"attachLogInline,attr,omitempty"`
+	Recipients      NotificationEmails `xml:"recipients,attr"`
+	Subject         string             `xml:"subject,attr"`
 }
 
 type NotificationEmails []string

@@ -140,6 +140,11 @@ func resourceRundeckJob() *schema.Resource {
 										Optional: true,
 										Default:  false,
 									},
+									"attach_log_inline": {
+										Type:     schema.TypeBool,
+										Optional: true,
+										Default:  false,
+									},
 									"recipients": {
 										Type:     schema.TypeList,
 										Required: true,
@@ -632,9 +637,11 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 				if len(notificationEmailsI) > 0 {
 					notificationEmailI := notificationEmailsI[0].(map[string]interface{})
 					email := EmailNotification{
-						AttachLog:  notificationEmailI["attach_log"].(bool),
-						Recipients: NotificationEmails([]string{}),
-						Subject:    notificationEmailI["subject"].(string),
+						AttachLog:       notificationEmailI["attach_log"].(bool),
+						AttachLogInFile: !notificationEmailI["attach_log_inline"].(bool),
+						AttachLogInline: notificationEmailI["attach_log_inline"].(bool),
+						Recipients:      NotificationEmails([]string{}),
+						Subject:         notificationEmailI["subject"].(string),
 					}
 					for _, iv := range notificationEmailI["recipients"].([]interface{}) {
 						email.Recipients = append(email.Recipients, iv.(string))
@@ -866,14 +873,15 @@ func readNotification(notification *Notification, notificationType string) map[s
 		"type": notificationType,
 	}
 	if notification.WebHook != nil {
-		notificationConfigI["webhok_urls"] = notification.WebHook.Urls
+		notificationConfigI["webhook_urls"] = notification.WebHook.Urls
 	}
 	if notification.Email != nil {
 		notificationConfigI["email"] = []interface{}{
 			map[string]interface{}{
-				"attach_log": notification.Email.AttachLog,
-				"subject":    notification.Email.Subject,
-				"recipients": notification.Email.Recipients,
+				"attach_log":        notification.Email.AttachLog,
+				"attach_log_inline": notification.Email.AttachLogInline,
+				"subject":           notification.Email.Subject,
+				"recipients":        notification.Email.Recipients,
 			},
 		}
 	}
