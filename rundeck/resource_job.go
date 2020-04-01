@@ -845,7 +845,7 @@ func readNotification(notification *Notification, notificationType string) map[s
 	notificationConfigI := map[string]interface{}{
 		"type": notificationType,
 	}
-	if notification.WebHook != nil {
+	if notification.WebHook != nil && notification.WebHook.Urls != nil {
 		notificationConfigI["webhok_urls"] = notification.WebHook.Urls
 	}
 	if notification.Email != nil {
