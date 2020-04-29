@@ -551,42 +551,26 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 			}
 		}
 
-		configPluginsI := commandMap["plugin_config"].([]interface{})
-		configPlugins := make([]*LogFilter, len(configPluginsI))
-		for _, configPlugin := range configPluginsI {
-			configPluginMap := configPlugin.(map[string]interface{})
-			configI := configPluginMap["config"].(map[string]interface{})
-
-			config := map[string]string{}
-			for k, v := range configI {
-				config[k] = v.(string)
-			}
-
-			catgory := configPluginMap["category"].(string)
-			switch catgory {
-			case "log-filter":
-				configPlugins = append(
-					configPlugins,
-					&LogFilter{
-						Type:   configPluginMap["type"].(string),
-						Config: config,
-					})
-			default:
-				return nil, fmt.Errorf("Unkown plugin category %s", catgory)
-			}
+		// Handle command-specific config plugins
+		commandConfigPluginsI := commandMap["plugin_config"].([]interface{})
+		commandConfigPlugin, err := configPluginFromResourceData(commandConfigPluginsI)
+		if err != nil {
+			return nil, err
 		}
-		if len(configPlugins) > 0 {
-			command.ConfigPlugin = &ConfigPlugin{configPlugins}
-		}
+		command.ConfigPlugin = commandConfigPlugin
 
 		sequence.Commands = append(sequence.Commands, command)
+
+		// Handle global config plugins
+		configPluginsI := d.Get("plugin_config").([]interface{})
+		configPlugin, err := configPluginFromResourceData(configPluginsI)
+		if err != nil {
+			return nil, err
+		}
+		sequence.ConfigPlugin = configPlugin
+
 	}
 	job.CommandSequence = sequence
-
-	// configPlugins := d.Get("plugin_config").([]interface{})
-	// for _, configPluginI := range configPlugins {
-
-	// }
 
 	optionConfigsI := d.Get("option").([]interface{})
 	if len(optionConfigsI) > 0 {
@@ -751,34 +735,37 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 	return job, nil
 }
 
-// func configPluginFromResourceData(configPluginsI []interface{}) {
-// 	configPlugins := make([]*LogFilter, len(configPluginsI))
-// 	for _, configPlugin := range configPluginsI {
-// 		configPluginMap := configPlugin.(map[string]interface{})
-// 		configI := configPluginMap["config"].(map[string]interface{})
+// Helper to factorise code. ConfigPlugins exists inside commands or at the command sequence level
+func configPluginFromResourceData(configPluginsI []interface{}) (*ConfigPlugin, error) {
+	configPlugins := make([]*LogFilter, len(configPluginsI))
+	for _, configPlugin := range configPluginsI {
+		configPluginMap := configPlugin.(map[string]interface{})
+		configI := configPluginMap["config"].(map[string]interface{})
 
-// 		config := map[string]string{}
-// 		for k, v := range configI {
-// 			config[k] = v.(string)
-// 		}
+		config := map[string]string{}
+		for k, v := range configI {
+			config[k] = v.(string)
+		}
 
-// 		catgory := configPluginMap["category"].(string)
-// 		switch catgory {
-// 		case "log-filter":
-// 			configPlugins = append(
-// 				configPlugins,
-// 				&LogFilter{
-// 					Type:   configPluginMap["type"].(string),
-// 					Config: config,
-// 				})
-// 		default:
-// 			return nil, fmt.Errorf("Unkown plugin category %s", catgory)
-// 		}
-// 	}
-// 	if len(configPlugins) > 0 {
-// 		command.ConfigPlugin = &ConfigPlugin{configPlugins}
-// 	}
-// }
+		category := configPluginMap["category"].(string)
+		switch category {
+		case "log-filter":
+			configPlugins = append(
+				configPlugins,
+				&LogFilter{
+					Type:   configPluginMap["type"].(string),
+					Config: config,
+				})
+		default:
+			return nil, fmt.Errorf("Unkown plugin category %s", category)
+		}
+	}
+
+	if len(configPlugins) > 0 {
+		return &ConfigPlugin{configPlugins}, nil
+	}
+	return nil, nil
+}
 
 func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 
@@ -883,24 +870,22 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 				}
 			}
 
+			// Handle command-specific config plugins
 			if command.ConfigPlugin != nil {
-				var configPlugins []interface{}
-				for _, configPlugin := range command.ConfigPlugin.LogFilters {
-					configPlugins = append(
-						configPlugins,
-						map[string]interface{}{
-							"category": "log-filter",
-							"type":     configPlugin.Type,
-							"config":   map[string]string(configPlugin.Config),
-						},
-					)
-				}
-				commandConfigI["plugin_config"] = configPlugins
+				commandLogFiltersResourceData := logFiltersToResourceData(command.ConfigPlugin.LogFilters)
+				commandConfigI["plugin_config"] = commandLogFiltersResourceData
 			}
 			commandConfigsI = append(commandConfigsI, commandConfigI)
 		}
 	}
 	d.Set("command", commandConfigsI)
+
+	// Handle global config plugins
+	globalLogFiltersResourceData := []interface{}{}
+	if job.CommandSequence != nil && job.CommandSequence.ConfigPlugin != nil {
+		globalLogFiltersResourceData = logFiltersToResourceData(job.CommandSequence.ConfigPlugin.LogFilters)
+	}
+	d.Set("plugin_config", globalLogFiltersResourceData)
 
 	if job.Schedule != nil {
 		schedule := []string{}
@@ -937,6 +922,22 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 	d.Set("notification", notificationConfigsI)
 
 	return nil
+}
+
+// Helper to factorise code. ConfigPlugins exists inside commands or at the command sequence level
+func logFiltersToResourceData(logFilters []*LogFilter) []interface{} {
+	var logFiltersResourceData []interface{}
+	for _, logFilter := range logFilters {
+		logFiltersResourceData = append(
+			logFiltersResourceData,
+			map[string]interface{}{
+				"category": "log-filter",
+				"type":     logFilter.Type,
+				"config":   map[string]string(logFilter.Config),
+			},
+		)
+	}
+	return logFiltersResourceData
 }
 
 // Helper function for three different notifications
