@@ -99,6 +99,8 @@ The following arguments are supported:
 * `command`: (Required) Nested block defining one step in the job workflow. A job must have one or
   more commands. The structure of this nested block is described below.
 
+* `plugin_config`: (Optional) Nested block defining one pluginConfig. As of today only LogFilters are supported. The structure of this nested block is described below.
+
 * `notification`: (Optional) Nested block defining notifications on the job workflow. The structure of this nested block is described below.
 
 `option` blocks have the following structure:
@@ -140,6 +142,14 @@ The following arguments are supported:
 * `exposed_to_scripts`: (Optional) Boolean controlling whether the value of this option is available
   to scripts executed by job commands. Defaults to `false`.
 
+`plugin_config` blocks must have the below fields:
+
+* `category`: (Required) indicates the category of the plugin. Only `log-filter` is supported as of now
+
+* `type`: (Required) the type of the log-filter (`key-value-data`, `quiet-output`, `highlight-output`, `key-value-data-multilines`)
+
+* `config`: (Required) Map of arbitrary configuration parameters for the selected plugin.
+
 `command` blocks must have any one of the following combinations of arguments as contents:
 
 * `description`: (Optional) gives a description to the command block.
@@ -158,6 +168,8 @@ The following arguments are supported:
 
 * A `node_step_plugin` block, described below, causes a node step plugin to be executed once for
   each node.
+
+* A `plugin_config` block, as described previously (this block has the same usage when used inside a command block or directly at the resource level)
 
 A command's `job` block has the following structure:
 
