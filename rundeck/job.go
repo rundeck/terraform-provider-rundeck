@@ -28,6 +28,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
+	"sort"
 	"strings"
 
 	"github.com/rundeck/go-rundeck/rundeck"
@@ -221,6 +222,9 @@ type JobCommandSequence struct {
 	// Sequence of commands to run in the sequence.
 	Commands []JobCommand `xml:"command"`
 
+	// Configuration for plugins such as LogFilters
+	ConfigPlugin *ConfigPlugin `xml:"pluginConfig,omitempty"`
+
 	// Description
 	Description string `xml:"description,omitempty"`
 }
@@ -267,6 +271,9 @@ type JobCommand struct {
 
 	// Configuration for a node step plugin to run as this command.
 	NodeStepPlugin *JobPlugin `xml:"node-step-plugin"`
+
+	// Configuration for plugins such as LogFilters
+	ConfigPlugin *ConfigPlugin `xml:"plugins,omitempty"`
 }
 
 // (Inline) Script interpreter
@@ -299,6 +306,20 @@ type JobPlugin struct {
 
 // JobPluginConfig is a specialization of map[string]string for job plugin configuration.
 type JobPluginConfig map[string]string
+
+// ConfigPlugin is used for example for LogFilters
+type ConfigPlugin struct {
+	LogFilters []*LogFilter `xml:"LogFilter"`
+}
+
+// LogFilter holds the type and configuration of a LogFilter
+type LogFilter struct {
+	Type   string             `xml:"type,attr"`
+	Config ConfigPluginConfig `xml:"config"`
+}
+
+// ConfigPluginConfig is a specialization of map[string]string for config plugin configuration.
+type ConfigPluginConfig map[string]string
 
 // JobNodeFilter describes which nodes from the project's resource list will run the configured
 // commands.
@@ -513,6 +534,72 @@ func (c JobPluginConfig) MarshalXML(e *xml.Encoder, start xml.StartElement) erro
 func (c *JobPluginConfig) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	rc := (*map[string]string)(c)
 	return unmarshalMapFromXML(rc, d, start, "entry", "key", "value")
+}
+
+func (c ConfigPluginConfig) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	if len(c) == 0 {
+		return nil
+	}
+
+	// Sort the keys so we'll have a deterministic result.
+	keys := []string{}
+	for k := range c {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	tokens := []xml.Token{start}
+	for _, k := range keys {
+		v := c[k]
+		tokens = append(
+			tokens,
+			xml.StartElement{Name: xml.Name{Local: k}},
+			xml.CharData(v),
+			xml.EndElement{Name: xml.Name{Local: k}},
+		)
+	}
+
+	tokens = append(tokens, xml.EndElement{Name: start.Name})
+	for _, t := range tokens {
+		err := e.EncodeToken(t)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (c *ConfigPluginConfig) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	result := map[string]string{}
+
+	var key, value string
+	for {
+		token, err := d.Token()
+		if err != nil {
+			return err
+		}
+		if token == nil {
+			return fmt.Errorf("EOF while decoding job command plugin config")
+		}
+
+		switch t := token.(type) {
+		default:
+			value = string(token.(xml.CharData))
+		case xml.StartElement:
+			if t.Name.Local == start.Name.Local {
+				continue
+			}
+			key = t.Name.Local
+		case xml.EndElement:
+			if t.Name.Local == start.Name.Local {
+				*c = result
+				return nil
+			}
+			result[key] = value
+			key, value = "", ""
+		}
+	}
 }
 
 // JobSummary produces a JobSummary instance with values populated from the import result.
