@@ -82,6 +82,16 @@ func TestAccJob_Idempotency(t *testing.T) {
 	})
 }
 
+func testAccJobsCheckDestroy(jobs []*JobDetail) resource.TestCheckFunc {
+	for _, job := range jobs {
+		check := testAccJobCheckDestroy(job)
+		if check != nil {
+			return check
+		}
+	}
+	return nil
+}
+
 func testAccJobCheckDestroy(job *JobDetail) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		client := testAccProvider.Meta().(*rundeck.BaseClient)
@@ -163,6 +173,51 @@ func TestAccJobOptions_empty_choice(t *testing.T) {
 			{
 				Config:      testAccJobOptions_empty_choice,
 				ExpectError: regexp.MustCompile("Argument \"value_choices\" can not have empty values; try \"required\""),
+			},
+		},
+	})
+}
+
+func TestAccJobCommand_cross_project(t *testing.T) {
+	var job1, job2 JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobsCheckDestroy([]*JobDetail{&job1, &job2}),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobCrossProject_basic,
+				Check: resource.ComposeTestCheckFunc(
+					testAccJobCheckExists("rundeck_job.test1", &job1),
+					testAccJobCheckExists("rundeck_job.test2", &job2),
+					func(s *terraform.State) error {
+						if expected := job1.ID; job2.CommandSequence.Commands[0].Job.UUID != expected {
+							return fmt.Errorf("failed to set cross-project jobs; expected uuid %s, got %s", expected, job2.CommandSequence.Commands[0].Job.UUID)
+						}
+						if expected := job1.Name; job2.CommandSequence.Commands[0].Job.Name != expected {
+							return fmt.Errorf("failed to set cross-project jobs; expected name %s, got %s", expected, job2.CommandSequence.Commands[0].Job.UUID)
+						}
+						return nil
+					},
+				),
+			},
+			{
+				// check when name doesn't match uuid
+				Config: testAccJobCrossProject_nonmatching_name,
+				Check: resource.ComposeTestCheckFunc(
+					testAccJobCheckExists("rundeck_job.test1", &job1),
+					testAccJobCheckExists("rundeck_job.test2", &job2),
+					func(s *terraform.State) error {
+						if expected := job1.ID; job2.CommandSequence.Commands[0].Job.UUID != expected {
+							return fmt.Errorf("failed to set cross-project jobs; expected uuid %s, got %s", expected, job2.CommandSequence.Commands[0].Job.UUID)
+						}
+						if expected := "another-name"; job2.CommandSequence.Commands[0].Job.Name != expected {
+							return fmt.Errorf("failed to set cross-project jobs; expected name %s, got %s", expected, job2.CommandSequence.Commands[0].Job.UUID)
+						}
+						return nil
+					},
+				),
 			},
 		},
 	})
@@ -414,3 +469,55 @@ resource "rundeck_job" "test" {
   }
 }
 `
+
+const testAccJobCrossProject = ` 
+resource "rundeck_project" "test1" {
+  name = "terraform-acc-test-job-cross-project1"
+  description = "parent project for job acceptance tests"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourcexml"
+        file = "/tmp/terraform-acc-tests.xml"
+    }
+  }
+}
+
+resource "rundeck_project" "test2" {
+  name = "terraform-acc-test-job-cross-project2"
+  description = "parent project for job acceptance tests"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourcexml"
+        file = "/tmp/terraform-acc-tests.xml"
+    }
+  }
+}
+
+resource "rundeck_job" "test1" {
+  project_name = "${rundeck_project.test1.name}"
+  name = "basic-job1"
+  description = "A basic job"
+  command {
+    shell_command = "echo Hello World"
+  }
+}
+
+resource "rundeck_job" "test2" {
+  project_name = "${rundeck_project.test2.name}"
+  name = "basic-job2"
+  description = "A basic job calling a job from another project"
+  command {
+    job {
+      name = "%s"
+      uuid = rundeck_job.test1.id
+    }
+  }
+}
+`
+
+var testAccJobCrossProject_basic = fmt.Sprintf(testAccJobCrossProject, "basic-job1")
+var testAccJobCrossProject_nonmatching_name = fmt.Sprintf(testAccJobCrossProject, "another-name")
