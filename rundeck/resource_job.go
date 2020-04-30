@@ -282,6 +282,10 @@ func resourceRundeckJob() *schema.Resource {
 										Type:     schema.TypeString,
 										Optional: true,
 									},
+									"uuid": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
 									"run_for_each_node": {
 										Type:     schema.TypeBool,
 										Optional: true,
@@ -474,6 +478,7 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 			command.Job = &JobCommandJobRef{
 				Name:           jobRefMap["name"].(string),
 				GroupName:      jobRefMap["group_name"].(string),
+				UUID:           jobRefMap["uuid"].(string),
 				RunForEachNode: jobRefMap["run_for_each_node"].(bool),
 				Arguments:      JobCommandJobRefArguments(jobRefMap["args"].(string)),
 				NodeFilter:     &JobNodeFilter{},
@@ -766,6 +771,7 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 					map[string]interface{}{
 						"name":              command.Job.Name,
 						"group_name":        command.Job.GroupName,
+						"uuid":              command.Job.UUID,
 						"run_for_each_node": command.Job.RunForEachNode,
 						"args":              command.Job.Arguments,
 						"nodefilters":       command.Job.NodeFilter,

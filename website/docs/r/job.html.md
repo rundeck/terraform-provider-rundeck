@@ -162,9 +162,11 @@ The following arguments are supported:
 A command's `job` block has the following structure:
 
 * `name`: (Required) The name of the job to execute. The target job must be in the same project
-  as the current job.
+  as the current job. If it is in another project then you have to provide its uuid (see below).
 
 * `group_name`: (Optional) The name of the group that the target job belongs to, if any.
+
+* `uuid`: (Optional) The uuid of the target job. If used, if takes precedence on the name attribute to find the target job. The `name` will only be used for display.
 
 * `run_for_each_node`: (Optional) Boolean controlling whether the job is run only once (`false`,
   the default) or whether it is run once for each node (`true`).
