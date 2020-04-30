@@ -1,6 +1,7 @@
 package rundeck
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"testing"
@@ -163,6 +164,42 @@ func TestAccJobOptions_empty_choice(t *testing.T) {
 			{
 				Config:      testAccJobOptions_empty_choice,
 				ExpectError: regexp.MustCompile("Argument \"value_choices\" can not have empty values; try \"required\""),
+			},
+		},
+	})
+}
+
+func TestAccJobConfigPlugin_basic(t *testing.T) {
+	var job JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobCheckDestroy(&job),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobPluginConfig_basic,
+				Check: resource.ComposeTestCheckFunc(
+					testAccJobCheckExists("rundeck_job.test", &job),
+					func(s *terraform.State) error {
+						configPlugins := []*ConfigPlugin{
+							job.CommandSequence.Commands[0].ConfigPlugin,
+							job.CommandSequence.ConfigPlugin,
+						}
+						for _, configPlugin := range configPlugins {
+							if configPlugin == nil {
+								return errors.New("failed to set logfilter; expected %v, got %v")
+							}
+							if expected := 1; len(configPlugin.LogFilters) != expected {
+								return fmt.Errorf("failed to set logfilter; expected to have %v filter, got %v", expected, len(configPlugin.LogFilters))
+							}
+							if expected := "key-value-data"; configPlugin.LogFilters[0].Type != expected {
+								return fmt.Errorf("failed to set logfilter; expected %v, got %v", expected, job.CommandSequence.Commands[0].Description)
+							}
+						}
+						return nil
+					},
+				),
 			},
 		},
 	})
@@ -411,6 +448,53 @@ resource "rundeck_job" "test" {
   command {
     description = "Prints Hello World"
     shell_command = "echo Hello World"
+  }
+}
+`
+
+const testAccJobPluginConfig_basic = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-job-plugin-config"
+  description = "parent project for job acceptance tests"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourcexml"
+        file = "/tmp/terraform-acc-tests.xml"
+    }
+  }
+}
+
+resource "rundeck_job" "test" {
+  name         = "basic-log-filter"
+  project_name = "${rundeck_project.test.name}"
+  description  = "A basic log filter"
+
+  command {
+    shell_command = "echo foo=bar"
+
+    // filter specific to this command
+    plugin_config {
+      category = "log-filter"
+      type     = "key-value-data"
+      config = {
+        hideOutput = false
+        logData    = false
+        regex      = "^(foo)\\s*=\\s*(.+)$"
+      }
+    }
+  }
+
+  // global filter
+  plugin_config {
+    category = "log-filter"
+    type     = "key-value-data"
+    config = {
+      hideOutput = false
+      logData    = false
+      regex      = "^(foo)\\s*=\\s*(.+)$"
+    }
   }
 }
 `
