@@ -321,7 +321,7 @@ func resourceRundeckJob() *schema.Resource {
 							Optional: true,
 							Elem:     resourceRundeckJobPluginResource(),
 						},
-						"errorhandler": {
+						"error_handler": {
 							Type:     schema.TypeList,
 							Optional: true,
 							Elem:     resourceRundeckJobCommandResource(),
@@ -336,7 +336,7 @@ func resourceRundeckJob() *schema.Resource {
 func resourceRundeckJobCommandResource() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
-			"keepgoingonsuccess": {
+			"keep_going_on_success": {
 				Type:     schema.TypeBool,
 				Required: true,
 			},
@@ -545,9 +545,9 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 			}
 		}
 
-		errorHandlerI := commandMap["errorhandler"].([]interface{})
+		errorHandlerI := commandMap["error_handler"].([]interface{})
 		if len(errorHandlerI) > 1 {
-			return nil, fmt.Errorf("rundeck command may have no more than one errorhandler")
+			return nil, fmt.Errorf("rundeck command may have no more than one error_handler")
 		}
 		if len(errorHandlerI) > 0 {
 			errorHandlerMap := errorHandlerI[0].(map[string]interface{})
@@ -557,7 +557,7 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 				config[k] = v.(string)
 			}
 			command.ErrorHandler = &JobCommand{
-				ContinueOnError: errorHandlerMap["keepgoingonsuccess"].(bool),
+				ContinueOnError: errorHandlerMap["keep_going_on_success"].(bool),
 				NodeStepPlugin: &JobPlugin{
 					Type:   errorHandlerMap["type"].(string),
 					Config: config,
@@ -836,11 +836,11 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 			}
 
 			if command.ErrorHandler != nil && command.ErrorHandler.NodeStepPlugin != nil {
-				commandConfigI["errorhandler"] = []interface{}{
+				commandConfigI["error_handler"] = []interface{}{
 					map[string]interface{}{
-						"keepgoingonsuccess": command.ErrorHandler.ContinueOnError,
-						"type":               command.ErrorHandler.NodeStepPlugin.Type,
-						"config":             map[string]string(command.ErrorHandler.NodeStepPlugin.Config),
+						"keep_going_on_success": command.ErrorHandler.ContinueOnError,
+						"type":                  command.ErrorHandler.NodeStepPlugin.Type,
+						"config":                map[string]string(command.ErrorHandler.NodeStepPlugin.Config),
 					},
 				}
 			}

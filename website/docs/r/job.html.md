@@ -159,7 +159,7 @@ The following arguments are supported:
 * A `node_step_plugin` block, described below, causes a node step plugin to be executed once for
   each node.
 
-* A `errorhandler` block, described below, causes the creation of an error handler for your job.
+* A `error_handler` block, described below, causes the creation of an error handler for your job.
 
 A command's `job` block has the following structure:
 
@@ -188,13 +188,13 @@ A command's `step_plugin` or `node_step_plugin` block both have the following st
 
 * `config`: (Optional) Map of arbitrary configuration parameters for the selected plugin.
 
-A command's `errorhandler` block both have the following structure:
+A command's `error_handler` block both have the following structure:
 
 * `type`: (Required) The name of the plugin to execute.
 
 * `config`: (Optional) Map of arbitrary configuration parameters for the selected plugin.
 
-* `keepgoingonsuccess`: (Optional) A boolean to configure if the error handler job should be launched on the success of the job.
+* `keep_going_on_success`: (Optional) A boolean to configure if the error handler job should be launched on the success of the job.
 
 `notification` blocks have the following structure:
 
