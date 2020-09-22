@@ -810,7 +810,7 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 		if job.Schedule.WeekDay != nil {
 			schedule = append(schedule, job.Schedule.WeekDay.Day)
 		} else {
-			schedule = append(schedule, "?")
+			schedule = append(schedule, "*")
 		}
 		schedule = append(schedule, job.Schedule.Year.Year)
 
