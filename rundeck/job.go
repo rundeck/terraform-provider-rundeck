@@ -26,7 +26,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/xml"
+	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"strings"
 
@@ -75,6 +77,7 @@ type JobDetail struct {
 	NodesSelectedByDefault *Boolean     `xml:"nodesSelectedByDefault"`
 	Schedule               *JobSchedule `xml:"schedule,omitempty"`
 	ScheduleEnabled        bool         `xml:"scheduleEnabled"`
+	TimeZone               string       `xml:"timeZone,omitempty"`
 }
 
 type Boolean struct {
@@ -108,21 +111,16 @@ type WebHookNotification struct {
 type NotificationUrls []string
 
 type JobSchedule struct {
-	XMLName    xml.Name               `xml:"schedule"`
-	DayOfMonth *JobScheduleDayOfMonth `xml:"dayofmonth,omitempty"`
-	Time       JobScheduleTime        `xml:"time"`
-	Month      JobScheduleMonth       `xml:"month"`
-	WeekDay    *JobScheduleWeekDay    `xml:"weekday,omitempty"`
-	Year       JobScheduleYear        `xml:"year"`
-}
-
-type JobScheduleDayOfMonth struct {
-	XMLName xml.Name `xml:"dayofmonth"`
+	XMLName xml.Name           `xml:"schedule"`
+	Time    JobScheduleTime    `xml:"time"`
+	Month   JobScheduleMonth   `xml:"month"`
+	WeekDay JobScheduleWeekDay `xml:"weekday"`
+	Year    JobScheduleYear    `xml:"year"`
 }
 
 type JobScheduleMonth struct {
 	XMLName xml.Name `xml:"month"`
-	Day     string   `xml:"day,attr,omitempty"`
+	Day     string   `xml:"day,attr"`
 	Month   string   `xml:"month,attr"`
 }
 
@@ -173,6 +171,9 @@ type JobOption struct {
 	// into job commands.
 	Name string `xml:"name,attr,omitempty"`
 
+	// The displayed label of the option.
+	Label string `xml:"label,omitempty"`
+
 	// Regular expression to be used to validate the option value.
 	ValidationRegex string `xml:"regex,attr,omitempty"`
 
@@ -212,11 +213,14 @@ type JobCommandSequence struct {
 	XMLName xml.Name `xml:"sequence"`
 
 	// If set, Rundeck will continue with subsequent commands after a command fails.
-	ContinueOnError bool `xml:"keepgoing,attr"`
+	ContinueOnError bool `xml:"keepgoing,attr,omitempty"`
 
 	// Chooses the strategy by which Rundeck will execute commands. Can either be "node-first" or
 	// "step-first".
 	OrderingStrategy string `xml:"strategy,attr,omitempty"`
+
+	// Log outputs to be captured and used across command sequence
+	GlobalLogFilters *[]JobLogFilter `xml:"pluginConfig>LogFilter,omitempty"`
 
 	// Sequence of commands to run in the sequence.
 	Commands []JobCommand `xml:"command"`
@@ -231,11 +235,11 @@ type JobCommandSequence struct {
 type JobCommand struct {
 	XMLName xml.Name
 
-	// If the Workflow keepgoing is false, this allows the Workflow to continue when the Error Handler is successful.
-	ContinueOnError bool `xml:"keepgoingOnSuccess,attr,omitempty"`
-
 	// Description
 	Description string `xml:"description,omitempty"`
+
+	// If the Workflow keepgoing is false, this allows the Workflow to continue when the Error Handler is successful.
+	KeepGoingOnSuccess bool `xml:"keepgoingOnSuccess,attr,omitempty"`
 
 	// On error:
 	ErrorHandler *JobCommand `xml:"errorhandler,omitempty"`
@@ -256,7 +260,7 @@ type JobCommand struct {
 	// When ScriptFile is set, the arguments to provide to the script when executing it.
 	ScriptFileArgs string `xml:"scriptargs,omitempty"`
 
-	// ScriptInterpreter is used to execute (Script)File with.
+	// ScriptInterpreter is used to execute ScriptFile.
 	ScriptInterpreter *JobCommandScriptInterpreter `xml:"scriptinterpreter,omitempty"`
 
 	// A reference to another job to run as this command.
@@ -303,8 +307,9 @@ type JobPluginConfig map[string]string
 // JobNodeFilter describes which nodes from the project's resource list will run the configured
 // commands.
 type JobNodeFilter struct {
-	ExcludePrecedence bool   `xml:"excludeprecedence"`
+	ExcludePrecedence bool   `xml:"excludeprecedence,omitempty"`
 	Query             string `xml:"filter,omitempty"`
+	ExcludeQuery      string `xml:"filterExclude,omitempty"`
 }
 
 type jobImportResults struct {
@@ -326,10 +331,24 @@ type jobImportResult struct {
 	Error       string `xml:"error"`
 }
 
+type JobLogFilter struct {
+	XMLName xml.Name            `xml:"LogFilter"`
+	Type    string              `xml:"type,attr"`
+	Config  *JobLogFilterConfig `xml:"config,omitempty"`
+}
+
+// JobLogFilterConfig is a specialization of map[string]string for job log filter configuration.
+type JobLogFilterConfig map[string]string
+
+type xmlJobLogFilterConfigEntry struct {
+	XMLName xml.Name
+	Value   string `xml:",chardata"`
+}
+
 type JobDispatch struct {
-	ExcludePrecedence        *Boolean `xml:"excludePrecedence"`
+	ExcludePrecedence        *Boolean `xml:"excludePrecedence,omitempty"`
 	MaxThreadCount           int      `xml:"threadcount,omitempty"`
-	ContinueOnError          bool     `xml:"keepgoing"`
+	ContinueNextNodeOnError  bool     `xml:"keepgoing,omitempty"`
 	RankAttribute            string   `xml:"rankAttribute,omitempty"`
 	RankOrder                string   `xml:"rankOrder,omitempty"`
 	SuccessOnEmptyNodeFilter bool     `xml:"successOnEmptyNodeFilter,omitempty"`
@@ -364,12 +383,17 @@ func GetJob(c *rundeck.BaseClient, id string) (*JobDetail, error) {
 		return nil, &NotFoundError{}
 	}
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("Error getting job: (%v)", err)
+		return nil, fmt.Errorf("error getting job: (%w)", err)
 	}
 
 	respBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
 
-	xml.Unmarshal(respBytes, jobList)
+	if err := xml.Unmarshal(respBytes, jobList); err != nil {
+		return nil, err
+	}
 
 	return &jobList.Jobs[0], nil
 }
@@ -444,10 +468,9 @@ func importJob(c *rundeck.BaseClient, job *JobDetail, dupeOption string) (*JobSu
 
 func (c NotificationEmails) MarshalXMLAttr(name xml.Name) (xml.Attr, error) {
 	if len(c) > 0 {
-		return xml.Attr{name, strings.Join(c, ",")}, nil
-	} else {
-		return xml.Attr{}, nil
+		return xml.Attr{Name: name, Value: strings.Join(c, ",")}, nil
 	}
+	return xml.Attr{}, nil
 }
 
 func (c *NotificationEmails) UnmarshalXMLAttr(attr xml.Attr) error {
@@ -458,10 +481,9 @@ func (c *NotificationEmails) UnmarshalXMLAttr(attr xml.Attr) error {
 
 func (c NotificationUrls) MarshalXMLAttr(name xml.Name) (xml.Attr, error) {
 	if len(c) > 0 {
-		return xml.Attr{name, strings.Join(c, ",")}, nil
-	} else {
-		return xml.Attr{}, nil
+		return xml.Attr{Name: name, Value: strings.Join(c, ",")}, nil
 	}
+	return xml.Attr{}, nil
 }
 
 func (c *NotificationUrls) UnmarshalXMLAttr(attr xml.Attr) error {
@@ -472,10 +494,9 @@ func (c *NotificationUrls) UnmarshalXMLAttr(attr xml.Attr) error {
 
 func (c JobValueChoices) MarshalXMLAttr(name xml.Name) (xml.Attr, error) {
 	if len(c) > 0 {
-		return xml.Attr{name, strings.Join(c, ",")}, nil
-	} else {
-		return xml.Attr{}, nil
+		return xml.Attr{Name: name, Value: strings.Join(c, ",")}, nil
 	}
+	return xml.Attr{}, nil
 }
 
 func (c *JobValueChoices) UnmarshalXMLAttr(attr xml.Attr) error {
@@ -486,11 +507,14 @@ func (c *JobValueChoices) UnmarshalXMLAttr(attr xml.Attr) error {
 
 func (a JobCommandJobRefArguments) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 	start.Attr = []xml.Attr{
-		xml.Attr{xml.Name{Local: "line"}, string(a)},
+		{Name: xml.Name{Local: "line"}, Value: string(a)},
 	}
-	e.EncodeToken(start)
-	e.EncodeToken(xml.EndElement{start.Name})
-	return nil
+	err := e.EncodeToken(start)
+	if err != nil {
+		return err
+	}
+	err = e.EncodeToken(xml.EndElement{Name: start.Name})
+	return err
 }
 
 func (a *JobCommandJobRefArguments) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
@@ -498,7 +522,10 @@ func (a *JobCommandJobRefArguments) UnmarshalXML(d *xml.Decoder, start xml.Start
 		Line string `xml:"line,attr"`
 	}
 	args := jobRefArgs{}
-	d.DecodeElement(&args, &start)
+	err := d.DecodeElement(&args, &start)
+	if err != nil {
+		return err
+	}
 
 	*a = JobCommandJobRefArguments(args.Line)
 
@@ -513,6 +540,41 @@ func (c JobPluginConfig) MarshalXML(e *xml.Encoder, start xml.StartElement) erro
 func (c *JobPluginConfig) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	rc := (*map[string]string)(c)
 	return unmarshalMapFromXML(rc, d, start, "entry", "key", "value")
+}
+
+// Global log filter plugin configurations are marshalled differently than other plugins
+func (config JobLogFilterConfig) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	if len(config) == 0 {
+		return nil
+	}
+
+	if err := e.EncodeToken(start); err != nil {
+		return err
+	}
+
+	for key, value := range config {
+		configEntry := xmlJobLogFilterConfigEntry{XMLName: xml.Name{Local: key}, Value: value}
+		if err := e.Encode(configEntry); err != nil {
+			return err
+		}
+	}
+	return e.EncodeToken(start.End())
+}
+
+// Global log filter plugin configurations are unmarshalled differently than other plugins
+func (config *JobLogFilterConfig) UnmarshalXML(d *xml.Decoder, _ xml.StartElement) error {
+	*config = JobLogFilterConfig{}
+	for {
+		var entry xmlJobLogFilterConfigEntry
+
+		if err := d.Decode(&entry); errors.Is(err, io.EOF) {
+			break
+		} else if err != nil {
+			return err
+		}
+		(*config)[entry.XMLName.Local] = entry.Value
+	}
+	return nil
 }
 
 // JobSummary produces a JobSummary instance with values populated from the import result.

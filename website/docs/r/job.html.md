@@ -56,9 +56,17 @@ The following arguments are supported:
 
 * `schedule_enabled` - (Optional) Sets the job schedule to be enabled or disabled. Defaults to `true`.
 
+* `time_zone` - (Optional) A valid Time Zone, either an abbreviation such as "PST", a full name such as 
+  "America/Los_Angeles",or a custom ID such as "GMT-8:00".
+  
 * `allow_concurrent_executions` - (Optional) Boolean defining whether two or more executions of
   this job can run concurrently. The default is `false`, meaning that jobs will only run
   sequentially.
+
+* `retry` - (Optional) Maximum number of times to retry execution when this job is directly invoked. 
+  Retry will occur if the job fails or times out, but not if it is manually killed. Can use an option 
+  value reference like "${option.retry}". The default is `0`, meaning that jobs will only run
+  once.
 
 * `max_thread_count` - (Optional) The maximum number of threads to use to execute this job, which
   controls on how many nodes the commands can be run simulateneously. Defaults to 1, meaning that
@@ -84,11 +92,20 @@ The following arguments are supported:
 * `command_ordering_strategy`: (Optional) The name of the strategy used to describe how to
   traverse the matrix of nodes and commands. The default is "node-first", meaning that all commands
   will be executed on a single node before moving on to the next. May also be set to "step-first",
-  meaning that a single step will be executed across all nodes before moving on to the next step.
+  meaning that a single step will be executed across all nodes before moving on to the next step, or
+  "parallel", meaning that all nodes can execute the script simultaneously.
+
+* `continue_next_node_on_error` - (Optional) Boolean defining whether Rundeck will continue to run
+  on subsequent nodes if a node fails when the `command_ordering_strategy` is set to either "node-first"
+  or "step-first". Defaults to `false`, meaning that the job execution will not proceed to the next node.
 
 * `node_filter_query` - (Optional) A query string using
   [Rundeck's node filter language](http://rundeck.org/docs/manual/node-filters.html#node-filter-syntax)
-  that defines which subset of the project's nodes will be used to execute this job.
+  that defines which subset of the project's nodes ***will*** be used to execute this job.
+
+* `node_filter_exclude_query` - (Optional) A query string using
+  [Rundeck's node filter language](http://rundeck.org/docs/manual/node-filters.html#node-filter-syntax)
+  that defines which subset of the project's nodes ***will not*** be used to execute this job.
 
 * `node_filter_exclude_precedence`: (Optional) Boolean controlling a deprecated Rundeck feature that controls
   whether node exclusions take priority over inclusions.
@@ -99,12 +116,19 @@ The following arguments are supported:
 * `command`: (Required) Nested block defining one step in the job workflow. A job must have one or
   more commands. The structure of this nested block is described below.
 
-* `notification`: (Optional) Nested block defining notifications on the job workflow. The structure of this nested block is described below.
+* `global_log_filter`: (Optional) Nested block defining a global log filter plugin available to provide communication
+  between all workflow steps. A job may have multiple global log filters.  The structure of this nested block is 
+  described below.
+   
+* `notification`: (Optional) Nested block defining notifications on the job workflow. The structure of this nested block
+  is described below.
 
 `option` blocks have the following structure:
 
 * `name`: (Required) Unique name that will be shown in the UI when entering values and used as
   a variable name for template substitutions.
+
+* `label`: (Optional) Display label that will be shown in the UI instead of the name.
 
 * `default_value`: (Optional) A default value for the option.
 
@@ -150,6 +174,9 @@ The following arguments are supported:
 
 * `script_file` and `script_file_args` together describe a script that is already pre-installed
   on the nodes which is to be executed.
+  
+* A `script_interpreter` block (Optional), described below, is an advanced feature specifying how
+  to invoke the script file.
 
 * A `job` block, described below, causes another job within the same project to be executed as
   a command.
@@ -158,6 +185,14 @@ The following arguments are supported:
 
 * A `node_step_plugin` block, described below, causes a node step plugin to be executed once for
   each node.
+
+A command's `script_interpreter` block has the following structure:
+
+* `invocation_string`: (Optional) The string describing how to invoke the script file. By
+  default the temporary script file path will be appended to this string, followed by any
+  arguments. Include `${scriptfile}` anywhere to change the file path argument location.
+  
+* `args_quoted`: (Optional) Quote arguments to script invocation string?
 
 A command's `job` block has the following structure:
 
@@ -176,11 +211,14 @@ A command's `job` block has the following structure:
 
 A command's `nodefilters` block has the following structure:
 
-* `excludeprecedence`: (Optional) Whether to exclude precedence or not.
+* `excludeprecedence`: (Optional, Deprecated) Whether to give precedence to the exclusion filter or not.
 
-* `filter`: (Optional) The node filter query string to use.
+* `filter`: (Optional) The query string for nodes ***to use***.
 
-A command's `step_plugin` or `node_step_plugin` block both have the following structure:
+* `exclude_filter`: (Optional) The query string for nodes ***not to use***.
+
+A command's `step_plugin` or `node_step_plugin` block both have the following structure, as does the job's 
+  `global_log_filter` blocks:
 
 * `type`: (Required) The name of the plugin to execute.
 
