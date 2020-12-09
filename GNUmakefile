@@ -5,8 +5,9 @@ PKG_NAME=rundeck
 
 default: build
 
-build: fmtcheck
-	go install
+build: fmt fmtcheck
+	env go install
+	env GOOS=linux GOARCH=amd64 go install
 
 test: fmtcheck
 	go test -i $(TEST) || exit 1
