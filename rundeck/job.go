@@ -384,7 +384,7 @@ func GetJob(c *rundeck.BaseClient, id string) (*JobDetail, error) {
 		return nil, &NotFoundError{}
 	}
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("error getting job: (%w)", err)
+		return nil, fmt.Errorf("error getting job: (%v)", err)
 	}
 
 	respBytes, err := ioutil.ReadAll(resp.Body)

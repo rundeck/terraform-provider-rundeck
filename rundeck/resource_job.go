@@ -563,7 +563,7 @@ func JobExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 		return false, nil
 	}
 
-	return false, fmt.Errorf("error checking if job exists: (%w)", err)
+	return false, fmt.Errorf("error checking if job exists: (%v)", err)
 }
 
 func ReadJob(d *schema.ResourceData, meta interface{}) error {
