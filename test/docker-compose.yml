@@ -1,0 +1,10 @@
+version: "3.3"
+
+services:
+  rundeck:
+    build:
+      context: ./
+    ports:
+    - 4440:4440
+    volumes:
+    - ./tokens.properties:/home/rundeck/etc/tokens.properties
