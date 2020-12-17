@@ -26,7 +26,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/xml"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -46,10 +45,12 @@ type JobSummary struct {
 	Description string   `xml:"description,omitempty"`
 }
 
+/*
 type jobSummaryList struct {
 	XMLName xml.Name     `xml:"jobs"`
 	Jobs    []JobSummary `xml:"job"`
 }
+*/
 
 // JobDetail is a comprehensive description of a job, including its entire definition.
 type JobDetail struct {
@@ -567,7 +568,7 @@ func (config *JobLogFilterConfig) UnmarshalXML(d *xml.Decoder, _ xml.StartElemen
 	for {
 		var entry xmlJobLogFilterConfigEntry
 
-		if err := d.Decode(&entry); errors.Is(err, io.EOF) {
+		if err := d.Decode(&entry); err == io.EOF {
 			break
 		} else if err != nil {
 			return err

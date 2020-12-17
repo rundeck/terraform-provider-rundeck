@@ -2,7 +2,6 @@ package rundeck
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -552,7 +551,7 @@ func JobExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 	resp, err := client.JobGet(ctx, d.Id(), "")
 	if err != nil {
 		var notFound *NotFoundError
-		if errors.Is(err, notFound) {
+		if err == notFound {
 			return false, nil
 		}
 		return false, err
