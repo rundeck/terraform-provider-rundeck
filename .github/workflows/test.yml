@@ -10,5 +10,7 @@ jobs:
         go-version: 1.13.4
     - name: Checkout code
       uses: actions/checkout@v2
+    - name: Compile Tests
+      run: make test-compile
     - name: Test
       run: bash ./scripts/circle-ci.sh
