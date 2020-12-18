@@ -67,6 +67,7 @@ type JobDetail struct {
 	Timeout                   string              `xml:"timeout,omitempty"`
 	Retry                     string              `xml:"retry,omitempty"`
 	NodeFilter                *JobNodeFilter      `xml:"nodefilters,omitempty"`
+	Orchestrator              *JobOrchestrator    `xml:"orchestrator,omitempty"`
 
 	/* If Dispatch is enabled, nodesSelectedByDefault is always present with true/false.
 	 * by this reason omitempty cannot be present.
@@ -307,6 +308,18 @@ type JobNodeFilter struct {
 	Query             string `xml:"filter,omitempty"`
 }
 
+// JobOrchestratorConfig Contains the options for the Job Orchestrators
+type JobOrchestratorConfig struct {
+	Count   int `xml:"count,omitempty"`
+	Percent int `xml:"percent,omitempty"`
+}
+
+// JobOrchestrator describes how to schedule the jobs, in what order, and on how many nodes
+type JobOrchestrator struct {
+	Config JobOrchestratorConfig `xml:"configuration"`
+	Type   string                `xml:"type"`
+}
+
 type jobImportResults struct {
 	Succeeded jobImportResultsCategory `xml:"succeeded"`
 	Failed    jobImportResultsCategory `xml:"failed"`
@@ -444,7 +457,7 @@ func importJob(c *rundeck.BaseClient, job *JobDetail, dupeOption string) (*JobSu
 
 func (c NotificationEmails) MarshalXMLAttr(name xml.Name) (xml.Attr, error) {
 	if len(c) > 0 {
-		return xml.Attr{name, strings.Join(c, ",")}, nil
+		return xml.Attr{Name: name, Value: strings.Join(c, ",")}, nil
 	} else {
 		return xml.Attr{}, nil
 	}
@@ -458,7 +471,7 @@ func (c *NotificationEmails) UnmarshalXMLAttr(attr xml.Attr) error {
 
 func (c NotificationUrls) MarshalXMLAttr(name xml.Name) (xml.Attr, error) {
 	if len(c) > 0 {
-		return xml.Attr{name, strings.Join(c, ",")}, nil
+		return xml.Attr{Name: name, Value: strings.Join(c, ",")}, nil
 	} else {
 		return xml.Attr{}, nil
 	}
@@ -472,7 +485,7 @@ func (c *NotificationUrls) UnmarshalXMLAttr(attr xml.Attr) error {
 
 func (c JobValueChoices) MarshalXMLAttr(name xml.Name) (xml.Attr, error) {
 	if len(c) > 0 {
-		return xml.Attr{name, strings.Join(c, ",")}, nil
+		return xml.Attr{Name: name, Value: strings.Join(c, ",")}, nil
 	} else {
 		return xml.Attr{}, nil
 	}
@@ -486,10 +499,10 @@ func (c *JobValueChoices) UnmarshalXMLAttr(attr xml.Attr) error {
 
 func (a JobCommandJobRefArguments) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 	start.Attr = []xml.Attr{
-		xml.Attr{xml.Name{Local: "line"}, string(a)},
+		xml.Attr{Name: xml.Name{Local: "line"}, Value: string(a)},
 	}
 	e.EncodeToken(start)
-	e.EncodeToken(xml.EndElement{start.Name})
+	e.EncodeToken(xml.EndElement{Name: start.Name})
 	return nil
 }
 

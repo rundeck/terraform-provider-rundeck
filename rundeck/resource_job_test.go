@@ -66,6 +66,34 @@ func TestAccJob_cmd_nodefilter(t *testing.T) {
 		},
 	})
 }
+func TestAccJob_cmd_orchestrator(t *testing.T) {
+	var job JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobCheckDestroy(&job),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_cmd_nodefilter,
+				Check: resource.ComposeTestCheckFunc(
+					testAccJobCheckExists("rundeck_job.test", &job),
+					func(s *terraform.State) error {
+						if expected := "subset"; job.Orchestrator.Type != expected {
+							return fmt.Errorf("wrong subset; expected %v, got %v", expected, job.Orchestrator.Type)
+						}
+
+						if expected := 1; job.Orchestrator.Config.Count != expected {
+							return fmt.Errorf("wrong subset count; expected %v, got %v", expected, job.Orchestrator.Config.Count)
+						}
+
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
 
 func TestAccJob_Idempotency(t *testing.T) {
 	var job JobDetail
@@ -237,6 +265,10 @@ resource "rundeck_job" "test" {
   option {
     name = "foo"
     default_value = "bar"
+  } 
+  orchestrator {
+    type = "subset"
+    count = 1
   }
   command {
     job {

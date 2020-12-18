@@ -106,6 +106,30 @@ func resourceRundeckJob() *schema.Resource {
 				Optional: true,
 			},
 
+			"orchestrator": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"type": {
+							Type:        schema.TypeString,
+							Required:    true,
+							Description: "Option of `subset`, `tiered`, `percentage`",
+						},
+						"count": {
+							Type:        schema.TypeInt,
+							Optional:    true,
+							Description: "Value for the subset orchestrator",
+						},
+						"percent": {
+							Type:        schema.TypeInt,
+							Optional:    true,
+							Description: "Value for the maxPercentage orchestrator",
+						},
+					},
+				},
+			},
+
 			"schedule": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -446,6 +470,26 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 	successOnEmpty := d.Get("success_on_empty_node_filter")
 	if successOnEmpty != nil {
 		job.Dispatch.SuccessOnEmptyNodeFilter = successOnEmpty.(bool)
+	}
+
+	orchList := d.Get("orchestrator").([]interface{})
+	if len(orchList) > 1 {
+		return nil, fmt.Errorf("rundeck command may have no more than one orchestrator")
+	}
+	for _, orch := range orchList {
+		orchMap := orch.(map[string]interface{})
+		job.Orchestrator = &JobOrchestrator{
+			Type:   orchMap["type"].(string),
+			Config: JobOrchestratorConfig{},
+		}
+		orchCount := orchMap["count"]
+		if orchCount != nil {
+			job.Orchestrator.Config.Count = orchCount.(int)
+		}
+		orchPct := orchMap["percent"]
+		if orchPct != nil {
+			job.Orchestrator.Config.Percent = orchPct.(int)
+		}
 	}
 
 	sequence := &JobCommandSequence{
