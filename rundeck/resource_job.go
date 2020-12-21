@@ -16,6 +16,9 @@ func resourceRundeckJob() *schema.Resource {
 		Delete: DeleteJob,
 		Exists: JobExists,
 		Read:   ReadJob,
+		Importer: &schema.ResourceImporter{
+			State: resourceJobImport,
+		},
 
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -469,6 +472,7 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 		if len(jobRefsI) > 1 {
 			return nil, fmt.Errorf("rundeck command may have no more than one job")
 		}
+
 		if len(jobRefsI) > 0 {
 			jobRefMap := jobRefsI[0].(map[string]interface{})
 			command.Job = &JobCommandJobRef{
@@ -712,6 +716,7 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 		d.Set("continue_on_error", job.Dispatch.ContinueOnError)
 		d.Set("rank_attribute", job.Dispatch.RankAttribute)
 		d.Set("rank_order", job.Dispatch.RankOrder)
+		d.Set("success_on_empty_node_filter", job.Dispatch.SuccessOnEmptyNodeFilter)
 	} else {
 		d.Set("max_thread_count", 1)
 		d.Set("continue_on_error", nil)
@@ -737,7 +742,7 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 				"value_choices_url":         option.ValueChoicesURL,
 				"require_predefined_choice": option.RequirePredefinedChoice,
 				"validation_regex":          option.ValidationRegex,
-				"decription":                option.Description,
+				"description":               option.Description,
 				"required":                  option.IsRequired,
 				"allow_multiple_values":     option.AllowsMultipleValues,
 				"multi_value_delimiter":     option.MultiValueDelimiter,
@@ -762,13 +767,19 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 			}
 
 			if command.Job != nil {
+
+				var nodeFilterMap map[string]interface{}
+				if command.Job.NodeFilter != nil {
+					nodeFilterMap = make(map[string]interface{})
+					nodeFilterMap["filter"] = command.Job.NodeFilter.Query
+				}
 				commandConfigI["job"] = []interface{}{
 					map[string]interface{}{
 						"name":              command.Job.Name,
 						"group_name":        command.Job.GroupName,
 						"run_for_each_node": command.Job.RunForEachNode,
 						"args":              command.Job.Arguments,
-						"nodefilters":       command.Job.NodeFilter,
+						"nodefilters":       nodeFilterMap,
 					},
 				}
 			}
@@ -859,4 +870,30 @@ func readNotification(notification *Notification, notificationType string) map[s
 		}
 	}
 	return notificationConfigI
+}
+
+func resourceJobImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+	idAttr := strings.SplitN(d.Id(), "/", 2)
+	var jobID string
+	var projectName string
+
+	if len(idAttr) == 2 {
+		projectName = idAttr[0]
+		jobID = idAttr[1]
+	} else {
+		return nil, fmt.Errorf("invalid id %q specified, should be in format \"projectName/JobUUID\" for import", d.Id())
+	}
+	d.SetId(jobID)
+
+	err := ReadJob(d, meta)
+	if err != nil {
+		return nil, err
+	}
+	// Get the information out of the api if available.
+	// Otherwise use information supplied by user.
+	if d.Get("project_name") == "" {
+		d.Set("project_name", projectName)
+	}
+
+	return []*schema.ResourceData{d}, nil
 }
