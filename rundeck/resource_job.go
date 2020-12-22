@@ -40,6 +40,11 @@ func resourceRundeckJob() *schema.Resource {
 				Required: true,
 			},
 
+			"default_tab": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
 			"execution_enabled": {
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -432,6 +437,7 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 		GroupName:                 d.Get("group_name").(string),
 		ProjectName:               d.Get("project_name").(string),
 		Description:               d.Get("description").(string),
+		DefaultTab:                d.Get("default_tab").(string),
 		ExecutionEnabled:          d.Get("execution_enabled").(bool),
 		ScheduleEnabled:           d.Get("schedule_enabled").(bool),
 		LogLevel:                  d.Get("log_level").(string),
@@ -702,6 +708,7 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 	}
 
 	d.Set("description", job.Description)
+	d.Set("default_tab", job.DefaultTab)
 	d.Set("execution_enabled", job.ExecutionEnabled)
 	d.Set("schedule_enabled", job.ScheduleEnabled)
 	d.Set("log_level", job.LogLevel)

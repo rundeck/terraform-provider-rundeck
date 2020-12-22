@@ -50,6 +50,8 @@ The following arguments are supported:
 * `group_name` - (Optional) The name of a group within the project in which to place the job.
   Setting this creates collapsable subcategories within the Rundeck UI's project job index.
 
+* `default_tab` - (Optional) Default tab to display when you follow an execution. May be `nodes`, `output` or `html`. Defaults to `nodes`.
+
 * `log_level` - (Optional) The log level that Rundeck should use for this job. Defaults to "INFO".
 
 * `schedule` - (Optional) The jobs schedule in Unix crontab format
