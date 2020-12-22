@@ -281,6 +281,7 @@ type JobCommandJobRef struct {
 	XMLName        xml.Name                  `xml:"jobref"`
 	Name           string                    `xml:"name,attr"`
 	GroupName      string                    `xml:"group,attr"`
+	Project        string                    `xml:"project,attr"`
 	RunForEachNode bool                      `xml:"nodeStep,attr"`
 	Dispatch       *JobDispatch              `xml:"dispatch,omitempty"`
 	NodeFilter     *JobNodeFilter            `xml:"nodefilters,omitempty"`

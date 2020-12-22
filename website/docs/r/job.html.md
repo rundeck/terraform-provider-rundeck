@@ -166,12 +166,14 @@ A command's `job` block has the following structure:
 
 * `group_name`: (Optional) The name of the group that the target job belongs to, if any.
 
+* `project`: (Optional) The name of the project that the target job belongs to, if any.
+
 * `run_for_each_node`: (Optional) Boolean controlling whether the job is run only once (`false`,
   the default) or whether it is run once for each node (`true`).
 
 * `args`: (Optional) A string giving the arguments to pass to the target job, using
   [Rundeck's job arguments syntax](http://rundeck.org/docs/manual/jobs.html#job-reference-step).
-  
+
 * `nodefilters`: (Optional) A map for overriding the referenced job's node filters.
 
 A command's `nodefilters` block has the following structure:
