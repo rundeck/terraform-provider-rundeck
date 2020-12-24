@@ -130,7 +130,7 @@ func TestAccJobNotification_wrongType(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccJobNotification_wrong_type,
-				ExpectError: regexp.MustCompile("The notification type is not one of `on_success`, `on_failure`, `on_start`"),
+				ExpectError: regexp.MustCompile("the notification type is not one of `on_success`, `on_failure`, `on_start`"),
 			},
 		},
 	})
@@ -146,7 +146,7 @@ func TestAccJobNotification_multiple(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccJobNotification_multiple,
-				ExpectError: regexp.MustCompile("A block with on_success already exists"),
+				ExpectError: regexp.MustCompile("a block with on_success already exists"),
 			},
 		},
 	})
@@ -162,7 +162,7 @@ func TestAccJobOptions_empty_choice(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccJobOptions_empty_choice,
-				ExpectError: regexp.MustCompile("Argument \"value_choices\" can not have empty values; try \"required\""),
+				ExpectError: regexp.MustCompile("argument \"value_choices\" can not have empty values; try \"required\""),
 			},
 		},
 	})
@@ -247,7 +247,6 @@ resource "rundeck_job" "test" {
       }
     }
     description = "Prints Hello World"
-    shell_command = "echo Hello World"
   }
   notification {
 	  type = "on_success"
@@ -281,7 +280,7 @@ resource "rundeck_job" "test" {
     name = "instance_count"
     default_value = "2"
     required = "true"
-    value_choices = ["1,2,3,4,5,6,7,8,9"]
+    value_choices = ["1","2","3","4","5","6","7","8","9"]
     require_predefined_choice = "true"
   }
 
