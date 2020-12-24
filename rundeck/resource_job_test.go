@@ -242,8 +242,8 @@ resource "rundeck_job" "test" {
     job {
       name = "Other Job Name"
       run_for_each_node = true
-      nodefilters = {
-        filter: "name: tacobell"
+      node_filters {
+        filter = "name: tacobell"
       }
     }
     description = "Prints Hello World"

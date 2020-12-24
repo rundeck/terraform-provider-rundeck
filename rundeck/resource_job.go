@@ -440,20 +440,20 @@ func resourceRundeckJobCommandJob() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"nodefilters": {
-				Type:     schema.TypeMap,
+			"node_filters": {
+				Type:     schema.TypeList,
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"excludeprecedence": {
-							Type:     schema.TypeString,
+						"exclude_precedence": {
+							Type:     schema.TypeBool,
 							Optional: true,
 						},
 						"filter": {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
-						"excludeFilter": {
+						"exclude_filter": {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
@@ -1091,17 +1091,18 @@ func jobCommandJobRefFromResourceData(key string, commandMap map[string]interfac
 		GroupName:      jobRefMap["group_name"].(string),
 		RunForEachNode: jobRefMap["run_for_each_node"].(bool),
 		Arguments:      JobCommandJobRefArguments(jobRefMap["args"].(string)),
-		NodeFilter:     &JobNodeFilter{},
 	}
-	nodeFilterMap := jobRefMap["nodefilters"].(map[string]interface{})
-	if nodeFilterMap["filter"] != nil {
-		jobRef.NodeFilter.Query = nodeFilterMap["filter"].(string)
+	nodeFiltersI := jobRefMap["node_filters"].([]interface{})
+	if len(nodeFiltersI) > 1 {
+		return nil, fmt.Errorf("rundeck command job reference may have no more than one node filter")
 	}
-	if nodeFilterMap["exclude_filter"] != nil {
-		jobRef.NodeFilter.ExcludeQuery = nodeFilterMap["exclude_filter"].(string)
-	}
-	if nodeFilterMap["excludeprecedence"] != nil {
-		jobRef.NodeFilter.ExcludePrecedence = nodeFilterMap["excludeprecedence"].(bool)
+	if len(nodeFiltersI) > 0 {
+		nodeFilterMap := nodeFiltersI[0].(map[string]interface{})
+		jobRef.NodeFilter = &JobNodeFilter{
+			ExcludePrecedence: nodeFilterMap["exclude_precedence"].(bool),
+			Query:             nodeFilterMap["filter"].(string),
+			ExcludeQuery:      nodeFilterMap["exclude_filter"].(string),
+		}
 	}
 	return jobRef, nil
 }
@@ -1157,15 +1158,21 @@ func commandToResourceData(command *JobCommand) (map[string]interface{}, error) 
 	}
 
 	if command.Job != nil {
-		commandConfigI["job"] = []interface{}{
-			map[string]interface{}{
-				"name":              command.Job.Name,
-				"group_name":        command.Job.GroupName,
-				"run_for_each_node": command.Job.RunForEachNode,
-				"args":              command.Job.Arguments,
-				"nodefilters":       command.Job.NodeFilter,
-			},
+		jobRefConfigI := map[string]interface{}{
+			"name":              command.Job.Name,
+			"group_name":        command.Job.GroupName,
+			"run_for_each_node": command.Job.RunForEachNode,
+			"args":              command.Job.Arguments,
 		}
+		if command.Job.NodeFilter != nil {
+			nodeFilterConfigI := map[string]interface{}{
+				"exclude_precedence": command.Job.NodeFilter.ExcludePrecedence,
+				"filter":             command.Job.NodeFilter.Query,
+				"exclude_filter":     command.Job.NodeFilter.ExcludeQuery,
+			}
+			jobRefConfigI["node_filters"] = append([]interface{}{}, nodeFilterConfigI)
+		}
+		commandConfigI["job"] = append([]interface{}{}, jobRefConfigI)
 	}
 
 	if command.StepPlugin != nil {
