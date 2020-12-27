@@ -40,6 +40,31 @@ func TestAccJob_basic(t *testing.T) {
 	})
 }
 
+func TestAccJob_basic_cron_updated(t *testing.T) {
+	var job JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobCheckDestroy(&job),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_basic_cron_updated,
+				Check: resource.ComposeTestCheckFunc(
+					testAccJobCheckExists("rundeck_job.test", &job),
+					func(s *terraform.State) error {
+						if job.Schedule.DayOfMonth != nil {
+							return fmt.Errorf("wrong schedule, cron screwed; expected %v, got %v", nil, job.Schedule.DayOfMonth)
+						}
+
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
+
 func TestAccJob_cmd_nodefilter(t *testing.T) {
 	var job JobDetail
 
@@ -192,6 +217,48 @@ resource "rundeck_job" "test" {
   max_thread_count = 1
   rank_order = "ascending"
 	schedule = "0 0 12 * * * *"
+	schedule_enabled = true
+  option {
+    name = "foo"
+    default_value = "bar"
+  }
+  command {
+    description = "Prints Hello World"
+    shell_command = "echo Hello World"
+  }
+  notification {
+	  type = "on_success"
+	  email {
+		  recipients = ["foo@foo.bar"]
+	  }
+  }
+}
+`
+
+const testAccJobConfig_basic_cron_updated = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-job"
+  description = "parent project for job acceptance tests"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourcexml"
+        file = "/tmp/terraform-acc-tests.xml"
+    }
+  }
+}
+resource "rundeck_job" "test" {
+  project_name = "${rundeck_project.test.name}"
+  name = "basic-job"
+  description = "A basic job"
+  execution_enabled = true
+  node_filter_query = "example"
+  allow_concurrent_executions = true
+  success_on_empty_node_filter = true
+  max_thread_count = 1
+  rank_order = "ascending"
+	schedule = "0 0 12 ? * * *"
 	schedule_enabled = true
   option {
     name = "foo"
