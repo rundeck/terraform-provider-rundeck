@@ -45,7 +45,6 @@ type JobSummary struct {
 	Description string   `xml:"description,omitempty"`
 }
 
-
 /*
 type jobSummaryList struct {
 	XMLName xml.Name     `xml:"jobs"`
