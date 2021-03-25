@@ -308,9 +308,9 @@ type JobPluginConfig map[string]string
 // JobNodeFilter describes which nodes from the project's resource list will run the configured
 // commands.
 type JobNodeFilter struct {
-	ExcludePrecedence bool   `xml:"excludeprecedence,omitempty"`
 	Query             string `xml:"filter,omitempty"`
 	ExcludeQuery      string `xml:"filterExclude,omitempty"`
+	ExcludePrecedence bool   `xml:"excludeprecedence,omitempty"`
 }
 
 type jobImportResults struct {

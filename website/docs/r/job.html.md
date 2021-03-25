@@ -101,14 +101,16 @@ The following arguments are supported:
 
 * `node_filter_query` - (Optional) A query string using
   [Rundeck's node filter language](http://rundeck.org/docs/manual/node-filters.html#node-filter-syntax)
-  that defines which subset of the project's nodes ***will*** be used to execute this job.
+  that defines which subset of the project's nodes ***will*** be used to execute this job. If neither 
+  `node_filter_query` nor `node_filter_exclude_query` is defined, the job will be performed locally on the
+  Rundeck server.
 
 * `node_filter_exclude_query` - (Optional) A query string using
   [Rundeck's node filter language](http://rundeck.org/docs/manual/node-filters.html#node-filter-syntax)
   that defines which subset of the project's nodes ***will not*** be used to execute this job.
 
-* `node_filter_exclude_precedence`: (Optional) Boolean controlling a deprecated Rundeck feature that controls
-  whether node exclusions take priority over inclusions.
+* `node_filter_exclude_precedence`: (Optional, Deprecated) Boolean controlling a deprecated Rundeck feature that
+  controls whether node exclusions take priority over inclusions.
 
 * `option`: (Optional) Nested block defining an option a user may set when executing this job. A
   job may have any number of options. The structure of this nested block is described below.

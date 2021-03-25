@@ -1099,9 +1099,9 @@ func jobCommandJobRefFromResourceData(key string, commandMap map[string]interfac
 	if len(nodeFiltersI) > 0 {
 		nodeFilterMap := nodeFiltersI[0].(map[string]interface{})
 		jobRef.NodeFilter = &JobNodeFilter{
-			ExcludePrecedence: nodeFilterMap["exclude_precedence"].(bool),
 			Query:             nodeFilterMap["filter"].(string),
 			ExcludeQuery:      nodeFilterMap["exclude_filter"].(string),
+			ExcludePrecedence: nodeFilterMap["exclude_precedence"].(bool),
 		}
 	}
 	return jobRef, nil
