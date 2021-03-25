@@ -26,7 +26,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/xml"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -46,10 +45,12 @@ type JobSummary struct {
 	Description string   `xml:"description,omitempty"`
 }
 
+/*
 type jobSummaryList struct {
 	XMLName xml.Name     `xml:"jobs"`
 	Jobs    []JobSummary `xml:"job"`
 }
+*/
 
 // JobDetail is a comprehensive description of a job, including its entire definition.
 type JobDetail struct {
@@ -307,9 +308,9 @@ type JobPluginConfig map[string]string
 // JobNodeFilter describes which nodes from the project's resource list will run the configured
 // commands.
 type JobNodeFilter struct {
-	ExcludePrecedence bool   `xml:"excludeprecedence,omitempty"`
 	Query             string `xml:"filter,omitempty"`
 	ExcludeQuery      string `xml:"filterExclude,omitempty"`
+	ExcludePrecedence bool   `xml:"excludeprecedence,omitempty"`
 }
 
 type jobImportResults struct {
@@ -346,12 +347,11 @@ type xmlJobLogFilterConfigEntry struct {
 }
 
 type JobDispatch struct {
-	ExcludePrecedence        *Boolean `xml:"excludePrecedence,omitempty"`
-	MaxThreadCount           int      `xml:"threadcount,omitempty"`
-	ContinueNextNodeOnError  bool     `xml:"keepgoing,omitempty"`
-	RankAttribute            string   `xml:"rankAttribute,omitempty"`
-	RankOrder                string   `xml:"rankOrder,omitempty"`
-	SuccessOnEmptyNodeFilter bool     `xml:"successOnEmptyNodeFilter,omitempty"`
+	MaxThreadCount           int    `xml:"threadcount,omitempty"`
+	ContinueNextNodeOnError  bool   `xml:"keepgoing,omitempty"`
+	RankAttribute            string `xml:"rankAttribute,omitempty"`
+	RankOrder                string `xml:"rankOrder,omitempty"`
+	SuccessOnEmptyNodeFilter bool   `xml:"successOnEmptyNodeFilter,omitempty"`
 }
 
 // GetJobSummariesForProject returns summaries of the jobs belonging to the named project.
@@ -383,7 +383,7 @@ func GetJob(c *rundeck.BaseClient, id string) (*JobDetail, error) {
 		return nil, &NotFoundError{}
 	}
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("error getting job: (%w)", err)
+		return nil, fmt.Errorf("error getting job: (%v)", err)
 	}
 
 	respBytes, err := ioutil.ReadAll(resp.Body)
@@ -567,7 +567,7 @@ func (config *JobLogFilterConfig) UnmarshalXML(d *xml.Decoder, _ xml.StartElemen
 	for {
 		var entry xmlJobLogFilterConfigEntry
 
-		if err := d.Decode(&entry); errors.Is(err, io.EOF) {
+		if err := d.Decode(&entry); err == io.EOF {
 			break
 		} else if err != nil {
 			return err

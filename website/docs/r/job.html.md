@@ -101,14 +101,16 @@ The following arguments are supported:
 
 * `node_filter_query` - (Optional) A query string using
   [Rundeck's node filter language](http://rundeck.org/docs/manual/node-filters.html#node-filter-syntax)
-  that defines which subset of the project's nodes ***will*** be used to execute this job.
+  that defines which subset of the project's nodes ***will*** be used to execute this job. If neither 
+  `node_filter_query` nor `node_filter_exclude_query` is defined, the job will be performed locally on the
+  Rundeck server.
 
 * `node_filter_exclude_query` - (Optional) A query string using
   [Rundeck's node filter language](http://rundeck.org/docs/manual/node-filters.html#node-filter-syntax)
   that defines which subset of the project's nodes ***will not*** be used to execute this job.
 
-* `node_filter_exclude_precedence`: (Optional) Boolean controlling a deprecated Rundeck feature that controls
-  whether node exclusions take priority over inclusions.
+* `node_filter_exclude_precedence`: (Optional, Deprecated) Boolean controlling a deprecated Rundeck feature that
+  controls whether node exclusions take priority over inclusions.
 
 * `option`: (Optional) Nested block defining an option a user may set when executing this job. A
   job may have any number of options. The structure of this nested block is described below.
@@ -207,11 +209,11 @@ A command's `job` block has the following structure:
 * `args`: (Optional) A string giving the arguments to pass to the target job, using
   [Rundeck's job arguments syntax](http://rundeck.org/docs/manual/jobs.html#job-reference-step).
   
-* `nodefilters`: (Optional) A map for overriding the referenced job's node filters.
+* `node_filters`: (Optional) A map for overriding the referenced job's node filters.
 
-A command's `nodefilters` block has the following structure:
+A command's `node_filters` block has the following structure:
 
-* `excludeprecedence`: (Optional, Deprecated) Whether to give precedence to the exclusion filter or not.
+* `exclude_precedence`: (Optional, Deprecated) Whether to give precedence to the exclusion filter or not.
 
 * `filter`: (Optional) The query string for nodes ***to use***.
 
