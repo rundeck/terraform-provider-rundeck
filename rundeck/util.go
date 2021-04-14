@@ -54,9 +54,9 @@ func marshalMapToXML(c *map[string]string, e *xml.Encoder, start xml.StartElemen
 				},
 			},
 		})
-		e.EncodeToken(xml.EndElement{xml.Name{Local: entryName}})
+		e.EncodeToken(xml.EndElement{Name: xml.Name{Local: entryName}})
 	}
-	e.EncodeToken(xml.EndElement{start.Name})
+	e.EncodeToken(xml.EndElement{Name: start.Name})
 	return nil
 }
 
