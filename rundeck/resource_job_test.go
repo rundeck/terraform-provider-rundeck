@@ -191,6 +191,7 @@ resource "rundeck_job" "test" {
   success_on_empty_node_filter = true
   max_thread_count = 1
   rank_order = "ascending"
+  timeout = "42m"
 	schedule = "0 0 12 * * * *"
 	schedule_enabled = true
   option {

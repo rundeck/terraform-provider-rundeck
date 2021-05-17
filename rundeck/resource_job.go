@@ -106,6 +106,11 @@ func resourceRundeckJob() *schema.Resource {
 				Optional: true,
 			},
 
+			"timeout": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
 			"schedule": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -433,6 +438,7 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 		ProjectName:               d.Get("project_name").(string),
 		Description:               d.Get("description").(string),
 		ExecutionEnabled:          d.Get("execution_enabled").(bool),
+		Timeout:                   d.Get("timeout").(string),
 		ScheduleEnabled:           d.Get("schedule_enabled").(bool),
 		LogLevel:                  d.Get("log_level").(string),
 		AllowConcurrentExecutions: d.Get("allow_concurrent_executions").(bool),
