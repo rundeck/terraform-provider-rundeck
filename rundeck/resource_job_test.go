@@ -32,6 +32,17 @@ func TestAccJob_basic(t *testing.T) {
 						if job.Dispatch.SuccessOnEmptyNodeFilter != true {
 							return fmt.Errorf("failed to set success_on_empty_node_filter; expected true, got %v", job.Dispatch.SuccessOnEmptyNodeFilter)
 						}
+						if expected := "echo Hello World"; job.CommandSequence.Commands[1].Script != expected {
+							return fmt.Errorf("failed to set command inline_script; expected %v, got %v", expected, job.CommandSequence.Commands[1].Script)
+						}
+
+						if expected := "sudo"; job.CommandSequence.Commands[1].ScriptInterpreter.InvocationString != expected {
+							return fmt.Errorf("failed to set command description; expected %v, got %v", expected, job.CommandSequence.Commands[1].ScriptInterpreter.InvocationString)
+						}
+
+						if expected := true; job.CommandSequence.Commands[1].ScriptInterpreter.ArgsQuoted != expected {
+							return fmt.Errorf("failed to set command description; expected %v, got %v", expected, job.CommandSequence.Commands[1].ScriptInterpreter.ArgsQuoted)
+						}
 						return nil
 					},
 				),
@@ -200,6 +211,12 @@ resource "rundeck_job" "test" {
   command {
     description = "Prints Hello World"
     shell_command = "echo Hello World"
+  }
+  command {
+    description = "Prints Hello World"
+    inline_script = "echo Hello World"
+    inline_script_invocation_string = "sudo"
+    inline_script_args_quoted = true
   }
   notification {
 	  type = "on_success"
