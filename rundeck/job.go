@@ -175,6 +175,9 @@ type JobOption struct {
 	// The displayed label of the option.
 	Label string `xml:"label,omitempty"`
 
+	// The type of the option, can be used to specify a file input.
+	Type string `xml:"type,attr,omitempty"`
+
 	// Regular expression to be used to validate the option value.
 	ValidationRegex string `xml:"regex,attr,omitempty"`
 
