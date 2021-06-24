@@ -76,6 +76,11 @@ resource "rundeck_private_key" "anvils" {
   key_material = "${file(\"id_rsa.pub\")}"
 }
 
+resource "rundeck_password" "anvils" {
+  path         = "anvils/admin_login"
+  key_material = "${file(\"secret.txt\")}"
+}
+
 data "local_file" "acl" {
   filename = "${path.module}/acl.yaml"
 }

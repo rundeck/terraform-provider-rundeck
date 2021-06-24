@@ -120,7 +120,7 @@ func PrivateKeyExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 	}
 
 	if resp.Meta.RundeckKeyType != rundeck.Private {
-		// If the key type isn't public then as far as this resource is
+		// If the key type isn't private then as far as this resource is
 		// concerned it doesn't exist. (We'll fail properly when we try to
 		// create a key where one already exists.)
 		return false, nil
