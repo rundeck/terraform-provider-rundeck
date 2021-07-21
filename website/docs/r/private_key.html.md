@@ -15,9 +15,9 @@ it runs commands.
 ## Example Usage
 
 ```hcl
-resource "rundeck_private_key" "anvils" {
-    path = "anvils/id_rsa"
-    key_material = "${file("/id_rsa")}"
+resource "rundeck_private_key" "terraform" {
+  path         = "terraform/id_rsa"
+  key_material = "$${file(\"id_rsa.pub\")}"
 }
 ```
 

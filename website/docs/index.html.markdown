@@ -3,16 +3,15 @@ layout: "rundeck"
 page_title: "Provider: Rundeck"
 sidebar_current: "docs-rundeck-index"
 description: |-
-  The Rundeck provider configures projects, jobs and keys in Rundeck.
+  The Rundeck provider configures projects, jobs, ACLs and keys in Rundeck.
 ---
 
 # Rundeck Provider
 
 The Rundeck provider allows Terraform to create and configure Projects,
-Jobs and Keys in [Rundeck](http://rundeck.org/). Rundeck is a tool
-for runbook automation and execution of arbitrary management tasks,
-allowing operators to avoid logging in to individual machines directly
-via SSH.
+Jobs, ACLs and Keys in [Rundeck](http://www.rundeck.com/). Rundeck is a tool
+for Runbook Automation and execution of arbitrary management tasks,
+allowing operators to avoid logging in to individual machines directly.
 
 The provider configuration block accepts the following arguments:
 
@@ -21,7 +20,7 @@ The provider configuration block accepts the following arguments:
 
 * ``api_version`` - (Optional) The API version of the server. Defaults to `14`, the
   minium supported version. May alternatively be set via the ``RUNDECK_API_VERSION``
-  environment variable. 
+  environment variable.
 
 * ``auth_token`` - (Required) The API auth token to use when making requests. May alternatively
   be set via the ``RUNDECK_AUTH_TOKEN`` environment variable.
@@ -29,35 +28,46 @@ The provider configuration block accepts the following arguments:
 Use the navigation to the left to read about the available resources.
 
 ## Example Usage
+Save the contents below to a file called `rundeck.tf`.
 
 ```hcl
-provider "rundeck" {
-  url         = "http://rundeck.example.com/"
-  api_version = "26"
-  auth_token  = "abcd1234"
-}
-
-resource "rundeck_project" "anvils" {
-  name        = "anvils"
-  description = "Application for managing Anvils"
-
-  ssh_key_storage_path = "${rundeck_private_key.anvils.path}"
-
-  resource_model_source {
-    type = "file"
-
-    config = {
-      format = "resourcexml"
-
-      # This path is interpreted on the Rundeck server.
-      file = "/var/rundeck/projects/anvils/resources.xml"
+terraform {
+  required_providers {
+    rundeck = {
+      source  = "rundeck/rundeck"
+      version = "0.4.2"
     }
   }
 }
 
+provider "rundeck" {
+  url         = "http://rundeck.example.com:4440/"
+  api_version = "38"
+  auth_token  = "abcd1234"
+}
+
+resource "rundeck_project" "terraform" {
+  name        = "terraform"
+  description = "Sample Application Created by Terraform Plan"
+  ssh_key_storage_path = "${rundeck_private_key.terraform.path}"
+  resource_model_source {
+    type = "file"
+    config = {
+      format = "resourcexml"
+      # This path is interpreted on the Rundeck server.
+      file = "/home/rundeck/resources.xml"
+      writable = "true"
+      generateFileAutomatically = "true"
+    }
+  }
+  extra_config = {
+    "project.label" = "Terraform Example"
+  }
+}
+
 resource "rundeck_job" "bounceweb" {
-  name              = "Bounce Web Servers"
-  project_name      = "${rundeck_project.anvils.name}"
+  name              = "Bounce All Web Servers"
+  project_name      = "${rundeck_project.terraform.name}"
   node_filter_query = "tags: web"
   description       = "Restart the service daemons on all the web servers"
 
@@ -66,18 +76,18 @@ resource "rundeck_job" "bounceweb" {
   }
 }
 
-resource "rundeck_public_key" "anvils" {
-  path         = "anvils/id_rsa.pub"
+resource "rundeck_public_key" "terraform" {
+  path         = "terraform/id_rsa.pub"
   key_material = "ssh-rsa yada-yada-yada"
 }
 
-resource "rundeck_private_key" "anvils" {
-  path         = "anvils/id_rsa"
-  key_material = "${file(\"id_rsa.pub\")}"
+resource "rundeck_private_key" "terraform" {
+  path         = "terraform/id_rsa"
+  key_material = "$${file(\"id_rsa.pub\")}"
 }
 
 data "local_file" "acl" {
-  filename = "${path.module}/acl.yaml"
+  filename = "${path.cwd}/acl.yaml"
 }
 
 resource "rundeck_acl_policy" "example" {
@@ -85,4 +95,40 @@ resource "rundeck_acl_policy" "example" {
 
   policy = "${data.local_file.acl.content}"
 }
+```
+
+> Note: This example uses an ACL Policy file stored at the current working directory named `acl.yaml`.  Valid contents for that file are shown below.
+
+```
+by:
+  group: terraform
+description: Allow terraform Key Storage Access
+for:
+  storage:
+  - allow:
+    - read
+context:
+  application: rundeck
+---
+by:
+  group: terraform
+description: Allow Terraform Group [read] for all projects
+for:
+  project:
+  - allow:
+    - read
+context:
+  application: rundeck
+---
+by:
+  group: terraform
+description: Terraform Project Full Admin
+for:
+  project:
+  - allow:
+    - admin
+    match:
+      name: terraform
+context:
+  application: rundeck
 ```
