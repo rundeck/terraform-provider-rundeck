@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/rundeck/go-rundeck/rundeck"
 )
 
@@ -57,6 +57,11 @@ func resourceRundeckJob() *schema.Resource {
 				Optional: true,
 			},
 
+			"retry": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
 			"max_thread_count": {
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -64,6 +69,11 @@ func resourceRundeckJob() *schema.Resource {
 			},
 
 			"continue_on_error": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+
+			"continue_next_node_on_error": {
 				Type:     schema.TypeBool,
 				Optional: true,
 			},
@@ -101,6 +111,11 @@ func resourceRundeckJob() *schema.Resource {
 				Optional: true,
 			},
 
+			"node_filter_exclude_query": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
 			"node_filter_exclude_precedence": {
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -120,6 +135,11 @@ func resourceRundeckJob() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Default:  true,
+			},
+
+			"time_zone": {
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 
 			"notification": {
@@ -184,6 +204,11 @@ func resourceRundeckJob() *schema.Resource {
 							Required: true,
 						},
 
+						"label": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+
 						"default_value": {
 							Type:     schema.TypeString,
 							Optional: true,
@@ -245,86 +270,197 @@ func resourceRundeckJob() *schema.Resource {
 				},
 			},
 
+			"global_log_filter": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem:     resourceRundeckJobFilter(),
+			},
+
 			"command": {
 				Type:     schema.TypeList,
 				Required: true,
+				Elem:     resourceRundeckJobCommand(),
+			},
+		},
+	}
+}
+
+// Attention - Changes made to this function should be repeated in resourceRundeckJobCommandErrorHandler below!
+func resourceRundeckJobCommand() *schema.Resource {
+	return &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"description": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
+			"shell_command": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
+			"inline_script": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
+			"script_file": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
+			"script_file_args": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
+			"script_interpreter": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem:     resourceRundeckJobCommandScriptInterpreter(),
+			},
+
+			"job": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem:     resourceRundeckJobCommandJob(),
+			},
+
+			"step_plugin": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem:     resourceRundeckJobPluginResource(),
+			},
+			"node_step_plugin": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem:     resourceRundeckJobPluginResource(),
+			},
+			"keep_going_on_success": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"error_handler": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem:     resourceRundeckJobCommandErrorHandler(),
+			},
+		},
+	}
+}
+
+// Terraform schemas do not support recursion. The Error Handler is a command within a command, but we're breaking it
+// out and repeating it verbatim except for an inner errorHandler field.
+func resourceRundeckJobCommandErrorHandler() *schema.Resource {
+	return &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"description": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
+			"shell_command": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
+			"inline_script": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
+			"script_file": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
+			"script_file_args": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
+			"script_interpreter": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem:     resourceRundeckJobCommandScriptInterpreter(),
+			},
+
+			"job": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem:     resourceRundeckJobCommandJob(),
+			},
+
+			"step_plugin": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem:     resourceRundeckJobPluginResource(),
+			},
+
+			"node_step_plugin": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem:     resourceRundeckJobPluginResource(),
+			},
+
+			"keep_going_on_success": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+		},
+	}
+}
+
+func resourceRundeckJobCommandScriptInterpreter() *schema.Resource {
+	return &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"invocation_string": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"args_quoted": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+		},
+	}
+}
+
+func resourceRundeckJobCommandJob() *schema.Resource {
+	return &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"name": {
+				Type:     schema.TypeString,
+				Required: true,
+			},
+			"group_name": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"run_for_each_node": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"args": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"node_filters": {
+				Type:     schema.TypeList,
+				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"description": {
+						"exclude_precedence": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+						"filter": {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
-						"shell_command": {
+						"exclude_filter": {
 							Type:     schema.TypeString,
 							Optional: true,
-						},
-
-						"inline_script": {
-							Type:     schema.TypeString,
-							Optional: true,
-						},
-
-						"script_file": {
-							Type:     schema.TypeString,
-							Optional: true,
-						},
-
-						"script_file_args": {
-							Type:     schema.TypeString,
-							Optional: true,
-						},
-
-						"job": {
-							Type:     schema.TypeList,
-							Optional: true,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"name": {
-										Type:     schema.TypeString,
-										Required: true,
-									},
-									"group_name": {
-										Type:     schema.TypeString,
-										Optional: true,
-									},
-									"run_for_each_node": {
-										Type:     schema.TypeBool,
-										Optional: true,
-									},
-									"args": {
-										Type:     schema.TypeString,
-										Optional: true,
-									},
-									"nodefilters": {
-										Type:     schema.TypeMap,
-										Optional: true,
-										Elem: &schema.Resource{
-											Schema: map[string]*schema.Schema{
-												"excludeprecedence": {
-													Type:     schema.TypeString,
-													Optional: true,
-												},
-												"filter": {
-													Type:     schema.TypeString,
-													Optional: true,
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-
-						"step_plugin": {
-							Type:     schema.TypeList,
-							Optional: true,
-							Elem:     resourceRundeckJobPluginResource(),
-						},
-
-						"node_step_plugin": {
-							Type:     schema.TypeList,
-							Optional: true,
-							Elem:     resourceRundeckJobPluginResource(),
 						},
 					},
 				},
@@ -334,6 +470,21 @@ func resourceRundeckJob() *schema.Resource {
 }
 
 func resourceRundeckJobPluginResource() *schema.Resource {
+	return &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"type": {
+				Type:     schema.TypeString,
+				Required: true,
+			},
+			"config": {
+				Type:     schema.TypeMap,
+				Optional: true,
+			},
+		},
+	}
+}
+
+func resourceRundeckJobFilter() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"type": {
@@ -404,7 +555,8 @@ func JobExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 
 	resp, err := client.JobGet(ctx, d.Id(), "")
 	if err != nil {
-		if _, ok := err.(*NotFoundError); ok == true {
+		var notFound *NotFoundError
+		if err == notFound {
 			return false, nil
 		}
 		return false, err
@@ -416,7 +568,7 @@ func JobExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 		return false, nil
 	}
 
-	return false, fmt.Errorf("Error checking if job exists: (%v)", err)
+	return false, fmt.Errorf("error checking if job exists: (%v)", err)
 }
 
 func ReadJob(d *schema.ResourceData, meta interface{}) error {
@@ -440,15 +592,18 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 		ExecutionEnabled:          d.Get("execution_enabled").(bool),
 		Timeout:                   d.Get("timeout").(string),
 		ScheduleEnabled:           d.Get("schedule_enabled").(bool),
+		TimeZone:                  d.Get("time_zone").(string),
 		LogLevel:                  d.Get("log_level").(string),
 		AllowConcurrentExecutions: d.Get("allow_concurrent_executions").(bool),
+		Retry:                     d.Get("retry").(string),
 		Dispatch: &JobDispatch{
-			MaxThreadCount:  d.Get("max_thread_count").(int),
-			ContinueOnError: d.Get("continue_on_error").(bool),
-			RankAttribute:   d.Get("rank_attribute").(string),
-			RankOrder:       d.Get("rank_order").(string),
+			MaxThreadCount:          d.Get("max_thread_count").(int),
+			ContinueNextNodeOnError: d.Get("continue_next_node_on_error").(bool),
+			RankAttribute:           d.Get("rank_attribute").(string),
+			RankOrder:               d.Get("rank_order").(string),
 		},
 	}
+
 	successOnEmpty := d.Get("success_on_empty_node_filter")
 	if successOnEmpty != nil {
 		job.Dispatch.SuccessOnEmptyNodeFilter = successOnEmpty.(bool)
@@ -460,74 +615,33 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 		Commands:         []JobCommand{},
 	}
 
+	logFilterConfigs := d.Get("global_log_filter").([]interface{})
+	if len(logFilterConfigs) > 0 {
+		globalLogFilters := &[]JobLogFilter{}
+		for _, logFilterI := range logFilterConfigs {
+			logFilterMap := logFilterI.(map[string]interface{})
+			configI := logFilterMap["config"].(map[string]interface{})
+			config := &JobLogFilterConfig{}
+			for key, value := range configI {
+				(*config)[key] = value.(string)
+			}
+			logFilter := &JobLogFilter{
+				Type:   logFilterMap["type"].(string),
+				Config: config,
+			}
+
+			*globalLogFilters =
+				append(*globalLogFilters, *logFilter)
+		}
+		sequence.GlobalLogFilters = globalLogFilters
+	}
 	commandConfigs := d.Get("command").([]interface{})
 	for _, commandI := range commandConfigs {
-		commandMap := commandI.(map[string]interface{})
-		command := JobCommand{
-			Description:    commandMap["description"].(string),
-			ShellCommand:   commandMap["shell_command"].(string),
-			Script:         commandMap["inline_script"].(string),
-			ScriptFile:     commandMap["script_file"].(string),
-			ScriptFileArgs: commandMap["script_file_args"].(string),
+		command, err := commandFromResourceData(commandI)
+		if err != nil {
+			return nil, err
 		}
-
-		jobRefsI := commandMap["job"].([]interface{})
-		if len(jobRefsI) > 1 {
-			return nil, fmt.Errorf("rundeck command may have no more than one job")
-		}
-		if len(jobRefsI) > 0 {
-			jobRefMap := jobRefsI[0].(map[string]interface{})
-			command.Job = &JobCommandJobRef{
-				Name:           jobRefMap["name"].(string),
-				GroupName:      jobRefMap["group_name"].(string),
-				RunForEachNode: jobRefMap["run_for_each_node"].(bool),
-				Arguments:      JobCommandJobRefArguments(jobRefMap["args"].(string)),
-				NodeFilter:     &JobNodeFilter{},
-			}
-			nodeFilterMap := jobRefMap["nodefilters"].(map[string]interface{})
-			if nodeFilterMap["filter"] != nil {
-				command.Job.NodeFilter.Query = nodeFilterMap["filter"].(string)
-			}
-			if nodeFilterMap["excludeprecedence"] != nil {
-				command.Job.NodeFilter.ExcludePrecedence = nodeFilterMap["excludeprecedence"].(bool)
-			}
-		}
-
-		stepPluginsI := commandMap["step_plugin"].([]interface{})
-		if len(stepPluginsI) > 1 {
-			return nil, fmt.Errorf("rundeck command may have no more than one step plugin")
-		}
-		if len(stepPluginsI) > 0 {
-			stepPluginMap := stepPluginsI[0].(map[string]interface{})
-			configI := stepPluginMap["config"].(map[string]interface{})
-			config := map[string]string{}
-			for k, v := range configI {
-				config[k] = v.(string)
-			}
-			command.StepPlugin = &JobPlugin{
-				Type:   stepPluginMap["type"].(string),
-				Config: config,
-			}
-		}
-
-		stepPluginsI = commandMap["node_step_plugin"].([]interface{})
-		if len(stepPluginsI) > 1 {
-			return nil, fmt.Errorf("rundeck command may have no more than one node step plugin")
-		}
-		if len(stepPluginsI) > 0 {
-			stepPluginMap := stepPluginsI[0].(map[string]interface{})
-			configI := stepPluginMap["config"].(map[string]interface{})
-			config := map[string]string{}
-			for k, v := range configI {
-				config[k] = v.(string)
-			}
-			command.NodeStepPlugin = &JobPlugin{
-				Type:   stepPluginMap["type"].(string),
-				Config: config,
-			}
-		}
-
-		sequence.Commands = append(sequence.Commands, command)
+		sequence.Commands = append(sequence.Commands, *command)
 	}
 	job.CommandSequence = sequence
 
@@ -541,6 +655,7 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 			optionMap := optionI.(map[string]interface{})
 			option := JobOption{
 				Name:                    optionMap["name"].(string),
+				Label:                   optionMap["label"].(string),
 				DefaultValue:            optionMap["default_value"].(string),
 				ValueChoices:            JobValueChoices([]string{}),
 				ValueChoicesURL:         optionMap["value_choices_url"].(string),
@@ -556,7 +671,7 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 
 			for _, iv := range optionMap["value_choices"].([]interface{}) {
 				if iv == nil {
-					return nil, fmt.Errorf("Argument \"value_choices\" can not have empty values; try \"required\"")
+					return nil, fmt.Errorf("argument \"value_choices\" can not have empty values; try \"required\"")
 				}
 				option.ValueChoices = append(option.ValueChoices, iv.(string))
 			}
@@ -566,48 +681,20 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 		job.OptionsConfig = optionsConfig
 	}
 
-	if d.Get("node_filter_query").(string) != "" {
-		job.NodeFilter = &JobNodeFilter{
-			ExcludePrecedence: d.Get("node_filter_exclude_precedence").(bool),
-			Query:             d.Get("node_filter_query").(string),
-		}
-
-		job.Dispatch = &JobDispatch{
-			MaxThreadCount:  d.Get("max_thread_count").(int),
-			ContinueOnError: d.Get("continue_on_error").(bool),
-			RankAttribute:   d.Get("rank_attribute").(string),
-			RankOrder:       d.Get("rank_order").(string),
-		}
-
-		successOnEmpty := d.Get("success_on_empty_node_filter")
-		if successOnEmpty != nil {
-			job.Dispatch.SuccessOnEmptyNodeFilter = successOnEmpty.(bool)
-		}
+	job.NodeFilter = &JobNodeFilter{
+		ExcludePrecedence: d.Get("node_filter_exclude_precedence").(bool),
+	}
+	if nodeFilterQuery := d.Get("node_filter_query").(string); nodeFilterQuery != "" {
+		job.NodeFilter.Query = nodeFilterQuery
+	}
+	if nodeFilterExcludeQuery := d.Get("node_filter_exclude_query").(string); nodeFilterExcludeQuery != "" {
+		job.NodeFilter.ExcludeQuery = nodeFilterExcludeQuery
 	}
 
-	if d.Get("schedule").(string) != "" {
-		schedule := strings.Split(d.Get("schedule").(string), " ")
-		if len(schedule) != 7 {
-			return nil, fmt.Errorf("Rundeck schedule must be formated like a cron expression, as defined here: http://www.quartz-scheduler.org/documentation/quartz-2.2.x/tutorials/tutorial-lesson-06.html")
-		}
-		job.Schedule = &JobSchedule{
-			Time: JobScheduleTime{
-				Seconds: schedule[0],
-				Minute:  schedule[1],
-				Hour:    schedule[2],
-			},
-			Month: JobScheduleMonth{
-				Day:   schedule[3],
-				Month: schedule[4],
-			},
-			WeekDay: &JobScheduleWeekDay{
-				Day: schedule[5],
-			},
-			Year: JobScheduleYear{
-				Year: schedule[6],
-			},
-		}
+	if err := JobScheduleFromResourceData(d, job); err != nil {
+		return nil, err
 	}
+
 	notificationsConfigI := d.Get("notification").([]interface{})
 	if len(notificationsConfigI) > 0 {
 		if len(notificationsConfigI) <= 3 {
@@ -666,84 +753,139 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 				switch jobType {
 				case "on_success":
 					if jobNotification.OnSuccess != nil {
-						return nil, fmt.Errorf("A block with %s already exists", jobType)
+						return nil, fmt.Errorf("a block with %s already exists", jobType)
 					}
 					jobNotification.OnSuccess = &notification
 					job.Notification = &jobNotification
 				case "on_failure":
 					if jobNotification.OnFailure != nil {
-						return nil, fmt.Errorf("A block with %s already exists", jobType)
+						return nil, fmt.Errorf("a block with %s already exists", jobType)
 					}
 					jobNotification.OnFailure = &notification
 					job.Notification = &jobNotification
 				case "on_start":
 					if jobNotification.OnStart != nil {
-						return nil, fmt.Errorf("A block with %s already exists", jobType)
+						return nil, fmt.Errorf("a block with %s already exists", jobType)
 					}
 					jobNotification.OnStart = &notification
 					job.Notification = &jobNotification
 				default:
-					return nil, fmt.Errorf("The notification type is not one of `on_success`, `on_failure`, `on_start`")
+					return nil, fmt.Errorf("the notification type is not one of `on_success`, `on_failure`, `on_start`")
 				}
 			}
 		} else {
-			return nil, fmt.Errorf("Can only have up to three notfication blocks, `on_success`, `on_failure`, `on_start`")
+			return nil, fmt.Errorf("can only have up to three notfication blocks, `on_success`, `on_failure`, `on_start`")
 		}
 	}
-
 	return job, nil
 }
 
 func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 
 	d.SetId(job.ID)
-	d.Set("name", job.Name)
-	d.Set("group_name", job.GroupName)
+	if err := d.Set("name", job.Name); err != nil {
+		return err
+	}
+	if err := d.Set("group_name", job.GroupName); err != nil {
+		return err
+	}
 
 	// The project name is not consistently returned in all rundeck versions,
 	// so we'll only update it if it's set. Jobs can't move between projects
 	// anyway, so this is harmless.
 	if job.ProjectName != "" {
-		d.Set("project_name", job.ProjectName)
+		if err := d.Set("project_name", job.ProjectName); err != nil {
+			return err
+		}
 	}
 
-	d.Set("description", job.Description)
-	d.Set("execution_enabled", job.ExecutionEnabled)
-	d.Set("schedule_enabled", job.ScheduleEnabled)
-	d.Set("log_level", job.LogLevel)
-	d.Set("allow_concurrent_executions", job.AllowConcurrentExecutions)
+	if err := d.Set("description", job.Description); err != nil {
+		return err
+	}
+	if err := d.Set("execution_enabled", job.ExecutionEnabled); err != nil {
+		return err
+	}
+	if err := d.Set("schedule_enabled", job.ScheduleEnabled); err != nil {
+		return err
+	}
+	if err := d.Set("time_zone", job.TimeZone); err != nil {
+		return err
+	}
+	if err := d.Set("log_level", job.LogLevel); err != nil {
+		return err
+	}
+	if err := d.Set("allow_concurrent_executions", job.AllowConcurrentExecutions); err != nil {
+		return err
+	}
+	if err := d.Set("retry", job.Retry); err != nil {
+		return err
+	}
 
 	if job.Dispatch != nil {
-		d.Set("max_thread_count", job.Dispatch.MaxThreadCount)
-		d.Set("continue_on_error", job.Dispatch.ContinueOnError)
-		d.Set("rank_attribute", job.Dispatch.RankAttribute)
-		d.Set("rank_order", job.Dispatch.RankOrder)
+		if err := d.Set("max_thread_count", job.Dispatch.MaxThreadCount); err != nil {
+			return err
+		}
+		if err := d.Set("continue_next_node_on_error", job.Dispatch.ContinueNextNodeOnError); err != nil {
+			return err
+		}
+		if err := d.Set("rank_attribute", job.Dispatch.RankAttribute); err != nil {
+			return err
+		}
+		if err := d.Set("rank_order", job.Dispatch.RankOrder); err != nil {
+			return err
+		}
 	} else {
-		d.Set("max_thread_count", 1)
-		d.Set("continue_on_error", nil)
-		d.Set("rank_attribute", nil)
-		d.Set("rank_order", "ascending")
+		if err := d.Set("max_thread_count", 1); err != nil {
+			return err
+		}
+		if err := d.Set("continue_next_node_on_error", false); err != nil {
+			return err
+		}
+		if err := d.Set("rank_attribute", nil); err != nil {
+			return err
+		}
+		if err := d.Set("rank_order", "ascending"); err != nil {
+			return err
+		}
 	}
 
-	d.Set("node_filter_query", nil)
-	d.Set("node_filter_exclude_precedence", nil)
 	if job.NodeFilter != nil {
-		d.Set("node_filter_query", job.NodeFilter.Query)
-		d.Set("node_filter_exclude_precedence", job.NodeFilter.ExcludePrecedence)
+		if err := d.Set("node_filter_query", job.NodeFilter.Query); err != nil {
+			return err
+		}
+		if err := d.Set("node_filter_exclude_query", job.NodeFilter.ExcludeQuery); err != nil {
+			return err
+		}
+		if err := d.Set("node_filter_exclude_precedence", job.NodeFilter.ExcludePrecedence); err != nil {
+			return err
+		}
+	} else {
+		if err := d.Set("node_filter_query", nil); err != nil {
+			return err
+		}
+		if err := d.Set("node_filter_exclude_query", nil); err != nil {
+			return err
+		}
+		if err := d.Set("node_filter_exclude_precedence", nil); err != nil {
+			return err
+		}
 	}
 
-	optionConfigsI := []interface{}{}
+	optionConfigsI := make([]interface{}, 0)
 	if job.OptionsConfig != nil {
-		d.Set("preserve_options_order", job.OptionsConfig.PreserveOrder)
+		if err := d.Set("preserve_options_order", job.OptionsConfig.PreserveOrder); err != nil {
+			return err
+		}
 		for _, option := range job.OptionsConfig.Options {
 			optionConfigI := map[string]interface{}{
 				"name":                      option.Name,
+				"label":                     option.Label,
 				"default_value":             option.DefaultValue,
 				"value_choices":             option.ValueChoices,
 				"value_choices_url":         option.ValueChoicesURL,
 				"require_predefined_choice": option.RequirePredefinedChoice,
 				"validation_regex":          option.ValidationRegex,
-				"decription":                option.Description,
+				"description":               option.Description,
 				"required":                  option.IsRequired,
 				"allow_multiple_values":     option.AllowsMultipleValues,
 				"multi_value_delimiter":     option.MultiValueDelimiter,
@@ -753,72 +895,55 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 			optionConfigsI = append(optionConfigsI, optionConfigI)
 		}
 	}
-	d.Set("option", optionConfigsI)
+	if err := d.Set("option", optionConfigsI); err != nil {
+		return err
+	}
 
-	commandConfigsI := []interface{}{}
 	if job.CommandSequence != nil {
-		d.Set("command_ordering_strategy", job.CommandSequence.OrderingStrategy)
-		for _, command := range job.CommandSequence.Commands {
-			commandConfigI := map[string]interface{}{
-				"description":      command.Description,
-				"shell_command":    command.ShellCommand,
-				"inline_script":    command.Script,
-				"script_file":      command.ScriptFile,
-				"script_file_args": command.ScriptFileArgs,
-			}
+		if err := d.Set("command_ordering_strategy", job.CommandSequence.OrderingStrategy); err != nil {
+			return err
+		}
+		if err := d.Set("continue_on_error", job.CommandSequence.ContinueOnError); err != nil {
+			return err
+		}
 
-			if command.Job != nil {
-				commandConfigI["job"] = []interface{}{
-					map[string]interface{}{
-						"name":              command.Job.Name,
-						"group_name":        command.Job.GroupName,
-						"run_for_each_node": command.Job.RunForEachNode,
-						"args":              command.Job.Arguments,
-						"nodefilters":       command.Job.NodeFilter,
-					},
+		if job.CommandSequence.GlobalLogFilters != nil && len(*job.CommandSequence.GlobalLogFilters) > 0 {
+			globalLogFilterConfigsI := make([]interface{}, 0)
+			for _, logFilter := range *job.CommandSequence.GlobalLogFilters {
+				logFilterI := map[string]interface{}{
+					"type":   logFilter.Type,
+					"config": map[string]string(*logFilter.Config),
 				}
+				globalLogFilterConfigsI = append(globalLogFilterConfigsI, logFilterI)
 			}
-
-			if command.StepPlugin != nil {
-				commandConfigI["step_plugin"] = []interface{}{
-					map[string]interface{}{
-						"type":   command.StepPlugin.Type,
-						"config": map[string]string(command.StepPlugin.Config),
-					},
-				}
+			if err := d.Set("global_log_filter", globalLogFilterConfigsI); err != nil {
+				return err
 			}
+		}
 
-			if command.NodeStepPlugin != nil {
-				commandConfigI["node_step_plugin"] = []interface{}{
-					map[string]interface{}{
-						"type":   command.NodeStepPlugin.Type,
-						"config": map[string]string(command.NodeStepPlugin.Config),
-					},
-				}
+		commandConfigsI := make([]interface{}, 0)
+		for i := range job.CommandSequence.Commands {
+			commandConfigI, err := commandToResourceData(&job.CommandSequence.Commands[i])
+			if err != nil {
+				return err
 			}
-
 			commandConfigsI = append(commandConfigsI, commandConfigI)
 		}
+		if err := d.Set("command", commandConfigsI); err != nil {
+			return err
+		}
 	}
-	d.Set("command", commandConfigsI)
 
 	if job.Schedule != nil {
-		schedule := []string{}
-		schedule = append(schedule, job.Schedule.Time.Seconds)
-		schedule = append(schedule, job.Schedule.Time.Minute)
-		schedule = append(schedule, job.Schedule.Time.Hour)
-		schedule = append(schedule, job.Schedule.Month.Day)
-		schedule = append(schedule, job.Schedule.Month.Month)
-		if job.Schedule.WeekDay != nil {
-			schedule = append(schedule, job.Schedule.WeekDay.Day)
-		} else {
-			schedule = append(schedule, "*")
+		cronSpec, err := scheduleToCronSpec(job.Schedule)
+		if err != nil {
+			return err
 		}
-		schedule = append(schedule, job.Schedule.Year.Year)
-
-		d.Set("schedule", strings.Join(schedule, " "))
+		if err := d.Set("schedule", cronSpec); err != nil {
+			return err
+		}
 	}
-	notificationConfigsI := []interface{}{}
+	notificationConfigsI := make([]interface{}, 0)
 	if job.Notification != nil {
 		if job.Notification.OnSuccess != nil {
 			notificationConfigI := readNotification(job.Notification.OnSuccess, "on_success")
@@ -834,9 +959,246 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 		}
 	}
 
-	d.Set("notification", notificationConfigsI)
+	if err := d.Set("notification", notificationConfigsI); err != nil {
+		return err
+	}
 
 	return nil
+}
+
+func JobScheduleFromResourceData(d *schema.ResourceData, job *JobDetail) error {
+	const scheduleKey = "schedule"
+	cronSpec := d.Get(scheduleKey).(string)
+	if cronSpec != "" {
+		schedule := strings.Split(cronSpec, " ")
+		if len(schedule) != 7 {
+			return fmt.Errorf("the Rundeck schedule must be formatted like a cron expression, as defined here: http://www.quartz-scheduler.org/documentation/quartz-2.2.x/tutorials/tutorial-lesson-06.html")
+		}
+		job.Schedule = &JobSchedule{
+			Time: JobScheduleTime{
+				Seconds: schedule[0],
+				Minute:  schedule[1],
+				Hour:    schedule[2],
+			},
+			Month: JobScheduleMonth{
+				Day:   schedule[3],
+				Month: schedule[4],
+			},
+			WeekDay: JobScheduleWeekDay{
+				Day: schedule[5],
+			},
+			Year: JobScheduleYear{
+				Year: schedule[6],
+			},
+		}
+		// Day-of-month and Day-of-week can both be asterisks, but otherwise one, and only one, must be a '?'
+		if job.Schedule.Month.Day == job.Schedule.WeekDay.Day {
+			if job.Schedule.Month.Day != "*" {
+				return fmt.Errorf("invalid '%s' specification %s - one of day-of-month (4th item) or day-of-week (6th) must be '?'", scheduleKey, cronSpec)
+			}
+		} else if job.Schedule.Month.Day != "?" && job.Schedule.WeekDay.Day != "?" {
+			return fmt.Errorf("invalid '%s' specification %s - one of day-of-month (4th item) or day-of-week (6th) must be '?'", scheduleKey, cronSpec)
+		}
+	}
+	return nil
+}
+
+func scheduleToCronSpec(schedule *JobSchedule) (string, error) {
+	if schedule.Month.Day == "" {
+		if schedule.WeekDay.Day == "*" || schedule.WeekDay.Day == "" {
+			schedule.Month.Day = "*"
+		} else {
+			schedule.Month.Day = "?"
+		}
+	}
+	if schedule.WeekDay.Day == "" {
+		if schedule.Month.Day == "*" {
+			schedule.WeekDay.Day = "*"
+		} else {
+			schedule.WeekDay.Day = "?"
+		}
+	}
+	cronSpec := make([]string, 0)
+	cronSpec = append(cronSpec, schedule.Time.Seconds)
+	cronSpec = append(cronSpec, schedule.Time.Minute)
+	cronSpec = append(cronSpec, schedule.Time.Hour)
+	cronSpec = append(cronSpec, schedule.Month.Day)
+	cronSpec = append(cronSpec, schedule.Month.Month)
+	cronSpec = append(cronSpec, schedule.WeekDay.Day)
+	cronSpec = append(cronSpec, schedule.Year.Year)
+	return strings.Join(cronSpec, " "), nil
+}
+
+func commandFromResourceData(commandI interface{}) (*JobCommand, error) {
+	commandMap := commandI.(map[string]interface{})
+	command := &JobCommand{
+		Description:        commandMap["description"].(string),
+		ShellCommand:       commandMap["shell_command"].(string),
+		Script:             commandMap["inline_script"].(string),
+		ScriptFile:         commandMap["script_file"].(string),
+		ScriptFileArgs:     commandMap["script_file_args"].(string),
+		KeepGoingOnSuccess: commandMap["keep_going_on_success"].(bool),
+	}
+
+	// Because of the lack of schema recursion, the inner command has a separate schema without an error_handler
+	// field, but is otherwise identical. The 'exists' checks allow this function to apply to both 'command' and
+	// 'errorHandler' schemas.
+	if errorHandlersI, exists := commandMap["error_handler"].([]interface{}); exists {
+		if len(errorHandlersI) > 1 {
+			return nil, fmt.Errorf("rundeck command may have no more than one error handler")
+		}
+		if len(errorHandlersI) > 0 {
+			errorHandlerMap := errorHandlersI[0].(map[string]interface{})
+			errorHandler, err := commandFromResourceData(errorHandlerMap)
+			if err != nil {
+				return nil, err
+			}
+			command.ErrorHandler = errorHandler
+		}
+	}
+
+	scriptInterpretersI := commandMap["script_interpreter"].([]interface{})
+	if len(scriptInterpretersI) > 1 {
+		return nil, fmt.Errorf("rundeck command may have no more than one script interpreter")
+	}
+	if len(scriptInterpretersI) > 0 {
+		scriptInterpreterMap := scriptInterpretersI[0].(map[string]interface{})
+		command.ScriptInterpreter = &JobCommandScriptInterpreter{
+			InvocationString: scriptInterpreterMap["invocation_string"].(string),
+			ArgsQuoted:       scriptInterpreterMap["args_quoted"].(bool),
+		}
+	}
+
+	var err error
+	if command.Job, err = jobCommandJobRefFromResourceData("job", commandMap); err != nil {
+		return nil, err
+	}
+	if command.StepPlugin, err = singlePluginFromResourceData("step_plugin", commandMap); err != nil {
+		return nil, err
+	}
+	if command.NodeStepPlugin, err = singlePluginFromResourceData("node_step_plugin", commandMap); err != nil {
+		return nil, err
+	}
+
+	return command, nil
+}
+
+func jobCommandJobRefFromResourceData(key string, commandMap map[string]interface{}) (*JobCommandJobRef, error) {
+	jobRefsI := commandMap[key].([]interface{})
+	if len(jobRefsI) > 1 {
+		return nil, fmt.Errorf("rundeck command may have no more than one %s", key)
+	}
+	if len(jobRefsI) == 0 {
+		return nil, nil
+	}
+	jobRefMap := jobRefsI[0].(map[string]interface{})
+	jobRef := &JobCommandJobRef{
+		Name:           jobRefMap["name"].(string),
+		GroupName:      jobRefMap["group_name"].(string),
+		RunForEachNode: jobRefMap["run_for_each_node"].(bool),
+		Arguments:      JobCommandJobRefArguments(jobRefMap["args"].(string)),
+	}
+	nodeFiltersI := jobRefMap["node_filters"].([]interface{})
+	if len(nodeFiltersI) > 1 {
+		return nil, fmt.Errorf("rundeck command job reference may have no more than one node filter")
+	}
+	if len(nodeFiltersI) > 0 {
+		nodeFilterMap := nodeFiltersI[0].(map[string]interface{})
+		jobRef.NodeFilter = &JobNodeFilter{
+			Query:             nodeFilterMap["filter"].(string),
+			ExcludeQuery:      nodeFilterMap["exclude_filter"].(string),
+			ExcludePrecedence: nodeFilterMap["exclude_precedence"].(bool),
+		}
+	}
+	return jobRef, nil
+}
+
+func singlePluginFromResourceData(key string, commandMap map[string]interface{}) (*JobPlugin, error) {
+	stepPluginsI := commandMap[key].([]interface{})
+	if len(stepPluginsI) > 1 {
+		return nil, fmt.Errorf("rundeck command may have no more than one %s", key)
+	}
+	if len(stepPluginsI) == 0 {
+		return nil, nil
+	}
+	stepPluginMap := stepPluginsI[0].(map[string]interface{})
+	configI := stepPluginMap["config"].(map[string]interface{})
+	config := map[string]string{}
+	for key, value := range configI {
+		config[key] = value.(string)
+	}
+	result := &JobPlugin{
+		Type:   stepPluginMap["type"].(string),
+		Config: config,
+	}
+	return result, nil
+}
+
+func commandToResourceData(command *JobCommand) (map[string]interface{}, error) {
+	commandConfigI := map[string]interface{}{
+		"description":           command.Description,
+		"shell_command":         command.ShellCommand,
+		"inline_script":         command.Script,
+		"script_file":           command.ScriptFile,
+		"script_file_args":      command.ScriptFileArgs,
+		"keep_going_on_success": command.KeepGoingOnSuccess,
+	}
+
+	if command.ErrorHandler != nil {
+		errorHandlerI, err := commandToResourceData(command.ErrorHandler)
+		if err != nil {
+			return nil, err
+		}
+		commandConfigI["error_handler"] = []interface{}{
+			errorHandlerI,
+		}
+	}
+
+	if command.ScriptInterpreter != nil {
+		commandConfigI["script_interpreter"] = []interface{}{
+			map[string]interface{}{
+				"invocation_string": command.ScriptInterpreter.InvocationString,
+				"args_quoted":       command.ScriptInterpreter.ArgsQuoted,
+			},
+		}
+	}
+
+	if command.Job != nil {
+		jobRefConfigI := map[string]interface{}{
+			"name":              command.Job.Name,
+			"group_name":        command.Job.GroupName,
+			"run_for_each_node": command.Job.RunForEachNode,
+			"args":              command.Job.Arguments,
+		}
+		if command.Job.NodeFilter != nil {
+			nodeFilterConfigI := map[string]interface{}{
+				"exclude_precedence": command.Job.NodeFilter.ExcludePrecedence,
+				"filter":             command.Job.NodeFilter.Query,
+				"exclude_filter":     command.Job.NodeFilter.ExcludeQuery,
+			}
+			jobRefConfigI["node_filters"] = append([]interface{}{}, nodeFilterConfigI)
+		}
+		commandConfigI["job"] = append([]interface{}{}, jobRefConfigI)
+	}
+
+	if command.StepPlugin != nil {
+		commandConfigI["step_plugin"] = []interface{}{
+			map[string]interface{}{
+				"type":   command.StepPlugin.Type,
+				"config": map[string]string(command.StepPlugin.Config),
+			},
+		}
+	}
+
+	if command.NodeStepPlugin != nil {
+		commandConfigI["node_step_plugin"] = []interface{}{
+			map[string]interface{}{
+				"type":   command.NodeStepPlugin.Type,
+				"config": map[string]string(command.NodeStepPlugin.Config),
+			},
+		}
+	}
+	return commandConfigI, nil
 }
 
 // Helper function for three different notifications
@@ -845,7 +1207,7 @@ func readNotification(notification *Notification, notificationType string) map[s
 		"type": notificationType,
 	}
 	if notification.WebHook != nil {
-		notificationConfigI["webhok_urls"] = notification.WebHook.Urls
+		notificationConfigI["webhook_urls"] = notification.WebHook.Urls
 	}
 	if notification.Email != nil {
 		notificationConfigI["email"] = []interface{}{

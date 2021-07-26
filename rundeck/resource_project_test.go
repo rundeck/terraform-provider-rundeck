@@ -7,8 +7,8 @@ import (
 
 	"github.com/rundeck/go-rundeck/rundeck"
 
-	"github.com/hashicorp/terraform/helper/resource"
-	"github.com/hashicorp/terraform/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 )
 
 func TestAccProject_basic(t *testing.T) {

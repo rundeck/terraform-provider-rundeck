@@ -1,0 +1,4 @@
+[[template]]
+    src         = "${REMCO_TEMPLATE_DIR}/tokens.properties"
+    dst         = "${REMCO_TMP_DIR}/framework/tokens.properties"
+    mode        = "0644"
