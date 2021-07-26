@@ -28,7 +28,10 @@ The provider configuration block accepts the following arguments:
 Use the navigation to the left to read about the available resources.
 
 ## Example Usage
-Save the contents below to a file called `rundeck.tf`.
+
+A full Example Exercise is included on the [Rundeck Learning site](https://docs.rundeck.com/docs/learning/howto/use-terraform-provider.html).
+
+For those familiar with Terraform and Rundeck use the contents below.
 
 ```hcl
 terraform {
