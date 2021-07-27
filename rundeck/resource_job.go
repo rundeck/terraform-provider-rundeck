@@ -137,6 +137,11 @@ func resourceRundeckJob() *schema.Resource {
 				Default:  true,
 			},
 
+			"nodes_selected_by_default": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+
 			"time_zone": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -592,6 +597,7 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 		ExecutionEnabled:          d.Get("execution_enabled").(bool),
 		Timeout:                   d.Get("timeout").(string),
 		ScheduleEnabled:           d.Get("schedule_enabled").(bool),
+		NodesSelectedByDefault:    d.Get("nodes_selected_by_default").(bool),
 		TimeZone:                  d.Get("time_zone").(string),
 		LogLevel:                  d.Get("log_level").(string),
 		AllowConcurrentExecutions: d.Get("allow_concurrent_executions").(bool),
@@ -806,6 +812,9 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 		return err
 	}
 	if err := d.Set("schedule_enabled", job.ScheduleEnabled); err != nil {
+		return err
+	}
+	if err := d.Set("nodes_selected_by_default", job.NodesSelectedByDefault); err != nil {
 		return err
 	}
 	if err := d.Set("time_zone", job.TimeZone); err != nil {
