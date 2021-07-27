@@ -52,19 +52,21 @@ The following arguments are supported:
 
 * `log_level` - (Optional) The log level that Rundeck should use for this job. Defaults to "INFO".
 
+* `timeout` - (Optional) The maximum time for an execution to run. Time in seconds, or specify time units: "120m", "2h", "3d". Use blank or 0 to indicate no timeout.
+
 * `schedule` - (Optional) The jobs schedule in Unix crontab format
 
 * `schedule_enabled` - (Optional) Sets the job schedule to be enabled or disabled. Defaults to `true`.
 
-* `time_zone` - (Optional) A valid Time Zone, either an abbreviation such as "PST", a full name such as 
+* `time_zone` - (Optional) A valid Time Zone, either an abbreviation such as "PST", a full name such as
   "America/Los_Angeles",or a custom ID such as "GMT-8:00".
-  
+
 * `allow_concurrent_executions` - (Optional) Boolean defining whether two or more executions of
   this job can run concurrently. The default is `false`, meaning that jobs will only run
   sequentially.
 
-* `retry` - (Optional) Maximum number of times to retry execution when this job is directly invoked. 
-  Retry will occur if the job fails or times out, but not if it is manually killed. Can use an option 
+* `retry` - (Optional) Maximum number of times to retry execution when this job is directly invoked.
+  Retry will occur if the job fails or times out, but not if it is manually killed. Can use an option
   value reference like "${option.retry}". The default is `0`, meaning that jobs will only run
   once.
 
@@ -101,7 +103,7 @@ The following arguments are supported:
 
 * `node_filter_query` - (Optional) A query string using
   [Rundeck's node filter language](http://rundeck.org/docs/manual/node-filters.html#node-filter-syntax)
-  that defines which subset of the project's nodes ***will*** be used to execute this job. If neither 
+  that defines which subset of the project's nodes ***will*** be used to execute this job. If neither
   `node_filter_query` nor `node_filter_exclude_query` is defined, the job will be performed locally on the
   Rundeck server.
 
@@ -119,9 +121,9 @@ The following arguments are supported:
   more commands. The structure of this nested block is described below.
 
 * `global_log_filter`: (Optional) Nested block defining a global log filter plugin available to provide communication
-  between all workflow steps. A job may have multiple global log filters.  The structure of this nested block is 
+  between all workflow steps. A job may have multiple global log filters.  The structure of this nested block is
   described below.
-   
+
 * `notification`: (Optional) Nested block defining notifications on the job workflow. The structure of this nested block
   is described below.
 
@@ -176,7 +178,7 @@ The following arguments are supported:
 
 * `script_file` and `script_file_args` together describe a script that is already pre-installed
   on the nodes which is to be executed.
-  
+
 * A `script_interpreter` block (Optional), described below, is an advanced feature specifying how
   to invoke the script file.
 
@@ -193,7 +195,7 @@ A command's `script_interpreter` block has the following structure:
 * `invocation_string`: (Optional) The string describing how to invoke the script file. By
   default the temporary script file path will be appended to this string, followed by any
   arguments. Include `${scriptfile}` anywhere to change the file path argument location.
-  
+
 * `args_quoted`: (Optional) Quote arguments to script invocation string?
 
 A command's `job` block has the following structure:
@@ -208,7 +210,7 @@ A command's `job` block has the following structure:
 
 * `args`: (Optional) A string giving the arguments to pass to the target job, using
   [Rundeck's job arguments syntax](http://rundeck.org/docs/manual/jobs.html#job-reference-step).
-  
+
 * `node_filters`: (Optional) A map for overriding the referenced job's node filters.
 
 A command's `node_filters` block has the following structure:
@@ -219,7 +221,7 @@ A command's `node_filters` block has the following structure:
 
 * `exclude_filter`: (Optional) The query string for nodes ***not to use***.
 
-A command's `step_plugin` or `node_step_plugin` block both have the following structure, as does the job's 
+A command's `step_plugin` or `node_step_plugin` block both have the following structure, as does the job's
   `global_log_filter` blocks:
 
 * `type`: (Required) The name of the plugin to execute.
