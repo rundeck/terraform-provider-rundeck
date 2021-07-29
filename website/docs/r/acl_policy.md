@@ -36,3 +36,39 @@ The following arguments are supported:
 * `name` - (Required) The name of the policy. Must end with `.aclpolicy`.
 
 * `policy` - (Required) The name of the job, used to describe the job in the Rundeck UI.
+
+> Note: This example uses an ACL Policy file stored at the current working directory named `acl.yaml`.  Valid contents for that file are shown below.
+
+```
+by:
+  group: terraform
+description: Allow terraform Key Storage Access
+for:
+  storage:
+  - allow:
+    - read
+context:
+  application: rundeck
+---
+by:
+  group: terraform
+description: Allow Terraform Group [read] for all projects
+for:
+  project:
+  - allow:
+    - read
+context:
+  application: rundeck
+---
+by:
+  group: terraform
+description: Terraform Project Full Admin
+for:
+  project:
+  - allow:
+    - admin
+    match:
+      name: terraform
+context:
+  application: rundeck
+```

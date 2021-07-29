@@ -15,20 +15,23 @@ can be run on.
 ## Example Usage
 
 ```hcl
-resource "rundeck_project" "anvils" {
-    name = "anvils"
-    description = "Application for managing Anvils"
-
-    ssh_key_storage_path = "anvils/id_rsa"
-
-    resource_model_source {
-        type = "file"
-        config = {
-            format = "resourcexml"
-            # This path is interpreted on the Rundeck server.
-            file = "/var/rundeck/projects/anvils/resources.xml"
-        }
+resource "rundeck_project" "terraform" {
+  name        = "terraform"
+  description = "Sample Application Created by Terraform Plan"
+  ssh_key_storage_path = "${rundeck_private_key.terraform.path}"
+  resource_model_source {
+    type = "file"
+    config = {
+      format = "resourcexml"
+      # This path is interpreted on the Rundeck server.
+      file = "/home/rundeck/resources.xml"
+      writable = "true"
+      generateFileAutomatically = "true"
     }
+  }
+  extra_config = {
+    "project.label" = "Terraform Example"
+  }
 }
 ```
 
@@ -71,7 +74,7 @@ The following arguments are supported:
 * `extra_config` - (Optional) Behind the scenes a Rundeck project is really an arbitrary set of
   key/value pairs. This map argument allows setting any configuration properties that aren't
   explicitly supported by the other arguments described above, but due to limitations of Terraform
-  the key names must be written with slashes in place of dots. Do not use this argument to set
+  the key names must be written wrapped in double quotes. Do not use this argument to set
   properties that the above arguments set, or undefined behavior will result.
 
 `resource_model_source` blocks have the following nested arguments:
@@ -87,4 +90,3 @@ The following attributes are exported:
 
 * `name` - The unique name that identifies the project, as set in the arguments.
 * `ui_url` - The URL of the index page for this project in the Rundeck UI.
-

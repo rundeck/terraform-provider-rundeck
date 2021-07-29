@@ -17,11 +17,11 @@ Each job belongs to a project. A project can be created with the `rundeck_projec
 ## Example Usage
 
 ```hcl
-resource "rundeck_job" "bounceweb" {
-    name = "Bounce Web Servers"
-    project_name = "anvils"
+  resource "rundeck_job" "bounceweb" {
+    name              = "Bounce All Web Servers"
+    project_name      = "${rundeck_project.terraform.name}"
     node_filter_query = "tags: web"
-    description = "Restart the service daemons on all the web servers"
+    description       = "Restart the service daemons on all the web servers"
 
     command {
         shell_command = "sudo service anvils restart"
