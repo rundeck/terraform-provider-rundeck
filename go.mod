@@ -5,4 +5,4 @@ require (
 	github.com/rundeck/go-rundeck/rundeck v0.0.0-20190510195016-2cf9670bbcc4
 )
 
-go 1.13
+go 1.16
