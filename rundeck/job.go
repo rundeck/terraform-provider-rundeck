@@ -107,7 +107,8 @@ type NotificationEmails []string
 
 type WebHookNotification struct {
 	Urls       NotificationUrls `xml:"urls,attr"`
-	HttpMethod string           `xml:"httpMethod,attr"`
+	HttpMethod string           `xml:"httpMethod"`
+	Format     string           `xml:"format"`
 }
 
 type NotificationUrls []string
