@@ -183,6 +183,12 @@ func resourceRundeckJob() *schema.Resource {
 								Type: schema.TypeString,
 							},
 						},
+						"webhook_http_method": {
+							Type:        schema.TypeString,
+							Default:     "post",
+							Description: "One of `get`, `post`",
+							Optional:    true,
+						},
 						"plugin": {
 							Type:     schema.TypeList,
 							Optional: true,
@@ -722,9 +728,14 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 
 				// Webhook notification
 				webHookUrls := notificationMap["webhook_urls"].([]interface{})
+				webhookHttpMethod := notificationMap["webhook_http_method"].(string)
+				if webhookHttpMethod == "" {
+					webhookHttpMethod = "post"
+				}
 				if len(webHookUrls) > 0 {
 					webHook := &WebHookNotification{
-						Urls: NotificationUrls([]string{}),
+						Urls:       NotificationUrls([]string{}),
+						HttpMethod: webhookHttpMethod,
 					}
 					for _, iv := range webHookUrls {
 						webHook.Urls = append(webHook.Urls, iv.(string))
@@ -1208,6 +1219,7 @@ func readNotification(notification *Notification, notificationType string) map[s
 	}
 	if notification.WebHook != nil {
 		notificationConfigI["webhook_urls"] = notification.WebHook.Urls
+		notificationConfigI["webhook_http_method"] = notification.WebHook.HttpMethod
 	}
 	if notification.Email != nil {
 		notificationConfigI["email"] = []interface{}{

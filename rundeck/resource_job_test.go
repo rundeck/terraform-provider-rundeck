@@ -295,6 +295,7 @@ resource "rundeck_job" "test" {
 		  recipients = ["foo@foo.bar"]
 	  }
 	  webhook_urls = ["http://localhost/testing"]
+	  webhook_http_method = "post"
   }
 }
 `
