@@ -95,6 +95,8 @@ type Notification struct {
 	Email   *EmailNotification   `xml:"email,omitempty"`
 	WebHook *WebHookNotification `xml:"webhook,omitempty"`
 	Plugin  *JobPlugin           `xml:"plugin"`
+	HttpMethod string            `xml:"httpMethod,omitempty"`
+	Format     string            `xml:"format,omitempty"`
 }
 
 type EmailNotification struct {
@@ -107,8 +109,6 @@ type NotificationEmails []string
 
 type WebHookNotification struct {
 	Urls       NotificationUrls `xml:"urls,attr"`
-	HttpMethod string           `xml:"httpMethod"`
-	Format     string           `xml:"format"`
 }
 
 type NotificationUrls []string
