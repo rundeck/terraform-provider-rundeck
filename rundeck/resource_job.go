@@ -1223,6 +1223,7 @@ func readNotification(notification *Notification, notificationType string) map[s
 	if notification.WebHook != nil {
 		notificationConfigI["webhook_urls"] = notification.WebHook.Urls
 		notificationConfigI["webhook_http_method"] = notification.WebHook.HttpMethod
+		notificationConfigI["webhook_format"] = notification.WebHook.Format
 	}
 	if notification.Email != nil {
 		notificationConfigI["email"] = []interface{}{
