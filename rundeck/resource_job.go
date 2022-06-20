@@ -746,7 +746,7 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 				webHookUrls := notificationMap["webhook_urls"].([]interface{})
 				if len(webHookUrls) > 0 {
 					webHook := &WebHookNotification{
-						Urls:       NotificationUrls([]string{}),
+						Urls: NotificationUrls([]string{}),
 					}
 					for _, iv := range webHookUrls {
 						webHook.Urls = append(webHook.Urls, iv.(string))
