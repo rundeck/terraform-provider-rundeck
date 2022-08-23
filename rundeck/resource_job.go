@@ -62,6 +62,11 @@ func resourceRundeckJob() *schema.Resource {
 				Optional: true,
 			},
 
+			"retry_delay": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
 			"max_thread_count": {
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -596,6 +601,7 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 		LogLevel:                  d.Get("log_level").(string),
 		AllowConcurrentExecutions: d.Get("allow_concurrent_executions").(bool),
 		Retry:                     d.Get("retry").(string),
+		RetryDelay:                d.Get("retry_delay").(string),
 		Dispatch: &JobDispatch{
 			MaxThreadCount:          d.Get("max_thread_count").(int),
 			ContinueNextNodeOnError: d.Get("continue_next_node_on_error").(bool),
@@ -818,6 +824,9 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 		return err
 	}
 	if err := d.Set("retry", job.Retry); err != nil {
+		return err
+	}
+	if err := d.Set("retry_delay", job.RetryDelay); err != nil {
 		return err
 	}
 
