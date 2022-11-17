@@ -972,7 +972,7 @@ func JobScheduleFromResourceData(d *schema.ResourceData, job *JobDetail) error {
 	if cronSpec != "" {
 		schedule := strings.Split(cronSpec, " ")
 		if len(schedule) != 7 {
-			return fmt.Errorf("the Rundeck schedule must be formatted like a cron expression, as defined here: http://www.quartz-scheduler.org/documentation/quartz-2.2.x/tutorials/tutorial-lesson-06.html")
+			return fmt.Errorf("the Rundeck schedule must be formatted like a cron expression, as defined here: http://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/tutorial-lesson-06.html")
 		}
 		job.Schedule = &JobSchedule{
 			Time: JobScheduleTime{
