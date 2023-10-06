@@ -5,7 +5,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -57,7 +57,7 @@ func CreateOrUpdatePrivateKey(d *schema.ResourceData, meta interface{}) error {
 
 	ctx := context.Background()
 
-	keyMaterialReader := ioutil.NopCloser(strings.NewReader(keyMaterial))
+	keyMaterialReader := io.NopCloser(strings.NewReader(keyMaterial))
 
 	if d.Id() != "" {
 		resp, err := client.StorageKeyUpdate(ctx, path, keyMaterialReader, "application/octect-stream")

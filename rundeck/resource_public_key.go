@@ -3,7 +3,7 @@ package rundeck
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -56,7 +56,7 @@ func CreatePublicKey(d *schema.ResourceData, meta interface{}) error {
 	path := d.Get("path").(string)
 	keyMaterial := d.Get("key_material").(string)
 
-	keyMaterialReader := ioutil.NopCloser(strings.NewReader(keyMaterial))
+	keyMaterialReader := io.NopCloser(strings.NewReader(keyMaterial))
 
 	if keyMaterial != "" {
 		resp, err := client.StorageKeyCreate(ctx, path, keyMaterialReader, "application/pgp-keys")
@@ -86,7 +86,7 @@ func UpdatePublicKey(d *schema.ResourceData, meta interface{}) error {
 		path := d.Get("path").(string)
 		keyMaterial := d.Get("key_material").(string)
 
-		keyMaterialReader := ioutil.NopCloser(strings.NewReader(keyMaterial))
+		keyMaterialReader := io.NopCloser(strings.NewReader(keyMaterial))
 
 		resp, err := client.StorageKeyUpdate(ctx, path, keyMaterialReader, "application/pgp-keys")
 		if resp.StatusCode == 409 || err != nil {
@@ -145,7 +145,7 @@ func ReadPublicKey(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 
-	keyMaterial, err := ioutil.ReadAll(resp.Body)
+	keyMaterial, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
