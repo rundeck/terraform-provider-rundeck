@@ -3,7 +3,6 @@ package rundeck
 import (
 	"context"
 	"fmt"
-	"io/ioUtil"
 	"io/ioutil"
 	"strings"
 
@@ -87,7 +86,7 @@ func UpdatePublicKey(d *schema.ResourceData, meta interface{}) error {
 		path := d.Get("path").(string)
 		keyMaterial := d.Get("key_material").(string)
 
-		keyMaterialReader := ioUtil.NopCloser(strings.NewReader(keyMaterial))
+		keyMaterialReader := ioutil.NopCloser(strings.NewReader(keyMaterial))
 
 		resp, err := client.StorageKeyUpdate(ctx, path, keyMaterialReader, "application/pgp-keys")
 		if resp.StatusCode == 409 || err != nil {
@@ -146,7 +145,7 @@ func ReadPublicKey(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 
-	keyMaterial, err := ioUtil.ReadAll(resp.Body)
+	keyMaterial, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
