@@ -1,4 +1,6 @@
-## 0.5.0 (Unreleased)
+## 0.4.4
+* Added ability to import project files.
+* updated to use Go 1.19
 
 ## O.4.3
 * Updated Documentation
