@@ -155,6 +155,7 @@ github.com/hashicorp/logutils
 # github.com/hashicorp/terraform-config-inspect v0.0.0-20190821133035-82a99dc22ef4
 github.com/hashicorp/terraform-config-inspect/tfconfig
 # github.com/hashicorp/terraform-plugin-sdk v1.1.0
+## explicit
 github.com/hashicorp/terraform-plugin-sdk/helper/hashcode
 github.com/hashicorp/terraform-plugin-sdk/helper/logging
 github.com/hashicorp/terraform-plugin-sdk/helper/resource
@@ -229,6 +230,7 @@ github.com/posener/complete/cmd
 github.com/posener/complete/cmd/install
 github.com/posener/complete/match
 # github.com/rundeck/go-rundeck/rundeck v0.0.0-20190510195016-2cf9670bbcc4
+## explicit
 github.com/rundeck/go-rundeck/rundeck
 github.com/rundeck/go-rundeck/rundeck/auth
 # github.com/spf13/afero v1.2.2
