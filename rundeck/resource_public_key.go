@@ -66,7 +66,11 @@ func CreatePublicKey(d *schema.ResourceData, meta interface{}) error {
 		if err != nil {
 			return err
 		}
-		d.Set("delete", true)
+		val := d.Set("delete", true)
+		if val != nil {
+			fmt.Printf("[Error]")
+		}
+
 	}
 
 	d.SetId(path)
@@ -146,8 +150,15 @@ func ReadPublicKey(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 
-	d.Set("key_material", string(keyMaterial))
-	d.Set("url", *key.URL)
+	val1 := d.Set("key_material", string(keyMaterial))
+	if val1 != nil {
+		fmt.Printf("[Error]")
+	}
+
+	val2 := d.Set("url", *key.URL)
+	if val2 != nil {
+		fmt.Printf("[Error]")
+	}
 
 	return nil
 }

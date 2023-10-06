@@ -55,7 +55,10 @@ func CreateAclPolicy(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	d.SetId(name)
-	d.Set("id", name)
+	val := d.Set("id", name)
+	if val != nil {
+		fmt.Printf("[Error]")
+	}
 
 	return nil
 }
@@ -96,7 +99,10 @@ func ReadAclPolicy(d *schema.ResourceData, meta interface{}) error {
 		return fmt.Errorf("ACL policy not found: (%s)", name)
 	}
 
-	d.Set("policy", *resp.Contents)
+	val := d.Set("policy", *resp.Contents)
+	if val != nil {
+		fmt.Printf("[Error]")
+	}
 
 	return nil
 }
