@@ -200,7 +200,7 @@ func ReadProject(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	if project.StatusCode == 404 {
-		return fmt.Errorf("Project not found: (%s)", name)
+		return fmt.Errorf("project not found: (%s)", name)
 	}
 
 	projectConfig := project.Config.(map[string]interface{})
@@ -342,7 +342,7 @@ func resourceProjectImport(d *schema.ResourceData, meta interface{}) ([]*schema.
 		return nil, err
 	}
 	if !ok {
-		return nil, fmt.Errorf("Project doesn't exist. Please try again.")
+		return nil, fmt.Errorf("project doesn't exist. Please try again")
 	}
 	d.SetId(name)
 
