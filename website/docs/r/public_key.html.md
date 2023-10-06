@@ -18,9 +18,9 @@ may be used in the configuration of other resources such as ``aws_key_pair``.
 ## Example Usage
 
 ```hcl
-resource "rundeck_public_key" "anvils" {
-    path = "anvils/id_rsa.pub"
-    key_material = "ssh-rsa yada-yada-yada"
+resource "rundeck_public_key" "terraform" {
+  path         = "terraform/id_rsa.pub"
+  key_material = "ssh-rsa yada-yada-yada"
 }
 ```
 
@@ -28,7 +28,7 @@ resource "rundeck_public_key" "anvils" {
 
 The following arguments are supported:
 
-* `delete` - (Computed) True if the key should be deleted when the resource is deleted. 
+* `delete` - (Computed) True if the key should be deleted when the resource is deleted.
   Defaults to true if key_material is provided in the configuration.
 
 * `path` - (Required) The path within the key store where the key will be stored. By convention

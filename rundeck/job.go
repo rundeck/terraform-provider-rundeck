@@ -28,7 +28,6 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"strings"
 
 	"github.com/rundeck/go-rundeck/rundeck"
@@ -386,7 +385,7 @@ func GetJob(c *rundeck.BaseClient, id string) (*JobDetail, error) {
 		return nil, fmt.Errorf("error getting job: (%v)", err)
 	}
 
-	respBytes, err := ioutil.ReadAll(resp.Body)
+	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -427,12 +426,12 @@ func importJob(c *rundeck.BaseClient, job *JobDetail, dupeOption string) (*JobSu
 	}
 
 	ctx := context.Background()
-	resp, err := c.ProjectJobsImport(ctx, job.ProjectName, ioutil.NopCloser(bytes.NewReader(jobBytes)), "", "", "", dupeOption, "preserve")
+	resp, err := c.ProjectJobsImport(ctx, job.ProjectName, io.NopCloser(bytes.NewReader(jobBytes)), "", "", "", dupeOption, "preserve")
 	if err != nil {
 		return nil, err
 	}
 
-	respBytes, err := ioutil.ReadAll(resp.Body)
+	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}

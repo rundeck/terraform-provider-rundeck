@@ -1,4 +1,14 @@
-## 0.5.0 (Unreleased)
+## 0.4.4
+* Added ability to import project files.
+* updated to use Go 1.19
+
+## O.4.3
+* Updated Documentation
+
+## 0.4.1/0.4.2
+
+* Community improvements and updates to modern Terraform model.
+
 ## 0.4.0 (August 02, 2019)
 
 ### Added:

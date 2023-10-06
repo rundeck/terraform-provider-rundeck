@@ -4,59 +4,72 @@ import (
 	"encoding/xml"
 	"fmt"
 	"sort"
-
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 )
 
-func validateValueFunc(values []string) schema.SchemaValidateFunc {
-	return func(v interface{}, k string) (we []string, errors []error) {
-		value := v.(string)
-		valid := false
-		for _, role := range values {
-			if value == role {
-				valid = true
-				break
-			}
-		}
+// func validateValueFunc(values []string) schema.SchemaValidateFunc {
+// 	return func(v interface{}, k string) (we []string, errors []error) {
+// 		value := v.(string)
+// 		valid := false
+// 		for _, role := range values {
+// 			if value == role {
+// 				valid = true
+// 				break
+// 			}
+// 		}
 
-		if !valid {
-			errors = append(errors, fmt.Errorf("%s is an invalid value for argument %s", value, k))
-		}
-		return
-	}
-}
+// 		if !valid {
+// 			errors = append(errors, fmt.Errorf("%s is an invalid value for argument %s", value, k))
+// 		}
+// 		return
+// 	}
+// }
 
 func marshalMapToXML(c *map[string]string, e *xml.Encoder, start xml.StartElement, entryName string, keyName string, valueName string) error {
 	if len(*c) == 0 {
 		return nil
 	}
-	e.EncodeToken(start)
+	val := e.EncodeToken(start)
+	if val != nil {
+		fmt.Printf("[Error]")
+	}
 
 	// Sort the keys so we'll have a deterministic result.
 	keys := []string{}
-	for k, _ := range *c {
+	for k := range *c {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 
 	for _, k := range keys {
 		v := (*c)[k]
-		e.EncodeToken(xml.StartElement{
+		val2 := e.EncodeToken(xml.StartElement{
 			Name: xml.Name{Local: entryName},
 			Attr: []xml.Attr{
-				xml.Attr{
+				{
 					Name:  xml.Name{Local: keyName},
 					Value: k,
 				},
-				xml.Attr{
+				{
 					Name:  xml.Name{Local: valueName},
 					Value: v,
 				},
 			},
 		})
-		e.EncodeToken(xml.EndElement{Name: xml.Name{Local: entryName}})
+		if val2 != nil {
+			fmt.Printf("[Error]")
+		}
+
+		val3 := e.EncodeToken(xml.EndElement{Name: xml.Name{Local: entryName}})
+		if val3 != nil {
+			fmt.Printf("[Error]")
+		}
 	}
-	e.EncodeToken(xml.EndElement{Name: start.Name})
+
+	val4 := e.EncodeToken(xml.EndElement{Name: start.Name})
+	if val4 != nil {
+		fmt.Printf("[Error]")
+	}
+
 	return nil
 }
 

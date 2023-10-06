@@ -3,7 +3,7 @@ package rundeck
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"strings"
 	"testing"
 
@@ -93,7 +93,10 @@ func testAccPublicKeyCheckExists(rn string, key *rundeck.StorageKeyListResponse,
 			return fmt.Errorf("error getting key contents: %s", err)
 		}
 
-		respMaterial, err := ioutil.ReadAll(resp.Body)
+		respMaterial, err2 := io.ReadAll(resp.Body)
+		if err2 != nil {
+			return fmt.Errorf("error getting key contents: %s", err)
+		}
 
 		*keyMaterial = string(respMaterial)
 

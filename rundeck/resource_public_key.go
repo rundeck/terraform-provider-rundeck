@@ -3,7 +3,7 @@ package rundeck
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -56,17 +56,21 @@ func CreatePublicKey(d *schema.ResourceData, meta interface{}) error {
 	path := d.Get("path").(string)
 	keyMaterial := d.Get("key_material").(string)
 
-	keyMaterialReader := ioutil.NopCloser(strings.NewReader(keyMaterial))
+	keyMaterialReader := io.NopCloser(strings.NewReader(keyMaterial))
 
 	if keyMaterial != "" {
 		resp, err := client.StorageKeyCreate(ctx, path, keyMaterialReader, "application/pgp-keys")
 		if resp.StatusCode == 409 {
-			err = fmt.Errorf("Conflict creating key at : %s", path)
+			err = fmt.Errorf("conflict creating key at : %s", path)
 		}
 		if err != nil {
 			return err
 		}
-		d.Set("delete", true)
+		val := d.Set("delete", true)
+		if val != nil {
+			fmt.Printf("[Error]")
+		}
+
 	}
 
 	d.SetId(path)
@@ -82,7 +86,7 @@ func UpdatePublicKey(d *schema.ResourceData, meta interface{}) error {
 		path := d.Get("path").(string)
 		keyMaterial := d.Get("key_material").(string)
 
-		keyMaterialReader := ioutil.NopCloser(strings.NewReader(keyMaterial))
+		keyMaterialReader := io.NopCloser(strings.NewReader(keyMaterial))
 
 		resp, err := client.StorageKeyUpdate(ctx, path, keyMaterialReader, "application/pgp-keys")
 		if resp.StatusCode == 409 || err != nil {
@@ -129,7 +133,7 @@ func ReadPublicKey(d *schema.ResourceData, meta interface{}) error {
 
 	key, err := client.StorageKeyGetMetadata(ctx, path)
 	if key.StatusCode == 404 {
-		err = fmt.Errorf("Key not found at: %s", path)
+		err = fmt.Errorf("key not found at: %s", path)
 	}
 
 	if err != nil {
@@ -141,13 +145,20 @@ func ReadPublicKey(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 
-	keyMaterial, err := ioutil.ReadAll(resp.Body)
+	keyMaterial, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
 
-	d.Set("key_material", string(keyMaterial))
-	d.Set("url", *key.URL)
+	val1 := d.Set("key_material", string(keyMaterial))
+	if val1 != nil {
+		fmt.Printf("[Error]")
+	}
+
+	val2 := d.Set("url", *key.URL)
+	if val2 != nil {
+		fmt.Printf("[Error]")
+	}
 
 	return nil
 }

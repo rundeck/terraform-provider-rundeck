@@ -5,7 +5,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -33,10 +33,10 @@ func resourceRundeckPrivateKey() *schema.Resource {
 				Type:        schema.TypeString,
 				Required:    true,
 				Description: "The private key material to store, in PEM format",
-				StateFunc: func(v interface{}) string {
-					switch v.(type) {
+				StateFunc: func(val interface{}) string {
+					switch v := val.(type) {
 					case string:
-						hash := sha1.Sum([]byte(v.(string)))
+						hash := sha1.Sum([]byte(v))
 						return hex.EncodeToString(hash[:])
 					default:
 						return ""
@@ -57,7 +57,7 @@ func CreateOrUpdatePrivateKey(d *schema.ResourceData, meta interface{}) error {
 
 	ctx := context.Background()
 
-	keyMaterialReader := ioutil.NopCloser(strings.NewReader(keyMaterial))
+	keyMaterialReader := io.NopCloser(strings.NewReader(keyMaterial))
 
 	if d.Id() != "" {
 		resp, err := client.StorageKeyUpdate(ctx, path, keyMaterialReader, "application/octect-stream")
