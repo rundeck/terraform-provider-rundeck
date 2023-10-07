@@ -54,7 +54,7 @@ The following arguments are supported:
 
 * `timeout` - (Optional) The maximum time for an execution to run. Time in seconds, or specify time units: "120m", "2h", "3d". Use blank or 0 to indicate no timeout.
 
-* `schedule` - (Optional) The jobs schedule in Unix crontab format
+* `schedule` - (Optional) The job's schedule in Quartz schedule cron format. Similar to unix crontab, but with seven fields instead of five: Second Minute Hour Day-of-Month Month Day-of-Week Year
 
 * `schedule_enabled` - (Optional) Sets the job schedule to be enabled or disabled. Defaults to `true`.
 
