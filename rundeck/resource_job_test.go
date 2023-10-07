@@ -413,6 +413,7 @@ resource "rundeck_job" "test" {
 	default_value = "bar"
 	value_choices = ["", "foo"]
   }
+
   command {
     description = "Prints Hello World"
     shell_command = "echo Hello World"

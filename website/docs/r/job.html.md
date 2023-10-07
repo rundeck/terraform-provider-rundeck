@@ -170,10 +170,16 @@ The following arguments are supported:
 
 * `obscure_input`: (Optional) Boolean controlling whether the value of this option should be obscured
   during entry and in execution logs. Defaults to `false`, but should be set to `true` when the
-  requested value is a password, private key or any other secret value.
+  requested value is a password, private key or any other secret value. This must be set to `true` when
+  `storage_path` is not null.
 
 * `exposed_to_scripts`: (Optional) Boolean controlling whether the value of this option is available
-  to scripts executed by job commands. Defaults to `false`.
+  to scripts executed by job commands. Defaults to `false`. When `true`, `obscure_input` must also be set
+  to `true`.
+
+* `storage_path`: (Optional) String of the path where the key is stored on rundeck. `obscure_input` must be set to
+  `true` when using this. This results in `Secure Remote Authentication` input type. Setting `exposed_to_scripts` also
+  `true` results in `Secure` input type.
 
 `command` blocks must have any one of the following combinations of arguments as contents:
 
