@@ -70,6 +70,10 @@ The following arguments are supported:
   value reference like "${option.retry}". The default is `0`, meaning that jobs will only run
   once.
 
+* `retry_delay` - (Optional) The time between the failed execution and the retry. Time in seconds or
+  specify time units: "120m", "2h", "3d". Use 0 to indicate no delay. Can include option value
+  references like "${option.delay}". The default is 0.
+
 * `max_thread_count` - (Optional) The maximum number of threads to use to execute this job, which
   controls on how many nodes the commands can be run simulateneously. Defaults to 1, meaning that
   the nodes will be visited sequentially.
