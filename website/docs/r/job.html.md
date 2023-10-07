@@ -121,9 +121,6 @@ The following arguments are supported:
 * `nodes_selected_by_default`: (Optional) Boolean controlling whether nodes that match the node_query_filter are
   selected by default or not.
 
-* `option`: (Optional) Nested block defining an option a user may set when executing this job. A
-  job may have any number of options. The structure of this nested block is described below.
-
 * `command`: (Required) Nested block defining one step in the job workflow. A job must have one or
   more commands. The structure of this nested block is described below.
 
@@ -133,6 +130,9 @@ The following arguments are supported:
 
 * `notification`: (Optional) Nested block defining notifications on the job workflow. The structure of this nested block
   is described below.
+
+* `option`: (Optional) Nested block defining an option a user may set when executing this job. A
+  job may have any number of options. The structure of this nested block is described below.
 
 `option` blocks have the following structure:
 
@@ -170,10 +170,16 @@ The following arguments are supported:
 
 * `obscure_input`: (Optional) Boolean controlling whether the value of this option should be obscured
   during entry and in execution logs. Defaults to `false`, but should be set to `true` when the
-  requested value is a password, private key or any other secret value.
+  requested value is a password, private key or any other secret value. This must be set to `true` when
+  `storage_path` is not null.
 
 * `exposed_to_scripts`: (Optional) Boolean controlling whether the value of this option is available
-  to scripts executed by job commands. Defaults to `false`.
+  to scripts executed by job commands. Defaults to `false`. When `true`, `obscure_input` must also be set
+  to `true`.
+
+* `storage_path`: (Optional) String of the path where the key is stored on rundeck. `obscure_input` must be set to
+  `true` when using this. This results in `Secure Remote Authentication` input type. Setting `exposed_to_scripts` also
+  `true` results in `Secure` input type.
 
 `command` blocks must have any one of the following combinations of arguments as contents:
 
