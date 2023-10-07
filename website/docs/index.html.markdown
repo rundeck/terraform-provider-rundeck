@@ -22,8 +22,16 @@ The provider configuration block accepts the following arguments:
   minium supported version. May alternatively be set via the ``RUNDECK_API_VERSION``
   environment variable.
 
-* ``auth_token`` - (Required) The API auth token to use when making requests. May alternatively
-  be set via the ``RUNDECK_AUTH_TOKEN`` environment variable.
+* ``auth_token`` - The API auth token to use when making requests. May alternatively
+  be set via the ``RUNDECK_AUTH_TOKEN`` environment variable. (RECOMMENDED)
+
+**OR**
+
+* ``auth_username`` - Local Login User Name.  
+* ``auth_password`` - Local Login Passwrod.
+
+> Note: Username and Password auth will not work with SSO configured systems.  It relies on local Rundeck accounts. Please be sensitive to keeping passwords in your plan files!
+
 
 Use the navigation to the left to read about the available resources.
 
@@ -38,7 +46,7 @@ terraform {
   required_providers {
     rundeck = {
       source  = "rundeck/rundeck"
-      version = "0.4.2"
+      version = "0.4.4"
     }
   }
 }

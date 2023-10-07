@@ -28,9 +28,21 @@ func Provider() terraform.ResourceProvider {
 			},
 			"auth_token": {
 				Type:        schema.TypeString,
-				Required:    true,
+				Optional:    true,
 				DefaultFunc: schema.EnvDefaultFunc("RUNDECK_AUTH_TOKEN", nil),
 				Description: "Auth token to use with the Rundeck API.",
+			},
+			"auth_username": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("RUNDECK_AUTH_USERNAME", nil),
+				Description: "Username used to request a tiken for the Rundeck API.",
+			},
+			"auth_password": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("RUNDECK_AUTH_PASSWORD", nil),
+				Description: "Password used to request a tiken for the Rundeck API.",
 			},
 		},
 
@@ -58,7 +70,23 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		return nil, error
 	}
 
-	token := d.Get("auth_token").(string)
+	_, okToken := d.GetOk("auth_token")
+	_, okUsername := d.GetOk("auth_username")
+	_, okPassword := d.GetOk("auth_password")
+
+	var token string
+
+	if okToken {
+		token = d.Get("auth_token").(string)
+	} else if okUsername && okPassword {
+		t, err := getToken(d)
+		token = t
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("auth_token need to be set of auth_username and auth_password")
+	}
 
 	client := rundeck.NewRundeckWithBaseURI(apiURL.String())
 	client.Authorizer = &auth.TokenAuthorizer{Token: token}
