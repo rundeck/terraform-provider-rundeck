@@ -1,6 +1,10 @@
+## 0.4.6
+- Added Retry Delay setting to Job definition.
+- Typos in provider descriptions.
+- Minor fixes
+
 ## 0.4.5
 * Added User/Password authentication
-
 
 ## 0.4.4
 * Added ability to import project files.

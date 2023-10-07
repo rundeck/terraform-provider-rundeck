@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -88,7 +88,7 @@ func _getToken(urlP string, apiVersion string, username string, password string)
 
 	resp, err := client.Do(req)
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		body, _ := ioutil.ReadAll(resp.Body)
+		body, _ := io.ReadAll(resp.Body)
 		return "", fmt.Errorf("statuscode %d\n%s", resp.StatusCode, string(body))
 	} else if err != nil {
 		return "", err

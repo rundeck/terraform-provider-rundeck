@@ -36,13 +36,13 @@ func Provider() terraform.ResourceProvider {
 				Type:        schema.TypeString,
 				Optional:    true,
 				DefaultFunc: schema.EnvDefaultFunc("RUNDECK_AUTH_USERNAME", nil),
-				Description: "Username used to request a tiken for the Rundeck API.",
+				Description: "Username used to request a token for the Rundeck API.",
 			},
 			"auth_password": {
 				Type:        schema.TypeString,
 				Optional:    true,
 				DefaultFunc: schema.EnvDefaultFunc("RUNDECK_AUTH_PASSWORD", nil),
-				Description: "Password used to request a tiken for the Rundeck API.",
+				Description: "Password used to request a token for the Rundeck API.",
 			},
 		},
 
