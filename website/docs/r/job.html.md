@@ -121,9 +121,6 @@ The following arguments are supported:
 * `nodes_selected_by_default`: (Optional) Boolean controlling whether nodes that match the node_query_filter are
   selected by default or not.
 
-* `option`: (Optional) Nested block defining an option a user may set when executing this job. A
-  job may have any number of options. The structure of this nested block is described below.
-
 * `command`: (Required) Nested block defining one step in the job workflow. A job must have one or
   more commands. The structure of this nested block is described below.
 
@@ -133,6 +130,9 @@ The following arguments are supported:
 
 * `notification`: (Optional) Nested block defining notifications on the job workflow. The structure of this nested block
   is described below.
+
+* `option`: (Optional) Nested block defining an option a user may set when executing this job. A
+  job may have any number of options. The structure of this nested block is described below.
 
 `option` blocks have the following structure:
 

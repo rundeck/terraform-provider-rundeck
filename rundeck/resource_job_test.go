@@ -171,6 +171,22 @@ func TestAccJobOptions_empty_choice(t *testing.T) {
 	})
 }
 
+func TestAccJobOptions_secure_choice(t *testing.T) {
+	var job JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobCheckDestroy(&job),
+		Steps: []resource.TestStep{
+			{
+				Config:      testAccJobOptions_secure_options,
+				ExpectError: regexp.MustCompile("argument \"value_choices\" can not have empty values; try \"required\""),
+			},
+		},
+	})
+}
+
 const testAccJobConfig_basic = `
 resource "rundeck_project" "test" {
   name = "terraform-acc-test-job"
@@ -412,6 +428,37 @@ resource "rundeck_job" "test" {
     name = "foo"
 	default_value = "bar"
 	value_choices = ["", "foo"]
+  }
+
+  command {
+    description = "Prints Hello World"
+    shell_command = "echo Hello World"
+  }
+}
+`
+
+const testAccJobOptions_secure_options = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-job-option-choices-empty"
+  description = "parent project for job acceptance tests"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourcexml"
+        file = "/tmp/terraform-acc-tests.xml"
+    }
+  }
+}
+resource "rundeck_job" "test" {
+  project_name = "${rundeck_project.test.name}"
+  name = "basic-job"
+  description = "A basic job"
+
+  option {
+    name = "foo_secure"
+	obscure_input = true
+	storage_path = "/keys/test/path/"
   }
 
   command {
