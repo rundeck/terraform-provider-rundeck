@@ -1,3 +1,7 @@
+## 0.4.5
+* Added User/Password authentication
+
+
 ## 0.4.4
 * Added ability to import project files.
 * updated to use Go 1.19
