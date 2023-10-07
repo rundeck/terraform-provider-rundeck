@@ -67,7 +67,7 @@ type JobDetail struct {
 	CommandSequence           *JobCommandSequence `xml:"sequence,omitempty"`
 	Notification              *JobNotification    `xml:"notification,omitempty"`
 	Timeout                   string              `xml:"timeout,omitempty"`
-	Retry                     string              `xml:"retry,omitempty"`
+	Retry                     *Retry              `xml:"retry,omitempty"`
 	NodeFilter                *JobNodeFilter      `xml:"nodefilters,omitempty"`
 
 	/* If Dispatch is enabled, nodesSelectedByDefault is always present with true/false.
@@ -82,6 +82,11 @@ type JobDetail struct {
 
 type Boolean struct {
 	Value bool `xml:",chardata"`
+}
+
+type Retry struct {
+	Delay string `xml:"delay,attr"`
+	Value string `xml:",chardata"`
 }
 
 type JobNotification struct {
