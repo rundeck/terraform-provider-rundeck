@@ -56,6 +56,8 @@ The following arguments are supported:
 
 * `schedule` - (Optional) The job's schedule in Quartz schedule cron format. Similar to unix crontab, but with seven fields instead of five: Second Minute Hour Day-of-Month Month Day-of-Week Year
 
+* `orchestrator` - (Optional) The orchestrator for the job, described below.
+
 * `schedule_enabled` - (Optional) Sets the job schedule to be enabled or disabled. Defaults to `true`.
 
 * `time_zone` - (Optional) A valid Time Zone, either an abbreviation such as "PST", a full name such as
@@ -75,7 +77,7 @@ The following arguments are supported:
   references like "${option.delay}". The default is 0.
 
 * `max_thread_count` - (Optional) The maximum number of threads to use to execute this job, which
-  controls on how many nodes the commands can be run simulateneously. Defaults to 1, meaning that
+  controls on how many nodes the commands can be run simultaneously. Defaults to 1, meaning that
   the nodes will be visited sequentially.
 
 * `continue_on_error` - (Optional) Boolean defining whether Rundeck will continue to run
