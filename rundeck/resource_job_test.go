@@ -29,6 +29,9 @@ func TestAccJob_basic(t *testing.T) {
 						if expected := "Prints Hello World"; job.CommandSequence.Commands[0].Description != expected {
 							return fmt.Errorf("failed to set command description; expected %v, got %v", expected, job.CommandSequence.Commands[0].Description)
 						}
+						if expected := true; job.NodesSelectedByDefault != expected {
+							return fmt.Errorf("failed to set node selected by default; expected %v, got %v", expected, job.NodesSelectedByDefault)
+						}
 						if job.Dispatch.SuccessOnEmptyNodeFilter != true {
 							return fmt.Errorf("failed to set success_on_empty_node_filter; expected true, got %v", job.Dispatch.SuccessOnEmptyNodeFilter)
 						}
@@ -196,6 +199,22 @@ func TestAccJobOptions_empty_choice(t *testing.T) {
 	})
 }
 
+func TestAccJobOptions_secure_choice(t *testing.T) {
+	var job JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobCheckDestroy(&job),
+		Steps: []resource.TestStep{
+			{
+				Config:      testAccJobOptions_secure_options,
+				ExpectError: regexp.MustCompile("argument \"value_choices\" can not have empty values; try \"required\""),
+			},
+		},
+	})
+}
+
 const testAccJobConfig_basic = `
 resource "rundeck_project" "test" {
   name = "terraform-acc-test-job"
@@ -216,6 +235,7 @@ resource "rundeck_job" "test" {
   execution_enabled = true
   node_filter_query = "example"
   allow_concurrent_executions = true
+	nodes_selected_by_default = true
   success_on_empty_node_filter = true
   max_thread_count = 1
   rank_order = "ascending"
@@ -259,6 +279,7 @@ resource "rundeck_job" "test" {
   execution_enabled = true
   node_filter_query = "example"
   allow_concurrent_executions = true
+	nodes_selected_by_default = false
   max_thread_count = 1
   rank_order = "ascending"
 	schedule = "0 0 12 * * * *"
@@ -440,6 +461,38 @@ resource "rundeck_job" "test" {
 	default_value = "bar"
 	value_choices = ["", "foo"]
   }
+
+  command {
+    description = "Prints Hello World"
+    shell_command = "echo Hello World"
+  }
+}
+`
+
+const testAccJobOptions_secure_options = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-job-option-choices-empty"
+  description = "parent project for job acceptance tests"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourcexml"
+        file = "/tmp/terraform-acc-tests.xml"
+    }
+  }
+}
+resource "rundeck_job" "test" {
+  project_name = "${rundeck_project.test.name}"
+  name = "basic-job"
+  description = "A basic job"
+
+  option {
+    name = "foo_secure"
+	obscure_input = true
+	storage_path = "/keys/test/path/"
+  }
+
   command {
     description = "Prints Hello World"
     shell_command = "echo Hello World"

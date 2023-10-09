@@ -28,7 +28,6 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"strings"
 
 	"github.com/rundeck/go-rundeck/rundeck"
@@ -68,7 +67,7 @@ type JobDetail struct {
 	CommandSequence           *JobCommandSequence `xml:"sequence,omitempty"`
 	Notification              *JobNotification    `xml:"notification,omitempty"`
 	Timeout                   string              `xml:"timeout,omitempty"`
-	Retry                     string              `xml:"retry,omitempty"`
+	Retry                     *Retry              `xml:"retry,omitempty"`
 	NodeFilter                *JobNodeFilter      `xml:"nodefilters,omitempty"`
 	Orchestrator              *JobOrchestrator    `xml:"orchestrator,omitempty"`
 
@@ -76,7 +75,7 @@ type JobDetail struct {
 	 * by this reason omitempty cannot be present.
 	 * This has to be handle by the user.
 	 */
-	NodesSelectedByDefault *Boolean     `xml:"nodesSelectedByDefault"`
+	NodesSelectedByDefault bool         `xml:"nodesSelectedByDefault"`
 	Schedule               *JobSchedule `xml:"schedule,omitempty"`
 	ScheduleEnabled        bool         `xml:"scheduleEnabled"`
 	TimeZone               string       `xml:"timeZone,omitempty"`
@@ -84,6 +83,11 @@ type JobDetail struct {
 
 type Boolean struct {
 	Value bool `xml:",chardata"`
+}
+
+type Retry struct {
+	Delay string `xml:"delay,attr"`
+	Value string `xml:",chardata"`
 }
 
 type JobNotification struct {
@@ -399,7 +403,7 @@ func GetJob(c *rundeck.BaseClient, id string) (*JobDetail, error) {
 		return nil, fmt.Errorf("error getting job: (%v)", err)
 	}
 
-	respBytes, err := ioutil.ReadAll(resp.Body)
+	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -440,12 +444,12 @@ func importJob(c *rundeck.BaseClient, job *JobDetail, dupeOption string) (*JobSu
 	}
 
 	ctx := context.Background()
-	resp, err := c.ProjectJobsImport(ctx, job.ProjectName, ioutil.NopCloser(bytes.NewReader(jobBytes)), "", "", "", dupeOption, "preserve")
+	resp, err := c.ProjectJobsImport(ctx, job.ProjectName, io.NopCloser(bytes.NewReader(jobBytes)), "", "", "", dupeOption, "preserve")
 	if err != nil {
 		return nil, err
 	}
 
-	respBytes, err := ioutil.ReadAll(resp.Body)
+	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}

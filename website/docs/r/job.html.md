@@ -54,7 +54,7 @@ The following arguments are supported:
 
 * `timeout` - (Optional) The maximum time for an execution to run. Time in seconds, or specify time units: "120m", "2h", "3d". Use blank or 0 to indicate no timeout.
 
-* `schedule` - (Optional) The jobs schedule in Unix crontab format
+* `schedule` - (Optional) The job's schedule in Quartz schedule cron format. Similar to unix crontab, but with seven fields instead of five: Second Minute Hour Day-of-Month Month Day-of-Week Year
 
 * `orchestrator` - (Optional) The orchestrator for the job, described below.
 
@@ -71,6 +71,10 @@ The following arguments are supported:
   Retry will occur if the job fails or times out, but not if it is manually killed. Can use an option
   value reference like "${option.retry}". The default is `0`, meaning that jobs will only run
   once.
+
+* `retry_delay` - (Optional) The time between the failed execution and the retry. Time in seconds or
+  specify time units: "120m", "2h", "3d". Use 0 to indicate no delay. Can include option value
+  references like "${option.delay}". The default is 0.
 
 * `max_thread_count` - (Optional) The maximum number of threads to use to execute this job, which
   controls on how many nodes the commands can be run simultaneously. Defaults to 1, meaning that
@@ -116,8 +120,8 @@ The following arguments are supported:
 * `node_filter_exclude_precedence`: (Optional, Deprecated) Boolean controlling a deprecated Rundeck feature that
   controls whether node exclusions take priority over inclusions.
 
-* `option`: (Optional) Nested block defining an option a user may set when executing this job. A
-  job may have any number of options. The structure of this nested block is described below.
+* `nodes_selected_by_default`: (Optional) Boolean controlling whether nodes that match the node_query_filter are
+  selected by default or not.
 
 * `command`: (Required) Nested block defining one step in the job workflow. A job must have one or
   more commands. The structure of this nested block is described below.
@@ -129,11 +133,8 @@ The following arguments are supported:
 * `notification`: (Optional) Nested block defining notifications on the job workflow. The structure of this nested block
   is described below.
 
-`orchestrator` blocks have the following structure:
-
-* `type`: (Required) The type of orchestrator to use (subset, tiered, maxPercentage)
-
-* `value`: (Optional) The value for the orchestrator (not used in tiered)
+* `option`: (Optional) Nested block defining an option a user may set when executing this job. A
+  job may have any number of options. The structure of this nested block is described below.
 
 `option` blocks have the following structure:
 
@@ -171,10 +172,16 @@ The following arguments are supported:
 
 * `obscure_input`: (Optional) Boolean controlling whether the value of this option should be obscured
   during entry and in execution logs. Defaults to `false`, but should be set to `true` when the
-  requested value is a password, private key or any other secret value.
+  requested value is a password, private key or any other secret value. This must be set to `true` when
+  `storage_path` is not null.
 
 * `exposed_to_scripts`: (Optional) Boolean controlling whether the value of this option is available
-  to scripts executed by job commands. Defaults to `false`.
+  to scripts executed by job commands. Defaults to `false`. When `true`, `obscure_input` must also be set
+  to `true`.
+
+* `storage_path`: (Optional) String of the path where the key is stored on rundeck. `obscure_input` must be set to
+  `true` when using this. This results in `Secure Remote Authentication` input type. Setting `exposed_to_scripts` also
+  `true` results in `Secure` input type.
 
 `command` blocks must have any one of the following combinations of arguments as contents:
 

@@ -29,6 +29,9 @@ func resourceRundeckProject() *schema.Resource {
 		Delete: DeleteProject,
 		Exists: ProjectExists,
 		Read:   ReadProject,
+		Importer: &schema.ResourceImporter{
+			State: resourceProjectImport,
+		},
 
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -129,7 +132,10 @@ func CreateProject(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	d.SetId(name)
-	d.Set("id", name)
+	val := d.Set("id", name)
+	if val != nil {
+		fmt.Printf("[Error]")
+	}
 
 	return UpdateProject(d, meta)
 }
@@ -194,15 +200,22 @@ func ReadProject(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	if project.StatusCode == 404 {
-		return fmt.Errorf("Project not found: (%s)", name)
+		return fmt.Errorf("project not found: (%s)", name)
 	}
 
 	projectConfig := project.Config.(map[string]interface{})
 
 	for configKey, attrKey := range projectConfigAttributes {
-		d.Set(projectConfigAttributes[configKey], nil)
+		val := d.Set(projectConfigAttributes[configKey], nil)
+		if val != nil {
+			fmt.Printf("[Error]")
+		}
+
 		if v, ok := projectConfig[configKey]; ok {
-			d.Set(attrKey, v)
+			val := d.Set(attrKey, v)
+			if val != nil {
+				fmt.Printf("[Error]")
+			}
 			// Remove this key so it won't get included in extra_config
 			// later.
 			delete(projectConfig, configKey)
@@ -265,17 +278,30 @@ func ReadProject(d *schema.ResourceData, meta interface{}) error {
 	for _, index := range resourceSourceIndices {
 		resourceSources = append(resourceSources, resourceSourceMap[index].(map[string]interface{}))
 	}
-	d.Set("resource_model_source", resourceSources)
+	val1 := d.Set("resource_model_source", resourceSources)
+	if val1 != nil {
+		fmt.Printf("[Error]")
+	}
 
 	extraConfig := map[string]string{}
 	dotReplacer := strings.NewReplacer(".", "/")
 	for k, v := range projectConfig {
 		extraConfig[dotReplacer.Replace(k)] = v.(string)
 	}
-	d.Set("extra_config", extraConfig)
+	val2 := d.Set("extra_config", extraConfig)
+	if val2 != nil {
+		fmt.Printf("[Error]")
+	}
 
-	d.Set("name", project.Name)
-	d.Set("ui_url", project.URL)
+	val3 := d.Set("name", project.Name)
+	if val3 != nil {
+		fmt.Printf("[Error]")
+	}
+
+	val4 := d.Set("ui_url", project.URL)
+	if val4 != nil {
+		fmt.Printf("[Error]")
+	}
 
 	return nil
 }
@@ -306,4 +332,24 @@ func DeleteProject(d *schema.ResourceData, meta interface{}) error {
 	_, err := client.ProjectDelete(ctx, name)
 
 	return err
+}
+
+func resourceProjectImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+	name := d.Id()
+
+	ok, err := ProjectExists(d, meta)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, fmt.Errorf("project doesn't exist. Please try again")
+	}
+	d.SetId(name)
+
+	err = ReadProject(d, meta)
+	if err != nil {
+		return nil, err
+	}
+
+	return []*schema.ResourceData{d}, nil
 }

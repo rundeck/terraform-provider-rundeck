@@ -92,7 +92,15 @@ func testAccPreCheck(t *testing.T) {
 	if v := os.Getenv("RUNDECK_URL"); v == "" {
 		t.Fatal("RUNDECK_URL must be set for acceptance tests")
 	}
-	if v := os.Getenv("RUNDECK_AUTH_TOKEN"); v == "" {
-		t.Fatal("RUNDECK_AUTH_TOKEN must be set for acceptance tests")
+
+	token := os.Getenv("RUNDECK_AUTH_TOKEN")
+	username := os.Getenv("RUNDECK_AUTH_USERNAME")
+	password := os.Getenv("RUNDECK_AUTH_PASSWORD")
+	if !(token != "" || (username != "" && password != "")) {
+		t.Logf("RUNDECK_AUTH_TOKEN=%s", token)
+		t.Logf("RUNDECK_AUTH_USERNAME=%s", username)
+		t.Logf("RUNDECK_AUTH_PASSWORD=%s", password)
+		t.Fatal("RUNDECK_AUTH_TOKEN must be set for acceptance tests or RUNDECK_AUTH_USERNAME and RUNDECK_AUTH_PASSWORD")
 	}
+
 }

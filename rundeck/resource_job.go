@@ -62,6 +62,11 @@ func resourceRundeckJob() *schema.Resource {
 				Optional: true,
 			},
 
+			"retry_delay": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
 			"max_thread_count": {
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -154,6 +159,11 @@ func resourceRundeckJob() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Default:  true,
+			},
+
+			"nodes_selected_by_default": {
+				Type:     schema.TypeBool,
+				Optional: true,
 			},
 
 			"time_zone": {
@@ -283,6 +293,10 @@ func resourceRundeckJob() *schema.Resource {
 
 						"exposed_to_scripts": {
 							Type:     schema.TypeBool,
+							Optional: true,
+						},
+						"storage_path": {
+							Type:     schema.TypeString,
 							Optional: true,
 						},
 					},
@@ -611,10 +625,14 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 		ExecutionEnabled:          d.Get("execution_enabled").(bool),
 		Timeout:                   d.Get("timeout").(string),
 		ScheduleEnabled:           d.Get("schedule_enabled").(bool),
+		NodesSelectedByDefault:    d.Get("nodes_selected_by_default").(bool),
 		TimeZone:                  d.Get("time_zone").(string),
 		LogLevel:                  d.Get("log_level").(string),
 		AllowConcurrentExecutions: d.Get("allow_concurrent_executions").(bool),
-		Retry:                     d.Get("retry").(string),
+		Retry: &Retry{
+			Value: d.Get("retry").(string),
+			Delay: d.Get("retry_delay").(string),
+		},
 		Dispatch: &JobDispatch{
 			MaxThreadCount:          d.Get("max_thread_count").(int),
 			ContinueNextNodeOnError: d.Get("continue_next_node_on_error").(bool),
@@ -706,6 +724,13 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 				MultiValueDelimiter:     optionMap["multi_value_delimiter"].(string),
 				ObscureInput:            optionMap["obscure_input"].(bool),
 				ValueIsExposedToScripts: optionMap["exposed_to_scripts"].(bool),
+				StoragePath:             optionMap["storage_path"].(string),
+			}
+			if option.StoragePath != "" && option.ObscureInput == false {
+				return nil, fmt.Errorf("Argument \"obscure_input\" must be set to `true` when \"storage_path\" is not empty.")
+			}
+			if option.ValueIsExposedToScripts && option.ObscureInput == false {
+				return nil, fmt.Errorf("Argument \"obscure_input\" must be set to `true` when \"exposed_to_scripts\" is set to true.")
 			}
 
 			for _, iv := range optionMap["value_choices"].([]interface{}) {
@@ -847,6 +872,9 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 	if err := d.Set("schedule_enabled", job.ScheduleEnabled); err != nil {
 		return err
 	}
+	if err := d.Set("nodes_selected_by_default", job.NodesSelectedByDefault); err != nil {
+		return err
+	}
 	if err := d.Set("time_zone", job.TimeZone); err != nil {
 		return err
 	}
@@ -856,10 +884,14 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 	if err := d.Set("allow_concurrent_executions", job.AllowConcurrentExecutions); err != nil {
 		return err
 	}
-	if err := d.Set("retry", job.Retry); err != nil {
-		return err
+	if job.Retry != nil {
+		if err := d.Set("retry", job.Retry.Value); err != nil {
+			return err
+		}
+		if err := d.Set("retry_delay", job.Retry.Delay); err != nil {
+			return err
+		}
 	}
-
 	if job.Dispatch != nil {
 		if err := d.Set("max_thread_count", job.Dispatch.MaxThreadCount); err != nil {
 			return err
@@ -930,6 +962,7 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 				"multi_value_delimiter":     option.MultiValueDelimiter,
 				"obscure_input":             option.ObscureInput,
 				"exposed_to_scripts":        option.ValueIsExposedToScripts,
+				"storage_path":              option.StoragePath,
 			}
 			optionConfigsI = append(optionConfigsI, optionConfigI)
 		}
@@ -1011,7 +1044,7 @@ func JobScheduleFromResourceData(d *schema.ResourceData, job *JobDetail) error {
 	if cronSpec != "" {
 		schedule := strings.Split(cronSpec, " ")
 		if len(schedule) != 7 {
-			return fmt.Errorf("the Rundeck schedule must be formatted like a cron expression, as defined here: http://www.quartz-scheduler.org/documentation/quartz-2.2.x/tutorials/tutorial-lesson-06.html")
+			return fmt.Errorf("the Rundeck schedule must be formatted like a cron expression, as defined here: http://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/tutorial-lesson-06.html")
 		}
 		job.Schedule = &JobSchedule{
 			Time: JobScheduleTime{
