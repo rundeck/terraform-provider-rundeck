@@ -4,17 +4,17 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 )
 
-func resourceRundeckPrivateKey() *schema.Resource {
+func resourceRundeckPassword() *schema.Resource {
 	return &schema.Resource{
 		Create: func(rd *schema.ResourceData, i interface{}) error {
-			return CreateOrUpdateBaseKey(rd, i, PRIVATE_KEY)
+			return CreateOrUpdateBaseKey(rd, i, PASSWORD)
 		},
 		Update: func(rd *schema.ResourceData, i interface{}) error {
-			return CreateOrUpdateBaseKey(rd, i, PRIVATE_KEY)
+			return CreateOrUpdateBaseKey(rd, i, PASSWORD)
 		},
 		Delete: DeleteBaseKey,
 		Exists: func(rd *schema.ResourceData, i interface{}) (bool, error) {
-			return BaseKeyExists(rd, i, PRIVATE_KEY)
+			return BaseKeyExists(rd, i, PASSWORD)
 		},
 		Read: ReadBaseKey,
 
@@ -26,10 +26,10 @@ func resourceRundeckPrivateKey() *schema.Resource {
 				ForceNew:    true,
 			},
 
-			"key_material": {
+			"password": {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "The private key material to store, in PEM format",
+				Description: "The password to store",
 				StateFunc:   BaseKeyStateFunction,
 			},
 		},
