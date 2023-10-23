@@ -1,3 +1,6 @@
+## 0.4.7
+- Added Password Resource
+
 ## 0.4.6
 - Added Retry Delay setting to Job definition.
 - Added ability to set Secure Options in Job Definition.
