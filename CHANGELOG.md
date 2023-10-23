@@ -1,5 +1,6 @@
 ## 0.4.7
 - Added Password Resource
+- Added Orchestrator option to Job Definition
 
 ## 0.4.6
 - Added Retry Delay setting to Job definition.
