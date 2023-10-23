@@ -70,6 +70,87 @@ func TestAccJob_cmd_nodefilter(t *testing.T) {
 	})
 }
 
+func TestOchestrator_high_low(t *testing.T) {
+	var job JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobCheckDestroy(&job),
+		Steps: []resource.TestStep{
+			{
+				Config: testOchestration_high_low,
+				Check: resource.ComposeTestCheckFunc(
+					testAccJobCheckExists("rundeck_job.test", &job),
+					func(s *terraform.State) error {
+						if expected := "basic-job-with-node-filter"; job.Name != expected {
+							return fmt.Errorf("wrong name; expected %v, got %v", expected, job.Name)
+						}
+						if expected := "name: tacobell"; job.CommandSequence.Commands[0].Job.NodeFilter.Query != expected {
+							return fmt.Errorf("failed to set job node filter; expected %v, got %v", expected, job.CommandSequence.Commands[0].Job.NodeFilter.Query)
+						}
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
+
+func TestOchestrator_max_percent(t *testing.T) {
+	var job JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobCheckDestroy(&job),
+		Steps: []resource.TestStep{
+			{
+				Config: testOchestration_maxperecent,
+				Check: resource.ComposeTestCheckFunc(
+					testAccJobCheckExists("rundeck_job.test", &job),
+					func(s *terraform.State) error {
+						if expected := "basic-job-with-node-filter"; job.Name != expected {
+							return fmt.Errorf("wrong name; expected %v, got %v", expected, job.Name)
+						}
+						if expected := "name: tacobell"; job.CommandSequence.Commands[0].Job.NodeFilter.Query != expected {
+							return fmt.Errorf("failed to set job node filter; expected %v, got %v", expected, job.CommandSequence.Commands[0].Job.NodeFilter.Query)
+						}
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
+
+func TestOchestrator_rankTiered(t *testing.T) {
+	var job JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobCheckDestroy(&job),
+		Steps: []resource.TestStep{
+			{
+				Config: testOchestration_rank_tiered,
+				Check: resource.ComposeTestCheckFunc(
+					testAccJobCheckExists("rundeck_job.test", &job),
+					func(s *terraform.State) error {
+						if expected := "basic-job-with-node-filter"; job.Name != expected {
+							return fmt.Errorf("wrong name; expected %v, got %v", expected, job.Name)
+						}
+						if expected := "name: tacobell"; job.CommandSequence.Commands[0].Job.NodeFilter.Query != expected {
+							return fmt.Errorf("failed to set job node filter; expected %v, got %v", expected, job.CommandSequence.Commands[0].Job.NodeFilter.Query)
+						}
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
+
 func TestAccJob_Idempotency(t *testing.T) {
 	var job JobDetail
 
@@ -259,6 +340,10 @@ resource "rundeck_job" "test" {
   option {
     name = "foo"
     default_value = "bar"
+  } 
+  orchestrator {
+    type = "subset"
+    count = 1
   }
   command {
     job {
@@ -467,3 +552,159 @@ resource "rundeck_job" "test" {
   }
 }
 `
+
+const testOchestration_maxperecent = `
+resource "rundeck_project" "test" {
+	name = "terraform-acc-test-job"
+	description = "parent project for job acceptance tests"
+  
+	resource_model_source {
+	  type = "file"
+	  config = {
+		  format = "resourcexml"
+		  file = "/tmp/terraform-acc-tests.xml"
+	  }
+	}
+  }
+  resource "rundeck_job" "test" {
+	project_name = "${rundeck_project.test.name}"
+	name = "orchestrator-MaxPercent"
+	description = "A basic job"
+	execution_enabled = true
+	node_filter_query = "example"
+	allow_concurrent_executions = true
+	  nodes_selected_by_default = false
+	max_thread_count = 1
+	rank_order = "ascending"
+	  schedule = "0 0 12 * * * *"
+	  schedule_enabled = true
+	option {
+	  name = "foo"
+	  default_value = "bar"
+	} 
+	orchestrator {
+	  type = "maxPercentage"
+	  percent = 10
+	}
+	command {
+	  job {
+		name = "Other Job Name"
+		run_for_each_node = true
+		node_filters {
+		  filter = "name: tacobell"
+		}
+	  }
+	  description = "Prints Hello World"
+	}
+	notification {
+		type = "on_success"
+		email {
+			recipients = ["foo@foo.bar"]
+		}
+	}
+  }
+  `
+
+const testOchestration_high_low = `
+resource "rundeck_project" "test" {
+	name = "terraform-acc-test-job"
+	description = "parent project for job acceptance tests"
+  
+	resource_model_source {
+	  type = "file"
+	  config = {
+		  format = "resourcexml"
+		  file = "/tmp/terraform-acc-tests.xml"
+	  }
+	}
+  }
+  resource "rundeck_job" "test" {
+	project_name = "${rundeck_project.test.name}"
+	name = "orchestrator-High-Low"
+	description = "A basic job"
+	execution_enabled = true
+	node_filter_query = "example"
+	allow_concurrent_executions = true
+	  nodes_selected_by_default = false
+	max_thread_count = 1
+	rank_order = "ascending"
+	  schedule = "0 0 12 * * * *"
+	  schedule_enabled = true
+	option {
+	  name = "foo"
+	  default_value = "bar"
+	} 
+	orchestrator {
+	  type = "orchestrator-highest-lowest-attribute"
+	  sort = "highest"
+	  attribute = "my-attribute"
+	}
+	command {
+	  job {
+		name = "Other Job Name"
+		run_for_each_node = true
+		node_filters {
+		  filter = "name: tacobell"
+		}
+	  }
+	  description = "Prints Hello World"
+	}
+	notification {
+		type = "on_success"
+		email {
+			recipients = ["foo@foo.bar"]
+		}
+	}
+  }
+  `
+
+const testOchestration_rank_tiered = `
+resource "rundeck_project" "test" {
+	name = "terraform-acc-test-job"
+	description = "parent project for job acceptance tests"
+  
+	resource_model_source {
+	  type = "file"
+	  config = {
+		  format = "resourcexml"
+		  file = "/tmp/terraform-acc-tests.xml"
+	  }
+	}
+  }
+  resource "rundeck_job" "test" {
+	project_name = "${rundeck_project.test.name}"
+	name = "basic-job-with-node-filter"
+	description = "A basic job"
+	execution_enabled = true
+	node_filter_query = "example"
+	allow_concurrent_executions = true
+	  nodes_selected_by_default = false
+	max_thread_count = 1
+	rank_order = "ascending"
+	  schedule = "0 0 12 * * * *"
+	  schedule_enabled = true
+	option {
+	  name = "foo"
+	  default_value = "bar"
+	} 
+	orchestrator {
+	  type = "rankTiered"
+	}
+	command {
+	  job {
+		name = "Other Job Name"
+		run_for_each_node = true
+		node_filters {
+		  filter = "name: tacobell"
+		}
+	  }
+	  description = "Prints Hello World"
+	}
+	notification {
+		type = "on_success"
+		email {
+			recipients = ["foo@foo.bar"]
+		}
+	}
+  }
+  `
