@@ -56,7 +56,12 @@ The following arguments are supported:
 
 * `schedule` - (Optional) The job's schedule in Quartz schedule cron format. Similar to unix crontab, but with seven fields instead of five: Second Minute Hour Day-of-Month Month Day-of-Week Year
 
-* `orchestrator` - (Optional) The orchestrator for the job, described below.
+* `orchestrator` - (Optional) The orchestrator for the job, described below and [here](https://docs.rundeck.com/docs/manual/orchestrator-plugins/bundled.html)
+    - `type`: Must be one of `subset`, `rankTiered`, `maxPercentage`, `orchestrator-highest-lowest-attribute`
+    - `count`: Required when types is `subset`. Selects that max number of the target nodes at random to process.
+    - `percent`: Required when type is `maxPercentage`. Used to determine max percentage of the nodes to process at once.
+    - `attribute`: Required when type is `orchestrator-highest-lowest-attribute`.  The node attribute to use for sorting.
+    - `sort`:Required when type is `orchestrator-highest-lowest-attribute`.  Values accepted are `highest` or `lowest`.
 
 * `schedule_enabled` - (Optional) Sets the job schedule to be enabled or disabled. Defaults to `true`.
 

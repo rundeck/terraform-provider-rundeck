@@ -125,7 +125,10 @@ func resourceRundeckJob() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 			},
-
+			"timeout": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 			"orchestrator": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -134,7 +137,7 @@ func resourceRundeckJob() *schema.Resource {
 						"type": {
 							Type:        schema.TypeString,
 							Required:    true,
-							Description: "Option of `subset`, `tiered`, `percentage`",
+							Description: "Option of `subset`, `rankTiered`, `maxPercentage`, `orchestrator-highest-lowest-attribute`",
 						},
 						"count": {
 							Type:        schema.TypeInt,
@@ -145,6 +148,16 @@ func resourceRundeckJob() *schema.Resource {
 							Type:        schema.TypeInt,
 							Optional:    true,
 							Description: "Value for the maxPercentage orchestrator",
+						},
+						"attribute": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "The Node Attribute that shoud be used to rank nodes in High/Low Orchestrator.",
+						},
+						"sort": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "Option of `highest` or `lowest` for High/Low Orchestrator",
 						},
 					},
 				},
@@ -656,13 +669,36 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 			Type:   orchMap["type"].(string),
 			Config: JobOrchestratorConfig{},
 		}
-		orchCount := orchMap["count"]
-		if orchCount != nil {
-			job.Orchestrator.Config.Count = orchCount.(int)
+		orchType := orchMap["type"].(string)
+		if orchType == "orchestrator-highest-lowest-attribute" {
+			orchAttr := orchMap["attribute"]
+			if orchAttr != nil {
+				job.Orchestrator.Config.Attribute = orchAttr.(string)
+			} else {
+				return nil, fmt.Errorf("high Low Orchestrator must include an attribute to sort against")
+			}
+			orchSort := orchMap["sort"]
+			if orchSort != nil {
+				job.Orchestrator.Config.Sort = orchSort.(string)
+			} else {
+				return nil, fmt.Errorf("high low orchestrator must include sort direction of `high` or `low`")
+			}
 		}
-		orchPct := orchMap["percent"]
-		if orchPct != nil {
-			job.Orchestrator.Config.Percent = orchPct.(int)
+		if orchType == "subset" {
+			orchCount := orchMap["count"]
+			if orchCount != nil {
+				job.Orchestrator.Config.Count = orchCount.(int)
+			} else {
+				return nil, fmt.Errorf("subset Orchestrator requires count setting")
+			}
+		}
+		if orchType == "maxPercentage" {
+			orchPct := orchMap["percent"]
+			if orchPct != nil {
+				job.Orchestrator.Config.Percent = orchPct.(int)
+			} else {
+				return nil, fmt.Errorf("max Percentage Orchestrator requires a percent integer configuration")
+			}
 		}
 	}
 
@@ -726,11 +762,11 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 				ValueIsExposedToScripts: optionMap["exposed_to_scripts"].(bool),
 				StoragePath:             optionMap["storage_path"].(string),
 			}
-			if option.StoragePath != "" && option.ObscureInput == false {
-				return nil, fmt.Errorf("Argument \"obscure_input\" must be set to `true` when \"storage_path\" is not empty.")
+			if option.StoragePath != "" && !option.ObscureInput {
+				return nil, fmt.Errorf("argument \"obscure_input\" must be set to `true` when \"storage_path\" is not empty")
 			}
-			if option.ValueIsExposedToScripts && option.ObscureInput == false {
-				return nil, fmt.Errorf("Argument \"obscure_input\" must be set to `true` when \"exposed_to_scripts\" is set to true.")
+			if option.ValueIsExposedToScripts && !option.ObscureInput {
+				return nil, fmt.Errorf("argument \"obscure_input\" must be set to `true` when \"exposed_to_scripts\" is set to true")
 			}
 
 			for _, iv := range optionMap["value_choices"].([]interface{}) {

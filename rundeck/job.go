@@ -320,8 +320,10 @@ type JobNodeFilter struct {
 
 // JobOrchestratorConfig Contains the options for the Job Orchestrators
 type JobOrchestratorConfig struct {
-	Count   int `xml:"count,omitempty"`
-	Percent int `xml:"percent,omitempty"`
+	Count     int    `xml:"count,omitempty"`
+	Percent   int    `xml:"percent,omitempty"`
+	Attribute string `xml:"attribute,omitempty"`
+	Sort      string `xml:"sort,omitempty"`
 }
 
 // JobOrchestrator describes how to schedule the jobs, in what order, and on how many nodes
