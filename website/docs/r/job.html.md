@@ -181,6 +181,9 @@ The following arguments are supported:
   `true` when using this. This results in `Secure Remote Authentication` input type. Setting `exposed_to_scripts` also
   `true` results in `Secure` input type.
 
+* `hidden`: (Optional) Boolean controlling whether this option should be hidden from the UI on the job run page.
+  Defaults to `false`.
+
 `command` blocks must have any one of the following combinations of arguments as contents:
 
 * `description`: (Optional) gives a description to the command block.

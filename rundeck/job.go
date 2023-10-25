@@ -207,6 +207,9 @@ type JobOption struct {
 
 	// Description of the value to be shown in the Rundeck UI.
 	Description string `xml:"description,omitempty"`
+
+	// Option should be hidden from job run page
+	Hidden bool `xml:"hidden,omitempty"`
 }
 
 // JobValueChoices is a specialization of []string representing a sequence of predefined values
