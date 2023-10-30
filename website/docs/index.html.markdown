@@ -87,14 +87,19 @@ resource "rundeck_job" "bounceweb" {
   }
 }
 
-resource "rundeck_public_key" "terraform" {
+resource "rundeck_public_key" "public_key" {
   path         = "terraform/id_rsa.pub"
   key_material = "ssh-rsa yada-yada-yada"
 }
 
-resource "rundeck_private_key" "terraform" {
+resource "rundeck_private_key" "private_key" {
   path         = "terraform/id_rsa"
   key_material = "$${file(\"id_rsa.pub\")}"
+}
+
+resource "rundeck_password" "password" {
+  path         = "terraform/some_password"
+  password = "qwerty"
 }
 
 data "local_file" "acl" {

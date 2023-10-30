@@ -56,6 +56,13 @@ The following arguments are supported:
 
 * `schedule` - (Optional) The job's schedule in Quartz schedule cron format. Similar to unix crontab, but with seven fields instead of five: Second Minute Hour Day-of-Month Month Day-of-Week Year
 
+* `orchestrator` - (Optional) The orchestrator for the job, described below and [here](https://docs.rundeck.com/docs/manual/orchestrator-plugins/bundled.html)
+    - `type`: Must be one of `subset`, `rankTiered`, `maxPercentage`, `orchestrator-highest-lowest-attribute`
+    - `count`: Required when types is `subset`. Selects that max number of the target nodes at random to process.
+    - `percent`: Required when type is `maxPercentage`. Used to determine max percentage of the nodes to process at once.
+    - `attribute`: Required when type is `orchestrator-highest-lowest-attribute`.  The node attribute to use for sorting.
+    - `sort`:Required when type is `orchestrator-highest-lowest-attribute`.  Values accepted are `highest` or `lowest`.
+
 * `schedule_enabled` - (Optional) Sets the job schedule to be enabled or disabled. Defaults to `true`.
 
 * `time_zone` - (Optional) A valid Time Zone, either an abbreviation such as "PST", a full name such as
@@ -75,7 +82,7 @@ The following arguments are supported:
   references like "${option.delay}". The default is 0.
 
 * `max_thread_count` - (Optional) The maximum number of threads to use to execute this job, which
-  controls on how many nodes the commands can be run simulateneously. Defaults to 1, meaning that
+  controls on how many nodes the commands can be run simultaneously. Defaults to 1, meaning that
   the nodes will be visited sequentially.
 
 * `continue_on_error` - (Optional) Boolean defining whether Rundeck will continue to run
@@ -180,6 +187,9 @@ The following arguments are supported:
 * `storage_path`: (Optional) String of the path where the key is stored on rundeck. `obscure_input` must be set to
   `true` when using this. This results in `Secure Remote Authentication` input type. Setting `exposed_to_scripts` also
   `true` results in `Secure` input type.
+
+* `hidden`: (Optional) Boolean controlling whether this option should be hidden from the UI on the job run page.
+  Defaults to `false`.
 
 `command` blocks must have any one of the following combinations of arguments as contents:
 

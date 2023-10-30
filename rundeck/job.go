@@ -69,6 +69,7 @@ type JobDetail struct {
 	Timeout                   string              `xml:"timeout,omitempty"`
 	Retry                     *Retry              `xml:"retry,omitempty"`
 	NodeFilter                *JobNodeFilter      `xml:"nodefilters,omitempty"`
+	Orchestrator              *JobOrchestrator    `xml:"orchestrator,omitempty"`
 
 	/* If Dispatch is enabled, nodesSelectedByDefault is always present with true/false.
 	 * by this reason omitempty cannot be present.
@@ -207,6 +208,9 @@ type JobOption struct {
 
 	// Description of the value to be shown in the Rundeck UI.
 	Description string `xml:"description,omitempty"`
+
+	// Option should be hidden from job run page
+	Hidden bool `xml:"hidden,omitempty"`
 }
 
 // JobValueChoices is a specialization of []string representing a sequence of predefined values
@@ -315,6 +319,20 @@ type JobNodeFilter struct {
 	Query             string `xml:"filter,omitempty"`
 	ExcludeQuery      string `xml:"filterExclude,omitempty"`
 	ExcludePrecedence bool   `xml:"excludeprecedence,omitempty"`
+}
+
+// JobOrchestratorConfig Contains the options for the Job Orchestrators
+type JobOrchestratorConfig struct {
+	Count     int    `xml:"count,omitempty"`
+	Percent   int    `xml:"percent,omitempty"`
+	Attribute string `xml:"attribute,omitempty"`
+	Sort      string `xml:"sort,omitempty"`
+}
+
+// JobOrchestrator describes how to schedule the jobs, in what order, and on how many nodes
+type JobOrchestrator struct {
+	Config JobOrchestratorConfig `xml:"configuration"`
+	Type   string                `xml:"type"`
 }
 
 type jobImportResults struct {
@@ -511,14 +529,11 @@ func (c *JobValueChoices) UnmarshalXMLAttr(attr xml.Attr) error {
 
 func (a JobCommandJobRefArguments) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 	start.Attr = []xml.Attr{
-		{Name: xml.Name{Local: "line"}, Value: string(a)},
+		xml.Attr{Name: xml.Name{Local: "line"}, Value: string(a)},
 	}
-	err := e.EncodeToken(start)
-	if err != nil {
-		return err
-	}
-	err = e.EncodeToken(xml.EndElement{Name: start.Name})
-	return err
+	e.EncodeToken(start)
+	e.EncodeToken(xml.EndElement{Name: start.Name})
+	return nil
 }
 
 func (a *JobCommandJobRefArguments) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
