@@ -280,6 +280,10 @@ func resourceRundeckJob() *schema.Resource {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
+						"hidden": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
 					},
 				},
 			},
@@ -686,6 +690,7 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 				ObscureInput:            optionMap["obscure_input"].(bool),
 				ValueIsExposedToScripts: optionMap["exposed_to_scripts"].(bool),
 				StoragePath:             optionMap["storage_path"].(string),
+				Hidden:                  optionMap["hidden"].(bool),
 			}
 			if option.StoragePath != "" && option.ObscureInput == false {
 				return nil, fmt.Errorf("Argument \"obscure_input\" must be set to `true` when \"storage_path\" is not empty.")
@@ -924,6 +929,7 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 				"obscure_input":             option.ObscureInput,
 				"exposed_to_scripts":        option.ValueIsExposedToScripts,
 				"storage_path":              option.StoragePath,
+				"hidden":                    option.Hidden,
 			}
 			optionConfigsI = append(optionConfigsI, optionConfigI)
 		}
