@@ -263,6 +263,8 @@ type JobCommand struct {
 	// a shell script it should have an appropriate #! line.
 	Script string `xml:"script,omitempty"`
 
+	ScriptUrl string `xml:"scripturl,omitempty"`
+
 	// A pre-existing file (on the target nodes) that will be executed.
 	ScriptFile string `xml:"scriptfile,omitempty"`
 
