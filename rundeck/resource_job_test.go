@@ -83,7 +83,7 @@ func TestOchestrator_high_low(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccJobCheckExists("rundeck_job.test", &job),
 					func(s *terraform.State) error {
-						if expected := "basic-job-with-node-filter"; job.Name != expected {
+						if expected := "orchestrator-High-Low"; job.Name != expected {
 							return fmt.Errorf("wrong name; expected %v, got %v", expected, job.Name)
 						}
 						if expected := "name: tacobell"; job.CommandSequence.Commands[0].Job.NodeFilter.Query != expected {
@@ -110,7 +110,7 @@ func TestOchestrator_max_percent(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccJobCheckExists("rundeck_job.test", &job),
 					func(s *terraform.State) error {
-						if expected := "basic-job-with-node-filter"; job.Name != expected {
+						if expected := "orchestrator-MaxPercent"; job.Name != expected {
 							return fmt.Errorf("wrong name; expected %v, got %v", expected, job.Name)
 						}
 						if expected := "name: tacobell"; job.CommandSequence.Commands[0].Job.NodeFilter.Query != expected {
@@ -261,8 +261,23 @@ func TestAccJobOptions_secure_choice(t *testing.T) {
 		CheckDestroy: testAccJobCheckDestroy(&job),
 		Steps: []resource.TestStep{
 			{
-				Config:      testAccJobOptions_secure_options,
-				ExpectError: regexp.MustCompile("argument \"value_choices\" can not have empty values; try \"required\""),
+				Config: testAccJobOptions_secure_options,
+				Check: resource.ComposeTestCheckFunc(
+					testAccJobCheckExists("rundeck_job.test", &job),
+					func(s *terraform.State) error {
+						secureOption := job.OptionsConfig.Options[0]
+						if expected := "foo_secure"; secureOption.Name != expected {
+							return fmt.Errorf("wrong name; expected %v, got %v", expected, secureOption.Name)
+						}
+						if expected := "/keys/test/path/"; secureOption.StoragePath != expected {
+							return fmt.Errorf("wrong storage_path; expected %v, got %v", expected, secureOption.Name)
+						}
+						if expected := true; secureOption.ObscureInput != expected {
+							return fmt.Errorf("failed to set the input as obscure; expected %v, got %v", expected, secureOption.ObscureInput)
+						}
+						return nil
+					},
+				),
 			},
 		},
 	})

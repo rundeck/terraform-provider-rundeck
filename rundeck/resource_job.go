@@ -928,6 +928,9 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 	if err := d.Set("allow_concurrent_executions", job.AllowConcurrentExecutions); err != nil {
 		return err
 	}
+	if err := d.Set("timeout", job.Timeout); err != nil {
+		return err
+	}
 	if job.Retry != nil {
 		if err := d.Set("retry", job.Retry.Value); err != nil {
 			return err
@@ -947,6 +950,9 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 			return err
 		}
 		if err := d.Set("rank_order", job.Dispatch.RankOrder); err != nil {
+			return err
+		}
+		if err := d.Set("success_on_empty_node_filter", job.Dispatch.SuccessOnEmptyNodeFilter); err != nil {
 			return err
 		}
 	} else {
