@@ -223,10 +223,11 @@ A command's `script_interpreter` block has the following structure:
 
 A command's `job` block has the following structure:
 
-* `name`: (Required) The name of the job to execute. The target job must be in the same project
-  as the current job.
+* `name`: (Required) The name of the job to execute. If no specific `project_name` was given the target job should be in the same project as the current job.
 
 * `group_name`: (Optional) The name of the group that the target job belongs to, if any.
+
+* `project_name` - (Optional) The name of another project that holds the target job.
 
 * `run_for_each_node`: (Optional) Boolean controlling whether the job is run only once (`false`,
   the default) or whether it is run once for each node (`true`).
