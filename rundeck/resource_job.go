@@ -376,10 +376,10 @@ func resourceRundeckJobCommand() *schema.Resource {
 				Elem:     resourceRundeckJobCommandJob(),
 			},
 
-			"step_plugin": {
+			"plugins": {
 				Type:     schema.TypeList,
 				Optional: true,
-				Elem:     resourceRundeckJobPluginResource(),
+				Elem:     resourceRundeckJobPluginsResource(),
 			},
 			"node_step_plugin": {
 				Type:     schema.TypeList,
@@ -441,10 +441,10 @@ func resourceRundeckJobCommandErrorHandler() *schema.Resource {
 				Elem:     resourceRundeckJobCommandJob(),
 			},
 
-			"step_plugin": {
+			"plugins": {
 				Type:     schema.TypeList,
 				Optional: true,
-				Elem:     resourceRundeckJobPluginResource(),
+				Elem:     resourceRundeckJobPluginsResource(),
 			},
 
 			"node_step_plugin": {
@@ -529,6 +529,18 @@ func resourceRundeckJobPluginResource() *schema.Resource {
 			"config": {
 				Type:     schema.TypeMap,
 				Optional: true,
+			},
+		},
+	}
+}
+
+func resourceRundeckJobPluginsResource() *schema.Resource {
+	return &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"log_filter_plugin": {
+				Type:     schema.TypeList,
+				Required: true,
+				Elem:     resourceRundeckJobPluginResource(),
 			},
 		},
 	}
@@ -1187,7 +1199,7 @@ func commandFromResourceData(commandI interface{}) (*JobCommand, error) {
 	if command.Job, err = jobCommandJobRefFromResourceData("job", commandMap); err != nil {
 		return nil, err
 	}
-	if command.StepPlugin, err = singlePluginFromResourceData("step_plugin", commandMap); err != nil {
+	if command.Plugins, err = pluginsFromResourceData("plugins", commandMap); err != nil {
 		return nil, err
 	}
 	if command.NodeStepPlugin, err = singlePluginFromResourceData("node_step_plugin", commandMap); err != nil {
@@ -1225,6 +1237,32 @@ func jobCommandJobRefFromResourceData(key string, commandMap map[string]interfac
 		}
 	}
 	return jobRef, nil
+}
+
+func pluginsFromResourceData(key string, commandMap map[string]interface{}) (*JobPlugins, error) {
+	pluginsList := commandMap[key].([]interface{})
+	if len(pluginsList) == 0 {
+		return nil, nil
+	}
+	if len(pluginsList) > 1 {
+		return nil, fmt.Errorf("rundeck command job reference may have no more than one plugins section")
+	}
+	pluginsI := pluginsList[0].(map[string]interface{})
+	var plugins = new(JobPlugins)
+	for _, pluginI := range pluginsI["log_filter_plugin"].([]interface{}) {
+		pluginMap := pluginI.(map[string]interface{})
+		configI := pluginMap["config"].(map[string]interface{})
+		var config = JobLogFilterConfig{}
+		for key, value := range configI {
+			config[key] = value.(string)
+		}
+		plugin := &JobLogFilter{
+			Type:   pluginMap["type"].(string),
+			Config: &config,
+		}
+		plugins.LogFilterPlugins = append(plugins.LogFilterPlugins, *plugin)
+	}
+	return plugins, nil
 }
 
 func singlePluginFromResourceData(key string, commandMap map[string]interface{}) (*JobPlugin, error) {
@@ -1295,13 +1333,18 @@ func commandToResourceData(command *JobCommand) (map[string]interface{}, error) 
 		commandConfigI["job"] = append([]interface{}{}, jobRefConfigI)
 	}
 
-	if command.StepPlugin != nil {
-		commandConfigI["step_plugin"] = []interface{}{
-			map[string]interface{}{
-				"type":   command.StepPlugin.Type,
-				"config": map[string]string(command.StepPlugin.Config),
-			},
+	if command.Plugins != nil {
+		logFilterPluginI := []map[string]interface{}{}
+		for _, plugin := range command.Plugins.LogFilterPlugins {
+			pluginI := map[string]interface{}{
+				"type":   plugin.Type,
+				"config": (map[string]string)(*plugin.Config),
+			}
+			logFilterPluginI = append(logFilterPluginI, pluginI)
 		}
+		commandConfigI["plugins"] = append([]interface{}{}, map[string]interface{}{
+			"log_filter_plugin": logFilterPluginI,
+		})
 	}
 
 	if command.NodeStepPlugin != nil {
