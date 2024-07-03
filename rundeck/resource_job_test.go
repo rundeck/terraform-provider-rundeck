@@ -268,6 +268,44 @@ func TestAccJobOptions_secure_choice(t *testing.T) {
 	})
 }
 
+func TestAccJob_plugins(t *testing.T) {
+	var job JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobCheckDestroy(&job),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_plugins,
+				Check: resource.ComposeTestCheckFunc(
+					testAccJobCheckExists("rundeck_job.test", &job),
+					func(s *terraform.State) error {
+						jobCommand := job.CommandSequence.Commands[0]
+						if jobCommand.Plugins == nil {
+							return fmt.Errorf("JobCommands[0].plugins shouldn't be nil")
+						}
+						keyValuePlugin := jobCommand.Plugins.LogFilterPlugins[0]
+						if expected := "key-value-data"; keyValuePlugin.Type != expected {
+							return fmt.Errorf("wrong plugin type; expected %v, got %v", expected, keyValuePlugin.Type)
+						}
+						if expected := "\\s|\\$|\\{|\\}|\\\\"; (*keyValuePlugin.Config)["invalidKeyPattern"] != expected {
+							return fmt.Errorf("failed to set plugin config; expected %v for \"invalidKeyPattern\", got %v", expected, (*keyValuePlugin.Config)["invalidKeyPattern"])
+						}
+						if expected := "true"; (*keyValuePlugin.Config)["logData"] != expected {
+							return fmt.Errorf("failed to set plugin config; expected %v for \"logData\", got %v", expected, (*keyValuePlugin.Config)["logData"])
+						}
+						if expected := "^RUNDECK:DATA:\\s*([^\\s]+?)\\s*=\\s*(.+)$"; (*keyValuePlugin.Config)["regex"] != expected {
+							return fmt.Errorf("failed to set plugin config; expected %v for \"regex\", got %v", expected, (*keyValuePlugin.Config)["regex"])
+						}
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
+
 const testAccJobConfig_basic = `
 resource "rundeck_project" "test" {
   name = "terraform-acc-test-job"
@@ -708,3 +746,57 @@ resource "rundeck_project" "test" {
 	}
   }
   `
+
+const testAccJobConfig_plugins = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-job"
+  description = "parent project for job acceptance tests"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourcexml"
+        file = "/tmp/terraform-acc-tests.xml"
+    }
+  }
+}
+resource "rundeck_job" "test" {
+  project_name = "${rundeck_project.test.name}"
+  name = "basic-job"
+  description = "A basic job"
+  execution_enabled = true
+  node_filter_query = "example"
+  allow_concurrent_executions = true
+	nodes_selected_by_default = true
+  success_on_empty_node_filter = true
+  max_thread_count = 1
+  rank_order = "ascending"
+  timeout = "42m"
+	schedule = "0 0 12 * * * *"
+	schedule_enabled = true
+  option {
+    name = "foo"
+    default_value = "bar"
+  }
+  command {
+    description = "Prints Hello World"
+    shell_command = "echo Hello World"
+    plugins {
+      log_filter_plugin {
+        config = {
+          invalidKeyPattern = "\\s|\\$|\\{|\\}|\\\\"
+          logData           = "true"
+          regex             = "^RUNDECK:DATA:\\s*([^\\s]+?)\\s*=\\s*(.+)$"
+        }
+        type = "key-value-data"
+      }
+    }
+  }
+  notification {
+	  type = "on_success"
+	  email {
+		  recipients = ["foo@foo.bar"]
+	  }
+  }
+}
+`
