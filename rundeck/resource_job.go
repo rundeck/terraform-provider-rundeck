@@ -375,7 +375,11 @@ func resourceRundeckJobCommand() *schema.Resource {
 				Optional: true,
 				Elem:     resourceRundeckJobCommandJob(),
 			},
-
+			"step_plugin": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem:     resourceRundeckJobPluginResource(),
+			},
 			"plugins": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -439,6 +443,11 @@ func resourceRundeckJobCommandErrorHandler() *schema.Resource {
 				Type:     schema.TypeList,
 				Optional: true,
 				Elem:     resourceRundeckJobCommandJob(),
+			},
+			"step_plugin": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem:     resourceRundeckJobPluginResource(),
 			},
 
 			"plugins": {
@@ -1199,6 +1208,9 @@ func commandFromResourceData(commandI interface{}) (*JobCommand, error) {
 	if command.Job, err = jobCommandJobRefFromResourceData("job", commandMap); err != nil {
 		return nil, err
 	}
+	if command.StepPlugin, err = singlePluginFromResourceData("step_plugin", commandMap); err != nil {
+		return nil, err
+	}
 	if command.Plugins, err = pluginsFromResourceData("plugins", commandMap); err != nil {
 		return nil, err
 	}
@@ -1331,6 +1343,14 @@ func commandToResourceData(command *JobCommand) (map[string]interface{}, error) 
 			jobRefConfigI["node_filters"] = append([]interface{}{}, nodeFilterConfigI)
 		}
 		commandConfigI["job"] = append([]interface{}{}, jobRefConfigI)
+	}
+	if command.StepPlugin != nil {
+		commandConfigI["step_plugin"] = []interface{}{
+			map[string]interface{}{
+				"type":   command.StepPlugin.Type,
+				"config": map[string]string(command.StepPlugin.Config),
+			},
+		}
 	}
 
 	if command.Plugins != nil {

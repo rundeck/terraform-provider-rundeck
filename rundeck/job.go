@@ -276,6 +276,9 @@ type JobCommand struct {
 	Job *JobCommandJobRef `xml:"jobref"`
 
 	// Configuration for a step plugin to run as this command.
+	StepPlugin *JobPlugin `xml:"step-plugin"`
+
+	// Configuration for log filter plugins to run for this command.
 	Plugins *JobPlugins `xml:"plugins"`
 
 	// Configuration for a node step plugin to run as this command.
@@ -307,10 +310,10 @@ type JobCommandJobRefArguments string
 type JobPlugin struct {
 	XMLName xml.Name
 	Type    string          `xml:"type,attr"`
-	Config  JobPluginConfig `xml:"config"`
+	Config  JobPluginConfig `xml:"configuration"`
 }
 
-// Plugins is a configuration for a list of LogFilter plugins to run within a job.
+// Plugin is a configuration for a filter plugin to run for a step
 type JobPlugins struct {
 	XMLName          xml.Name
 	LogFilterPlugins []JobLogFilter `xml:"LogFilter"`

@@ -244,6 +244,7 @@ The following arguments are supported:
 
 * A `job` block, described below, causes another job within the same project to be executed as
   a command.
+* A `step_plugin` block, described below, causes a step plugin to be executed as a command.
 
 * A `plugins` block, described below, contains a list of plugins to add to the command. At the moment, only [Log Filters](https://docs.rundeck.com/docs/manual/log-filters/) are supported
 
@@ -285,7 +286,7 @@ A command's `plugins` block has the following structure:
 
 * `log_filter_plugin`: A log filter plugin to add to the command. Can be repeated to add multiple log filters. See below for the structure.
 
-A command's `log_filter_plugin` or `node_step_plugin` block both have the following structure, as does the job's
+A command's `log_filter_plugin`, `step_plugin`  or `node_step_plugin` block both have the following structure, as does the job's
   `global_log_filter` blocks:
 
 * `type`: (Required) The name of the plugin to execute.
