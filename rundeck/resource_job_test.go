@@ -303,6 +303,9 @@ resource "rundeck_job" "test" {
     description = "Prints Hello World"
     shell_command = "echo Hello World"
   }
+  command {
+    script_url = "notarealurl.end"
+  }
   notification {
 	  type = "on_success"
 	  email {

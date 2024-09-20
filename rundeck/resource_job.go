@@ -354,6 +354,11 @@ func resourceRundeckJobCommand() *schema.Resource {
 				Optional: true,
 			},
 
+			"script_url": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
 			"script_file": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -415,6 +420,11 @@ func resourceRundeckJobCommandErrorHandler() *schema.Resource {
 			},
 
 			"inline_script": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
+			"script_url": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
@@ -1153,6 +1163,7 @@ func commandFromResourceData(commandI interface{}) (*JobCommand, error) {
 		Description:        commandMap["description"].(string),
 		ShellCommand:       commandMap["shell_command"].(string),
 		Script:             commandMap["inline_script"].(string),
+		ScriptUrl:          commandMap["script_url"].(string),
 		ScriptFile:         commandMap["script_file"].(string),
 		ScriptFileArgs:     commandMap["script_file_args"].(string),
 		KeepGoingOnSuccess: commandMap["keep_going_on_success"].(bool),
@@ -1258,6 +1269,7 @@ func commandToResourceData(command *JobCommand) (map[string]interface{}, error) 
 		"description":           command.Description,
 		"shell_command":         command.ShellCommand,
 		"inline_script":         command.Script,
+		"script_url":            command.ScriptUrl,
 		"script_file":           command.ScriptFile,
 		"script_file_args":      command.ScriptFileArgs,
 		"keep_going_on_success": command.KeepGoingOnSuccess,
