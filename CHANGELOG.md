@@ -1,3 +1,6 @@
+## 0.4.8
+- Added Job step option for `script_url`
+
 ## 0.4.7
 - Added Password Resource
 - Added Orchestrator option to Job Definition
