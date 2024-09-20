@@ -333,3 +333,5 @@ Rundeck job can be imported using the project and job uuid, e.g.
 ```
 $ terraform import rundeck_job.my_job project_name/JOB-UUID
 ```
+
+It is also possible to use `import` blocks to generate job config from existing jobs.  [See Hashi Docs here](https://developer.hashicorp.com/terraform/language/import/generating-configuration)
