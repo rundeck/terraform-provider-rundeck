@@ -202,6 +202,8 @@ The following arguments are supported:
 * `script_file` and `script_file_args` together describe a script that is already pre-installed
   on the nodes which is to be executed.
 
+* `script_url` can be used to provide a URL to execute a script from a specified url.
+
 * A `script_interpreter` block (Optional), described below, is an advanced feature specifying how
   to invoke the script file.
 
