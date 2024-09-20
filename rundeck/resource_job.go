@@ -487,6 +487,10 @@ func resourceRundeckJobCommandJob() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"project_name": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 			"run_for_each_node": {
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -1209,6 +1213,7 @@ func jobCommandJobRefFromResourceData(key string, commandMap map[string]interfac
 	jobRef := &JobCommandJobRef{
 		Name:           jobRefMap["name"].(string),
 		GroupName:      jobRefMap["group_name"].(string),
+		Project:        jobRefMap["project_name"].(string),
 		RunForEachNode: jobRefMap["run_for_each_node"].(bool),
 		Arguments:      JobCommandJobRefArguments(jobRefMap["args"].(string)),
 	}
