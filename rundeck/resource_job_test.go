@@ -83,7 +83,7 @@ func TestOchestrator_high_low(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccJobCheckExists("rundeck_job.test", &job),
 					func(s *terraform.State) error {
-						if expected := "basic-job-with-node-filter"; job.Name != expected {
+						if expected := "orchestrator-High-Low"; job.Name != expected {
 							return fmt.Errorf("wrong name; expected %v, got %v", expected, job.Name)
 						}
 						if expected := "name: tacobell"; job.CommandSequence.Commands[0].Job.NodeFilter.Query != expected {
@@ -110,7 +110,7 @@ func TestOchestrator_max_percent(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccJobCheckExists("rundeck_job.test", &job),
 					func(s *terraform.State) error {
-						if expected := "basic-job-with-node-filter"; job.Name != expected {
+						if expected := "orchestrator-MaxPercent"; job.Name != expected {
 							return fmt.Errorf("wrong name; expected %v, got %v", expected, job.Name)
 						}
 						if expected := "name: tacobell"; job.CommandSequence.Commands[0].Job.NodeFilter.Query != expected {
@@ -261,8 +261,61 @@ func TestAccJobOptions_secure_choice(t *testing.T) {
 		CheckDestroy: testAccJobCheckDestroy(&job),
 		Steps: []resource.TestStep{
 			{
-				Config:      testAccJobOptions_secure_options,
-				ExpectError: regexp.MustCompile("argument \"value_choices\" can not have empty values; try \"required\""),
+				Config: testAccJobOptions_secure_options,
+				Check: resource.ComposeTestCheckFunc(
+					testAccJobCheckExists("rundeck_job.test", &job),
+					func(s *terraform.State) error {
+						secureOption := job.OptionsConfig.Options[0]
+						if expected := "foo_secure"; secureOption.Name != expected {
+							return fmt.Errorf("wrong name; expected %v, got %v", expected, secureOption.Name)
+						}
+						if expected := "/keys/test/path/"; secureOption.StoragePath != expected {
+							return fmt.Errorf("wrong storage_path; expected %v, got %v", expected, secureOption.Name)
+						}
+						if expected := true; secureOption.ObscureInput != expected {
+							return fmt.Errorf("failed to set the input as obscure; expected %v, got %v", expected, secureOption.ObscureInput)
+						}
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
+
+func TestAccJob_plugins(t *testing.T) {
+	var job JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobCheckDestroy(&job),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_plugins,
+				Check: resource.ComposeTestCheckFunc(
+					testAccJobCheckExists("rundeck_job.test", &job),
+					func(s *terraform.State) error {
+						jobCommand := job.CommandSequence.Commands[0]
+						if jobCommand.Plugins == nil {
+							return fmt.Errorf("JobCommands[0].plugins shouldn't be nil")
+						}
+						keyValuePlugin := jobCommand.Plugins.LogFilterPlugins[0]
+						if expected := "key-value-data"; keyValuePlugin.Type != expected {
+							return fmt.Errorf("wrong plugin type; expected %v, got %v", expected, keyValuePlugin.Type)
+						}
+						if expected := "\\s|\\$|\\{|\\}|\\\\"; (*keyValuePlugin.Config)["invalidKeyPattern"] != expected {
+							return fmt.Errorf("failed to set plugin config; expected %v for \"invalidKeyPattern\", got %v", expected, (*keyValuePlugin.Config)["invalidKeyPattern"])
+						}
+						if expected := "true"; (*keyValuePlugin.Config)["logData"] != expected {
+							return fmt.Errorf("failed to set plugin config; expected %v for \"logData\", got %v", expected, (*keyValuePlugin.Config)["logData"])
+						}
+						if expected := "^RUNDECK:DATA:\\s*([^\\s]+?)\\s*=\\s*(.+)$"; (*keyValuePlugin.Config)["regex"] != expected {
+							return fmt.Errorf("failed to set plugin config; expected %v for \"regex\", got %v", expected, (*keyValuePlugin.Config)["regex"])
+						}
+						return nil
+					},
+				),
 			},
 		},
 	})
@@ -302,6 +355,9 @@ resource "rundeck_job" "test" {
   command {
     description = "Prints Hello World"
     shell_command = "echo Hello World"
+  }
+  command {
+    script_url = "notarealurl.end"
   }
   notification {
 	  type = "on_success"
@@ -708,3 +764,57 @@ resource "rundeck_project" "test" {
 	}
   }
   `
+
+const testAccJobConfig_plugins = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-job"
+  description = "parent project for job acceptance tests"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourcexml"
+        file = "/tmp/terraform-acc-tests.xml"
+    }
+  }
+}
+resource "rundeck_job" "test" {
+  project_name = "${rundeck_project.test.name}"
+  name = "basic-job"
+  description = "A basic job"
+  execution_enabled = true
+  node_filter_query = "example"
+  allow_concurrent_executions = true
+	nodes_selected_by_default = true
+  success_on_empty_node_filter = true
+  max_thread_count = 1
+  rank_order = "ascending"
+  timeout = "42m"
+	schedule = "0 0 12 * * * *"
+	schedule_enabled = true
+  option {
+    name = "foo"
+    default_value = "bar"
+  }
+  command {
+    description = "Prints Hello World"
+    shell_command = "echo Hello World"
+    plugins {
+      log_filter_plugin {
+        config = {
+          invalidKeyPattern = "\\s|\\$|\\{|\\}|\\\\"
+          logData           = "true"
+          regex             = "^RUNDECK:DATA:\\s*([^\\s]+?)\\s*=\\s*(.+)$"
+        }
+        type = "key-value-data"
+      }
+    }
+  }
+  notification {
+	  type = "on_success"
+	  email {
+		  recipients = ["foo@foo.bar"]
+	  }
+  }
+}
+`

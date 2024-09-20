@@ -16,6 +16,9 @@ func resourceRundeckJob() *schema.Resource {
 		Delete: DeleteJob,
 		Exists: JobExists,
 		Read:   ReadJob,
+		Importer: &schema.ResourceImporter{
+			State: resourceJobImport,
+		},
 
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -354,6 +357,11 @@ func resourceRundeckJobCommand() *schema.Resource {
 				Optional: true,
 			},
 
+			"script_url": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
 			"script_file": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -375,11 +383,15 @@ func resourceRundeckJobCommand() *schema.Resource {
 				Optional: true,
 				Elem:     resourceRundeckJobCommandJob(),
 			},
-
 			"step_plugin": {
 				Type:     schema.TypeList,
 				Optional: true,
 				Elem:     resourceRundeckJobPluginResource(),
+			},
+			"plugins": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem:     resourceRundeckJobPluginsResource(),
 			},
 			"node_step_plugin": {
 				Type:     schema.TypeList,
@@ -419,6 +431,11 @@ func resourceRundeckJobCommandErrorHandler() *schema.Resource {
 				Optional: true,
 			},
 
+			"script_url": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
 			"script_file": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -440,11 +457,16 @@ func resourceRundeckJobCommandErrorHandler() *schema.Resource {
 				Optional: true,
 				Elem:     resourceRundeckJobCommandJob(),
 			},
-
 			"step_plugin": {
 				Type:     schema.TypeList,
 				Optional: true,
 				Elem:     resourceRundeckJobPluginResource(),
+			},
+
+			"plugins": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem:     resourceRundeckJobPluginsResource(),
 			},
 
 			"node_step_plugin": {
@@ -484,6 +506,10 @@ func resourceRundeckJobCommandJob() *schema.Resource {
 				Required: true,
 			},
 			"group_name": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"project_name": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
@@ -529,6 +555,18 @@ func resourceRundeckJobPluginResource() *schema.Resource {
 			"config": {
 				Type:     schema.TypeMap,
 				Optional: true,
+			},
+		},
+	}
+}
+
+func resourceRundeckJobPluginsResource() *schema.Resource {
+	return &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"log_filter_plugin": {
+				Type:     schema.TypeList,
+				Required: true,
+				Elem:     resourceRundeckJobPluginResource(),
 			},
 		},
 	}
@@ -925,6 +963,9 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 	if err := d.Set("allow_concurrent_executions", job.AllowConcurrentExecutions); err != nil {
 		return err
 	}
+	if err := d.Set("timeout", job.Timeout); err != nil {
+		return err
+	}
 	if job.Retry != nil {
 		if err := d.Set("retry", job.Retry.Value); err != nil {
 			return err
@@ -944,6 +985,9 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 			return err
 		}
 		if err := d.Set("rank_order", job.Dispatch.RankOrder); err != nil {
+			return err
+		}
+		if err := d.Set("success_on_empty_node_filter", job.Dispatch.SuccessOnEmptyNodeFilter); err != nil {
 			return err
 		}
 	} else {
@@ -1149,6 +1193,7 @@ func commandFromResourceData(commandI interface{}) (*JobCommand, error) {
 		Description:        commandMap["description"].(string),
 		ShellCommand:       commandMap["shell_command"].(string),
 		Script:             commandMap["inline_script"].(string),
+		ScriptUrl:          commandMap["script_url"].(string),
 		ScriptFile:         commandMap["script_file"].(string),
 		ScriptFileArgs:     commandMap["script_file_args"].(string),
 		KeepGoingOnSuccess: commandMap["keep_going_on_success"].(bool),
@@ -1190,6 +1235,9 @@ func commandFromResourceData(commandI interface{}) (*JobCommand, error) {
 	if command.StepPlugin, err = singlePluginFromResourceData("step_plugin", commandMap); err != nil {
 		return nil, err
 	}
+	if command.Plugins, err = pluginsFromResourceData("plugins", commandMap); err != nil {
+		return nil, err
+	}
 	if command.NodeStepPlugin, err = singlePluginFromResourceData("node_step_plugin", commandMap); err != nil {
 		return nil, err
 	}
@@ -1209,6 +1257,7 @@ func jobCommandJobRefFromResourceData(key string, commandMap map[string]interfac
 	jobRef := &JobCommandJobRef{
 		Name:           jobRefMap["name"].(string),
 		GroupName:      jobRefMap["group_name"].(string),
+		Project:        jobRefMap["project_name"].(string),
 		RunForEachNode: jobRefMap["run_for_each_node"].(bool),
 		Arguments:      JobCommandJobRefArguments(jobRefMap["args"].(string)),
 	}
@@ -1225,6 +1274,32 @@ func jobCommandJobRefFromResourceData(key string, commandMap map[string]interfac
 		}
 	}
 	return jobRef, nil
+}
+
+func pluginsFromResourceData(key string, commandMap map[string]interface{}) (*JobPlugins, error) {
+	pluginsList := commandMap[key].([]interface{})
+	if len(pluginsList) == 0 {
+		return nil, nil
+	}
+	if len(pluginsList) > 1 {
+		return nil, fmt.Errorf("rundeck command job reference may have no more than one plugins section")
+	}
+	pluginsI := pluginsList[0].(map[string]interface{})
+	var plugins = new(JobPlugins)
+	for _, pluginI := range pluginsI["log_filter_plugin"].([]interface{}) {
+		pluginMap := pluginI.(map[string]interface{})
+		configI := pluginMap["config"].(map[string]interface{})
+		var config = JobLogFilterConfig{}
+		for key, value := range configI {
+			config[key] = value.(string)
+		}
+		plugin := &JobLogFilter{
+			Type:   pluginMap["type"].(string),
+			Config: &config,
+		}
+		plugins.LogFilterPlugins = append(plugins.LogFilterPlugins, *plugin)
+	}
+	return plugins, nil
 }
 
 func singlePluginFromResourceData(key string, commandMap map[string]interface{}) (*JobPlugin, error) {
@@ -1253,6 +1328,7 @@ func commandToResourceData(command *JobCommand) (map[string]interface{}, error) 
 		"description":           command.Description,
 		"shell_command":         command.ShellCommand,
 		"inline_script":         command.Script,
+		"script_url":            command.ScriptUrl,
 		"script_file":           command.ScriptFile,
 		"script_file_args":      command.ScriptFileArgs,
 		"keep_going_on_success": command.KeepGoingOnSuccess,
@@ -1294,7 +1370,6 @@ func commandToResourceData(command *JobCommand) (map[string]interface{}, error) 
 		}
 		commandConfigI["job"] = append([]interface{}{}, jobRefConfigI)
 	}
-
 	if command.StepPlugin != nil {
 		commandConfigI["step_plugin"] = []interface{}{
 			map[string]interface{}{
@@ -1302,6 +1377,20 @@ func commandToResourceData(command *JobCommand) (map[string]interface{}, error) 
 				"config": map[string]string(command.StepPlugin.Config),
 			},
 		}
+	}
+
+	if command.Plugins != nil {
+		logFilterPluginI := []map[string]interface{}{}
+		for _, plugin := range command.Plugins.LogFilterPlugins {
+			pluginI := map[string]interface{}{
+				"type":   plugin.Type,
+				"config": (map[string]string)(*plugin.Config),
+			}
+			logFilterPluginI = append(logFilterPluginI, pluginI)
+		}
+		commandConfigI["plugins"] = append([]interface{}{}, map[string]interface{}{
+			"log_filter_plugin": logFilterPluginI,
+		})
 	}
 
 	if command.NodeStepPlugin != nil {
@@ -1341,4 +1430,30 @@ func readNotification(notification *Notification, notificationType string) map[s
 		}
 	}
 	return notificationConfigI
+}
+
+func resourceJobImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+	idAttr := strings.SplitN(d.Id(), "/", 2)
+	var jobID string
+	var projectName string
+
+	if len(idAttr) == 2 {
+		projectName = idAttr[0]
+		jobID = idAttr[1]
+	} else {
+		return nil, fmt.Errorf("invalid id %q specified, should be in format \"projectName/JobUUID\" for import", d.Id())
+	}
+	d.SetId(jobID)
+
+	err := ReadJob(d, meta)
+	if err != nil {
+		return nil, err
+	}
+	// Get the information out of the api if available.
+	// Otherwise use information supplied by user.
+	if d.Get("project_name") == "" {
+		d.Set("project_name", projectName)
+	}
+
+	return []*schema.ResourceData{d}, nil
 }

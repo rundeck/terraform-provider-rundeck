@@ -18,21 +18,58 @@ Each job belongs to a project. A project can be created with the `rundeck_projec
 
 ```hcl
   resource "rundeck_job" "bounceweb" {
-    name              = "Bounce All Web Servers"
-    project_name      = "${rundeck_project.terraform.name}"
-    node_filter_query = "tags: web"
-    description       = "Restart the service daemons on all the web servers"
+      name              = "Bounce All Web Servers"
+      project_name      = "${rundeck_project.terraform.name}"
+      node_filter_query = "tags: web"
+      description       = "Restart the service daemons on all the web servers"
 
-    command {
-        shell_command = "sudo service anvils restart"
-    }
-    notification {
-        type = "on_success"
-        email {
-            recipients = ["example@foo.bar"]
+      command {
+          shell_command = "sudo service anvils restart"
+      }
+      notification {
+          type = "on_success"
+          email {
+              recipients = ["example@foo.bar"]
+          }
+      }
+  }
+```
+
+## Example Usage (Key-Value Data Log filter to pass data between jobs)
+
+```hcl
+  resource "rundeck_job" "update_review_environments" {
+      name              = "Update review environments"
+      project_name      = "${rundeck_project.terraform.name}"
+      node_filter_query = "tags: dev_server"
+      description       = "Update the code in review environments checking out the given branch"
+      command {
+        description           = null
+        inline_script         = "#!/bin/sh\nenvironment_numbers=$(find /var/review_environments -mindepth 3 -maxdepth 4 -name '$1' | awk -F/ -vORS=, '{ print $3 }' | sed 's/.$//')\necho \"RUNDECK:DATA:environment_numbers=\"$environment_numbers\""
+        script_file_args      = "$${option.git_branch}"
+        plugins {
+          log_filter_plugin {
+            config = {
+              invalidKeyPattern = "\\s|\\$|\\{|\\}|\\\\"
+              logData           = "true"
+              regex             = "^RUNDECK:DATA:\\s*([^\\s]+?)\\s*=\\s*(.+)$"
+            }
+            type = "key-value-data"
+          }
         }
+      }
+    command {
+      job {
+        args              = "-environment_numbers $${data.environment_numbers}"
+        name              = "git_pull_review_environments"
+      }
     }
-}
+    option {
+      name                      = "git_branch"
+      required                  = true
+    }
+  }
+
 ```
 
 ## Argument Reference
@@ -202,13 +239,16 @@ The following arguments are supported:
 * `script_file` and `script_file_args` together describe a script that is already pre-installed
   on the nodes which is to be executed.
 
+* `script_url` can be used to provide a URL to execute a script from a specified url.
+
 * A `script_interpreter` block (Optional), described below, is an advanced feature specifying how
   to invoke the script file.
 
 * A `job` block, described below, causes another job within the same project to be executed as
   a command.
-
 * A `step_plugin` block, described below, causes a step plugin to be executed as a command.
+
+* A `plugins` block, described below, contains a list of plugins to add to the command. At the moment, only [Log Filters](https://docs.rundeck.com/docs/manual/log-filters/) are supported
 
 * A `node_step_plugin` block, described below, causes a node step plugin to be executed once for
   each node.
@@ -223,10 +263,11 @@ A command's `script_interpreter` block has the following structure:
 
 A command's `job` block has the following structure:
 
-* `name`: (Required) The name of the job to execute. The target job must be in the same project
-  as the current job.
+* `name`: (Required) The name of the job to execute. If no specific `project_name` was given the target job should be in the same project as the current job.
 
 * `group_name`: (Optional) The name of the group that the target job belongs to, if any.
+
+* `project_name` - (Optional) The name of another project that holds the target job.
 
 * `run_for_each_node`: (Optional) Boolean controlling whether the job is run only once (`false`,
   the default) or whether it is run once for each node (`true`).
@@ -244,7 +285,11 @@ A command's `node_filters` block has the following structure:
 
 * `exclude_filter`: (Optional) The query string for nodes ***not to use***.
 
-A command's `step_plugin` or `node_step_plugin` block both have the following structure, as does the job's
+A command's `plugins` block has the following structure:
+
+* `log_filter_plugin`: A log filter plugin to add to the command. Can be repeated to add multiple log filters. See below for the structure.
+
+A command's `log_filter_plugin`, `step_plugin`  or `node_step_plugin` block both have the following structure, as does the job's
   `global_log_filter` blocks:
 
 * `type`: (Required) The name of the plugin to execute.
@@ -280,3 +325,13 @@ A notification's `plugin` block has the following structure:
 The following attribute is exported:
 
 * `id` - A unique identifier for the job.
+
+## Import
+
+Rundeck job can be imported using the project and job uuid, e.g.
+
+```
+$ terraform import rundeck_job.my_job project_name/JOB-UUID
+```
+
+It is also possible to use `import` blocks to generate job config from existing jobs.  [See Hashi Docs here](https://developer.hashicorp.com/terraform/language/import/generating-configuration)

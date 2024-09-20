@@ -263,6 +263,9 @@ type JobCommand struct {
 	// a shell script it should have an appropriate #! line.
 	Script string `xml:"script,omitempty"`
 
+	// Execute a Script from a URL
+	ScriptUrl string `xml:"scripturl,omitempty"`
+
 	// A pre-existing file (on the target nodes) that will be executed.
 	ScriptFile string `xml:"scriptfile,omitempty"`
 
@@ -277,6 +280,9 @@ type JobCommand struct {
 
 	// Configuration for a step plugin to run as this command.
 	StepPlugin *JobPlugin `xml:"step-plugin"`
+
+	// Configuration for log filter plugins to run for this command.
+	Plugins *JobPlugins `xml:"plugins"`
 
 	// Configuration for a node step plugin to run as this command.
 	NodeStepPlugin *JobPlugin `xml:"node-step-plugin"`
@@ -294,6 +300,7 @@ type JobCommandJobRef struct {
 	XMLName        xml.Name                  `xml:"jobref"`
 	Name           string                    `xml:"name,attr"`
 	GroupName      string                    `xml:"group,attr"`
+	Project        string                    `xml:"project,attr"`
 	RunForEachNode bool                      `xml:"nodeStep,attr"`
 	Dispatch       *JobDispatch              `xml:"dispatch,omitempty"`
 	NodeFilter     *JobNodeFilter            `xml:"nodefilters,omitempty"`
@@ -308,6 +315,12 @@ type JobPlugin struct {
 	XMLName xml.Name
 	Type    string          `xml:"type,attr"`
 	Config  JobPluginConfig `xml:"configuration"`
+}
+
+// Plugin is a configuration for a filter plugin to run for a step
+type JobPlugins struct {
+	XMLName          xml.Name
+	LogFilterPlugins []JobLogFilter `xml:"LogFilter"`
 }
 
 // JobPluginConfig is a specialization of map[string]string for job plugin configuration.

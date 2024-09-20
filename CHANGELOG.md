@@ -1,3 +1,9 @@
+## 0.4.8
+- Added Job step option for `script_url`
+- Added ability to reference jobs in other projects through the use of `project_name` in `job` command type.
+- Added support for Log Filters on individual Job Steps
+- Added Import capability for Job Definitions
+
 ## 0.4.7
 - Added Password Resource
 - Added Orchestrator option to Job Definition
