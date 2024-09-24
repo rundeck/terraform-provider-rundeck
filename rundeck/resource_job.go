@@ -521,6 +521,22 @@ func resourceRundeckJobCommandJob() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"child_nodes": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"fail_on_disable": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"ignore_notifications": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"import_options": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
 			"node_filters": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -1255,11 +1271,15 @@ func jobCommandJobRefFromResourceData(key string, commandMap map[string]interfac
 	}
 	jobRefMap := jobRefsI[0].(map[string]interface{})
 	jobRef := &JobCommandJobRef{
-		Name:           jobRefMap["name"].(string),
-		GroupName:      jobRefMap["group_name"].(string),
-		Project:        jobRefMap["project_name"].(string),
-		RunForEachNode: jobRefMap["run_for_each_node"].(bool),
-		Arguments:      JobCommandJobRefArguments(jobRefMap["args"].(string)),
+		Name:                jobRefMap["name"].(string),
+		GroupName:           jobRefMap["group_name"].(string),
+		Project:             jobRefMap["project_name"].(string),
+		RunForEachNode:      jobRefMap["run_for_each_node"].(bool),
+		Arguments:           JobCommandJobRefArguments(jobRefMap["args"].(string)),
+		ChildNodes:          jobRefMap["child_nodes"].(bool),
+		FailOnDisable:       jobRefMap["fail_on_disable"].(bool),
+		ImportOptions:       jobRefMap["import_options"].(bool),
+		IgnoreNotifications: jobRefMap["ignore_notifications"].(bool),
 	}
 	nodeFiltersI := jobRefMap["node_filters"].([]interface{})
 	if len(nodeFiltersI) > 1 {
@@ -1355,10 +1375,14 @@ func commandToResourceData(command *JobCommand) (map[string]interface{}, error) 
 
 	if command.Job != nil {
 		jobRefConfigI := map[string]interface{}{
-			"name":              command.Job.Name,
-			"group_name":        command.Job.GroupName,
-			"run_for_each_node": command.Job.RunForEachNode,
-			"args":              command.Job.Arguments,
+			"name":                 command.Job.Name,
+			"group_name":           command.Job.GroupName,
+			"run_for_each_node":    command.Job.RunForEachNode,
+			"args":                 command.Job.Arguments,
+			"child_nodes":          command.Job.ChildNodes,
+			"fail_on_disable":      command.Job.FailOnDisable,
+			"import_options":       command.Job.ImportOptions,
+			"ignore_notifications": command.Job.IgnoreNotifications,
 		}
 		if command.Job.NodeFilter != nil {
 			nodeFilterConfigI := map[string]interface{}{
