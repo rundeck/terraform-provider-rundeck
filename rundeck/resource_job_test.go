@@ -54,13 +54,25 @@ func TestAccJob_cmd_nodefilter(t *testing.T) {
 			{
 				Config: testAccJobConfig_cmd_nodefilter,
 				Check: resource.ComposeTestCheckFunc(
-					testAccJobCheckExists("rundeck_job.test", &job),
+					testAccJobCheckExists("rundeck_job.source_test_job", &job),
 					func(s *terraform.State) error {
-						if expected := "basic-job-with-node-filter"; job.Name != expected {
-							return fmt.Errorf("wrong name; expected %v, got %v", expected, job.Name)
+						if job.CommandSequence.Commands[0].Job.FailOnDisable != true {
+							return fmt.Errorf("FailOnDisable should be enabled")
 						}
-						if expected := "name: tacobell"; job.CommandSequence.Commands[0].Job.NodeFilter.Query != expected {
-							return fmt.Errorf("failed to set job node filter; expected %v, got %v", expected, job.CommandSequence.Commands[0].Job.NodeFilter.Query)
+						if job.CommandSequence.Commands[0].Job.ChildNodes != true {
+							return fmt.Errorf("ChildNodes should be enabled")
+						}
+						if job.CommandSequence.Commands[0].Job.IgnoreNotifications != true {
+							return fmt.Errorf("IgnoreNotifications should be enabled")
+						}
+						if job.CommandSequence.Commands[0].Job.ImportOptions != true {
+							return fmt.Errorf("ImportOptions should be enabled")
+						}
+						if expected := "source_test_job"; job.CommandSequence.Commands[0].Job.Name != expected {
+							return fmt.Errorf("wrong referenced job name; expected %v, got %v", expected, job.CommandSequence.Commands[0].Job.Name)
+						}
+						if expected := "source_project"; job.CommandSequence.Commands[0].Job.Project != expected {
+							return fmt.Errorf("wrong referenced project name; expected %v, got %v", expected, job.CommandSequence.Commands[0].Job.Project)
 						}
 						return nil
 					},
@@ -490,7 +502,7 @@ resource "rundeck_job" "target_test_job" {
   command {
     job {
       name = "${rundeck_job.source_test_job.name}"
-      group_name = "${rundeck_project.target_test.name}"
+      project_name = "${rundeck_project.target_test.name}"
       run_for_each_node = true
       child_nodes = true
       fail_on_disable = true
