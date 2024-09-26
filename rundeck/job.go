@@ -297,14 +297,18 @@ type JobCommandScriptInterpreter struct {
 
 // JobCommandJobRef is a reference to another job that will run as one of the commands of a job.
 type JobCommandJobRef struct {
-	XMLName        xml.Name                  `xml:"jobref"`
-	Name           string                    `xml:"name,attr"`
-	GroupName      string                    `xml:"group,attr"`
-	Project        string                    `xml:"project,attr"`
-	RunForEachNode bool                      `xml:"nodeStep,attr"`
-	Dispatch       *JobDispatch              `xml:"dispatch,omitempty"`
-	NodeFilter     *JobNodeFilter            `xml:"nodefilters,omitempty"`
-	Arguments      JobCommandJobRefArguments `xml:"arg"`
+	XMLName             xml.Name                  `xml:"jobref"`
+	Name                string                    `xml:"name,attr"`
+	GroupName           string                    `xml:"group,attr"`
+	Project             string                    `xml:"project,attr"`
+	RunForEachNode      bool                      `xml:"nodeStep,attr"`
+	Dispatch            *JobDispatch              `xml:"dispatch,omitempty"`
+	NodeFilter          *JobNodeFilter            `xml:"nodefilters,omitempty"`
+	Arguments           JobCommandJobRefArguments `xml:"arg"`
+	ChildNodes          bool                      `xml:"childNodes,attr"`
+	FailOnDisable       bool                      `xml:"failOnDisable,attr"`
+	IgnoreNotifications bool                      `xml:"ignoreNotifications,attr"`
+	ImportOptions       bool                      `xml:"importOptions,attr"`
 }
 
 // JobCommandJobRefArguments is a string representing the arguments in a JobCommandJobRef.
