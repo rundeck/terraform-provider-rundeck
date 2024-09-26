@@ -275,6 +275,14 @@ A command's `job` block has the following structure:
 * `args`: (Optional) A string giving the arguments to pass to the target job, using
   [Rundeck's job arguments syntax](http://rundeck.org/docs/manual/jobs.html#job-reference-step).
 
+* `import_options`: (Optional) Pass as argument any options that match the referenced job's options.
+
+* `skip_notifications` (Optional) If the referenced job has notifications, they will be skipped.
+
+* `fail_on_disable` (Optional) If the referenced job has disabled execution, it will be considered a failure 
+
+* `child_nodes`: (Optional) If the referenced job is from another project, you can use referenced job node list instead of the parent's nodes. 
+
 * `node_filters`: (Optional) A map for overriding the referenced job's node filters.
 
 A command's `node_filters` block has the following structure:

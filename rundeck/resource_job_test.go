@@ -54,13 +54,49 @@ func TestAccJob_cmd_nodefilter(t *testing.T) {
 			{
 				Config: testAccJobConfig_cmd_nodefilter,
 				Check: resource.ComposeTestCheckFunc(
-					testAccJobCheckExists("rundeck_job.test", &job),
+					testAccJobCheckExists("rundeck_job.source_test_job", &job),
 					func(s *terraform.State) error {
-						if expected := "basic-job-with-node-filter"; job.Name != expected {
-							return fmt.Errorf("wrong name; expected %v, got %v", expected, job.Name)
+						if job.CommandSequence.Commands[0].Job.FailOnDisable != true {
+							return fmt.Errorf("FailOnDisable should be enabled")
 						}
-						if expected := "name: tacobell"; job.CommandSequence.Commands[0].Job.NodeFilter.Query != expected {
-							return fmt.Errorf("failed to set job node filter; expected %v, got %v", expected, job.CommandSequence.Commands[0].Job.NodeFilter.Query)
+						if job.CommandSequence.Commands[0].Job.ChildNodes != true {
+							return fmt.Errorf("ChildNodes should be enabled")
+						}
+						if job.CommandSequence.Commands[0].Job.IgnoreNotifications != true {
+							return fmt.Errorf("IgnoreNotifications should be enabled")
+						}
+						if job.CommandSequence.Commands[0].Job.ImportOptions != true {
+							return fmt.Errorf("ImportOptions should be enabled")
+						}
+						if expected := "source_test_job"; job.CommandSequence.Commands[0].Job.Name != expected {
+							return fmt.Errorf("wrong referenced job name; expected %v, got %v", expected, job.CommandSequence.Commands[0].Job.Name)
+						}
+						if expected := "source_project"; job.CommandSequence.Commands[0].Job.Project != expected {
+							return fmt.Errorf("wrong referenced project name; expected %v, got %v", expected, job.CommandSequence.Commands[0].Job.Project)
+						}
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
+
+func TestAccJob_cmd_referred_job(t *testing.T) {
+	var job JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobCheckDestroy(&job),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_cmd_referred_job,
+				Check: resource.ComposeTestCheckFunc(
+					testAccJobCheckExists("rundeck_job.target_test_job", &job),
+					func(s *terraform.State) error {
+						if expected := "target_references_job"; job.Name != expected {
+							return fmt.Errorf("wrong name; expected %v, got %v", expected, job.Name)
 						}
 						return nil
 					},
@@ -416,6 +452,63 @@ resource "rundeck_job" "test" {
 	  email {
 		  recipients = ["foo@foo.bar"]
 	  }
+  }
+}
+`
+
+const testAccJobConfig_cmd_referred_job = `
+resource "rundeck_project" "source_test" {
+  name = "source_project"
+  description = "Source project for referred job acceptance tests"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourcexml"
+        file = "/tmp/terraform-acc-tests.xml"
+    }
+  }
+}
+resource "rundeck_project" "target_test" {
+  name = "target_project"
+  description = "Target project for job acceptance tests"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourcexml"
+        file = "/tmp/terraform-acc-tests.xml"
+    }
+  }
+}
+resource "rundeck_job" "source_test_job" {
+  project_name = "${rundeck_project.source_test.name}"
+  name = "source_test_job"
+  description = "A basic job"
+  execution_enabled = true
+  option {
+    name = "foo"
+    default_value = "bar"
+  } 
+}
+resource "rundeck_job" "target_test_job" {
+  project_name = "${rundeck_project.target_test.name}"
+  name = "target_references_job"
+  description = "A job referencing another job"
+  execution_enabled = true
+  option {
+    name = "foo"
+    default_value = "bar"
+  command {
+    job {
+      name = "${rundeck_job.source_test_job.name}"
+      project_name = "${rundeck_project.target_test.name}"
+      run_for_each_node = true
+      child_nodes = true
+      fail_on_disable = true
+      ignore_notifications = true
+      import_options = true
+    }
   }
 }
 `
