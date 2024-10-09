@@ -43,6 +43,36 @@ func TestAccJob_basic(t *testing.T) {
 	})
 }
 
+func TestAccJob_withLogLimit(t *testing.T) {
+	var job JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobCheckDestroy(&job),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_withLogLimit,
+				Check: resource.ComposeTestCheckFunc(
+					testAccJobCheckExists("rundeck_job.testWithAllLimitsSpecified", &job),
+					func(s *terraform.State) error {
+						if expected := "100MB"; job.LoggingLimit.Output != expected {
+							return fmt.Errorf("wrong value for log limit output; expected %v, got %v", expected, job.LoggingLimit.Output)
+						}
+						if expected := "truncate"; job.LoggingLimit.Action != expected {
+							return fmt.Errorf("wrong value for log limit action; expected %v, got %v", expected, job.LoggingLimit.Action)
+						}
+						if expected := "failed"; job.LoggingLimit.Status != expected {
+							return fmt.Errorf("wrong value for log limit status; expected %v, got %v", expected, job.LoggingLimit.Status)
+						}
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
+
 func TestAccJob_cmd_nodefilter(t *testing.T) {
 	var job JobDetail
 
@@ -404,6 +434,37 @@ resource "rundeck_job" "test" {
 }
 `
 
+const testAccJobConfig_withLogLimit = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-job"
+  description = "parent project for job acceptance tests"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourcexml"
+        file = "/tmp/terraform-acc-tests.xml"
+    }
+  }
+}
+resource "rundeck_job" "testWithAllLimitsSpecified" {
+	name         = "Test Job with All Log Limits Specified"
+	project_name = "${rundeck_project.test.name}"
+	description  = "This is a test job with log_limit"
+
+	log_limit {
+		output = "100MB"
+		action = "truncate"
+		status = "failed"
+	}
+
+	command {
+		description = "Test command"
+		shell_command = "echo Hello World"
+	}
+}
+`
+
 const testAccJobConfig_cmd_nodefilter = `
 resource "rundeck_project" "test" {
   name = "terraform-acc-test-job"
@@ -432,7 +493,7 @@ resource "rundeck_job" "test" {
   option {
     name = "foo"
     default_value = "bar"
-  } 
+  }
   orchestrator {
     type = "subset"
     count = 1
@@ -489,7 +550,7 @@ resource "rundeck_job" "source_test_job" {
   option {
     name = "foo"
     default_value = "bar"
-  } 
+  }
 }
 resource "rundeck_job" "target_test_job" {
   project_name = "${rundeck_project.target_test.name}"
@@ -706,7 +767,7 @@ const testOchestration_maxperecent = `
 resource "rundeck_project" "test" {
 	name = "terraform-acc-test-job"
 	description = "parent project for job acceptance tests"
-  
+
 	resource_model_source {
 	  type = "file"
 	  config = {
@@ -730,7 +791,7 @@ resource "rundeck_project" "test" {
 	option {
 	  name = "foo"
 	  default_value = "bar"
-	} 
+	}
 	orchestrator {
 	  type = "maxPercentage"
 	  percent = 10
@@ -758,7 +819,7 @@ const testOchestration_high_low = `
 resource "rundeck_project" "test" {
 	name = "terraform-acc-test-job"
 	description = "parent project for job acceptance tests"
-  
+
 	resource_model_source {
 	  type = "file"
 	  config = {
@@ -782,7 +843,7 @@ resource "rundeck_project" "test" {
 	option {
 	  name = "foo"
 	  default_value = "bar"
-	} 
+	}
 	orchestrator {
 	  type = "orchestrator-highest-lowest-attribute"
 	  sort = "highest"
@@ -811,7 +872,7 @@ const testOchestration_rank_tiered = `
 resource "rundeck_project" "test" {
 	name = "terraform-acc-test-job"
 	description = "parent project for job acceptance tests"
-  
+
 	resource_model_source {
 	  type = "file"
 	  config = {
@@ -835,7 +896,7 @@ resource "rundeck_project" "test" {
 	option {
 	  name = "foo"
 	  default_value = "bar"
-	} 
+	}
 	orchestrator {
 	  type = "rankTiered"
 	}
