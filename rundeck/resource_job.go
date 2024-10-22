@@ -319,6 +319,11 @@ func resourceRundeckJob() *schema.Resource {
 							Type:     schema.TypeBool,
 							Optional: true,
 						},
+						"type": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  "text",
+						},
 					},
 				},
 			},
@@ -820,6 +825,7 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 				ValueIsExposedToScripts: optionMap["exposed_to_scripts"].(bool),
 				StoragePath:             optionMap["storage_path"].(string),
 				Hidden:                  optionMap["hidden"].(bool),
+				Type:                    optionMap["type"].(string),
 			}
 			if option.StoragePath != "" && !option.ObscureInput {
 				return nil, fmt.Errorf("argument \"obscure_input\" must be set to `true` when \"storage_path\" is not empty")
@@ -835,6 +841,9 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 				option.ValueChoices = append(option.ValueChoices, iv.(string))
 			}
 
+			if option.Type != "" && option.Type != "text" && option.Type != "file" {
+				return nil, fmt.Errorf("argument \"type\" cannot have \"%s\" as a value; allowed values: \"text\", \"file\"", option.Type)
+			}
 			optionsConfig.Options = append(optionsConfig.Options, option)
 		}
 		job.OptionsConfig = optionsConfig
@@ -1065,6 +1074,10 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 				"exposed_to_scripts":        option.ValueIsExposedToScripts,
 				"storage_path":              option.StoragePath,
 				"hidden":                    option.Hidden,
+				"type":                      option.Type,
+			}
+			if optionConfigI["type"] == "" {
+				optionConfigI["type"] = "text"
 			}
 			optionConfigsI = append(optionConfigsI, optionConfigI)
 		}

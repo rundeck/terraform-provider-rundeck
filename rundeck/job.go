@@ -211,6 +211,9 @@ type JobOption struct {
 
 	// Option should be hidden from job run page
 	Hidden bool `xml:"hidden,omitempty"`
+
+	// Type of the option. One of: text, file
+	Type string `xml:"type,attr,omitempty"`
 }
 
 // JobValueChoices is a specialization of []string representing a sequence of predefined values
