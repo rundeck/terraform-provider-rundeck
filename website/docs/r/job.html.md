@@ -225,6 +225,10 @@ The following arguments are supported:
   `true` when using this. This results in `Secure Remote Authentication` input type. Setting `exposed_to_scripts` also
   `true` results in `Secure` input type.
 
+* `is_date`: (Optional) Boolean controlling whether this option is a date.
+
+* `date_format`: (Optional) String of the date format. Default is `YYYY-MM-DDThh:mm:ss+00:00`
+
 * `hidden`: (Optional) Boolean controlling whether this option should be hidden from the UI on the job run page.
   Defaults to `false`.
 

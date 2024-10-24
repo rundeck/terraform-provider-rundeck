@@ -209,6 +209,12 @@ type JobOption struct {
 	// Description of the value to be shown in the Rundeck UI.
 	Description string `xml:"description,omitempty"`
 
+	// If set, this option is a date.
+	IsDate bool `xml:"isDate,omitempty"`
+
+	// The date format, if this option is a date.
+	DateFormat string `xml:"dateFormat,omitempty"`
+
 	// Option should be hidden from job run page
 	Hidden bool `xml:"hidden,omitempty"`
 }
