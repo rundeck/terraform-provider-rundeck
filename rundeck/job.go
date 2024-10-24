@@ -61,6 +61,7 @@ type JobDetail struct {
 	OptionsConfig             *JobOptions         `xml:"context>options,omitempty"`
 	Description               string              `xml:"description"`
 	ExecutionEnabled          bool                `xml:"executionEnabled"`
+	DefaultTab                string              `xml:"defaultTab"`
 	LogLevel                  string              `xml:"loglevel,omitempty"`
 	AllowConcurrentExecutions bool                `xml:"multipleExecutions,omitempty"`
 	Dispatch                  *JobDispatch        `xml:"dispatch,omitempty"`

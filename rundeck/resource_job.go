@@ -49,6 +49,12 @@ func resourceRundeckJob() *schema.Resource {
 				Default:  true,
 			},
 
+			"default_tab": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "nodes",
+			},
+
 			"log_level": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -694,6 +700,7 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 		ProjectName:               d.Get("project_name").(string),
 		Description:               d.Get("description").(string),
 		ExecutionEnabled:          d.Get("execution_enabled").(bool),
+		DefaultTab:                d.Get("default_tab").(string),
 		Timeout:                   d.Get("timeout").(string),
 		ScheduleEnabled:           d.Get("schedule_enabled").(bool),
 		NodesSelectedByDefault:    d.Get("nodes_selected_by_default").(bool),
@@ -710,6 +717,9 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 			RankAttribute:           d.Get("rank_attribute").(string),
 			RankOrder:               d.Get("rank_order").(string),
 		},
+	}
+	if !(job.DefaultTab == "nodes" || job.DefaultTab == "output" || job.DefaultTab == "html") {
+		return nil, fmt.Errorf("Argument \"default_tab\" must be set to one of `nodes`, `output`, `html`.")
 	}
 
 	successOnEmpty := d.Get("success_on_empty_node_filter")
@@ -962,6 +972,9 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 		return err
 	}
 	if err := d.Set("execution_enabled", job.ExecutionEnabled); err != nil {
+		return err
+	}
+	if err := d.Set("default_tab", job.DefaultTab); err != nil {
 		return err
 	}
 	if err := d.Set("schedule_enabled", job.ScheduleEnabled); err != nil {

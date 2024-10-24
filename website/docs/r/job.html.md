@@ -84,6 +84,8 @@ The following arguments are supported:
 
 * `execution_enabled` - (Optional) If you want job execution to be enabled or disabled. Defaults to `true`.
 
+* `default_tab` - (Optional) The default tab to show during job execution. Set to 'output' to follow the execution log. Must be set to `output`, `html`, or `nodes`
+
 * `group_name` - (Optional) The name of a group within the project in which to place the job.
   Setting this creates collapsable subcategories within the Rundeck UI's project job index.
 
