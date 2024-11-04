@@ -207,7 +207,7 @@ type JobOption struct {
 	ValueChoicesURL string `xml:"valuesUrl,attr,omitempty"`
 
 	// URL value choices can be configured
-	JobValueChoicesURL JobValueChoicesURL `xml:"valuesUrlConfig,omitempty"`
+	JobValueChoicesURL JobValueChoicesURL `xml:"configRemoteUrl,omitempty"`
 
 	// Description of the value to be shown in the Rundeck UI.
 	Description string `xml:"description,omitempty"`

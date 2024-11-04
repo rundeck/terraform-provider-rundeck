@@ -844,7 +844,8 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 				ValueChoices:    JobValueChoices([]string{}),
 				ValueChoicesURL: optionMap["value_choices_url"].(string),
 				// Mark: This should be a map[string]string of sorts to be able to parse the subset of URL options
-				// and should reference
+				// and should reference. Right now this compiles, but fails on runtime because the schema
+				// expects this to be a map, not an object (I think)
 				JobValueChoicesURL:      JobValueChoicesURL{},
 				RequirePredefinedChoice: optionMap["require_predefined_choice"].(bool),
 				ValidationRegex:         optionMap["validation_regex"].(string),
