@@ -206,11 +206,38 @@ type JobOption struct {
 	// Mutually exclusive with ValueChoices
 	ValueChoicesURL string `xml:"valuesUrl,attr,omitempty"`
 
+	// URL value choices can be configured
+	JobValueChoicesURL JobValueChoicesURL `xml:"valuesUrlConfig,omitempty"`
+
 	// Description of the value to be shown in the Rundeck UI.
 	Description string `xml:"description,omitempty"`
 
 	// Option should be hidden from job run page
 	Hidden bool `xml:"hidden,omitempty"`
+}
+
+type JobValueChoicesURL struct {
+	XMLName xml.Name `xml:"configRemoteUrl"`
+
+	JsonFilter string `xml:"jsonFilter,omitempty"`
+
+	// Can be BASIC, API_KEY or BEARER_TOKEN
+	AuthenticationType string `xml:"authenticationType,omitempty"`
+
+	// Only used by BASIC auth
+	PasswordStoragePath string `xml:"passwordStoragePath,omitempty"`
+
+	// Only used by BASIC auth
+	Username string `xml:"username,omitempty"`
+
+	// Only used by API_KEY. Can be QUERY_PARAM or HEADER
+	ApiTokenReporter string `xml:"apiTokenReporter,omitempty"`
+
+	// Only used by API_KEY
+	KeyName string `xml:"keyName,omitempty"`
+
+	// Only used by API_KEY and BEARER_TOKEN
+	TokenStoragePath string `xml:"tokenStoragePath,omitempty"`
 }
 
 // JobValueChoices is a specialization of []string representing a sequence of predefined values
@@ -314,14 +341,14 @@ type JobCommandJobRef struct {
 // JobCommandJobRefArguments is a string representing the arguments in a JobCommandJobRef.
 type JobCommandJobRefArguments string
 
-// Plugin is a configuration for a plugin to run within a job or notification.
+// JobPlugin is a configuration for a plugin to run within a job or notification.
 type JobPlugin struct {
 	XMLName xml.Name
 	Type    string          `xml:"type,attr"`
 	Config  JobPluginConfig `xml:"configuration"`
 }
 
-// Plugin is a configuration for a filter plugin to run for a step
+// JobPlugins is a configuration for a filter plugin to run for a step
 type JobPlugins struct {
 	XMLName          xml.Name
 	LogFilterPlugins []JobLogFilter `xml:"LogFilter"`

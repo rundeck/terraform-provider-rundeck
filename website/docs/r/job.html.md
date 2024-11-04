@@ -193,6 +193,9 @@ The following arguments are supported:
 * `value_choices_url`: (Optional) Can be used instead of `value_choices` to cause Rundeck to
   obtain a list of choices dynamically by fetching this URL.
 
+* `value_choices_url_options` : (Optional) A map of options to pass to the URL when fetching the
+  list of choices. The map keys are the option names and the values are the option values. 
+
 * `require_predefined_choice`: (Optional) Boolean controlling whether the user is allowed to
   enter values not included in the predefined set of choices (`false`, the default) or whether
   a predefined choice is required (`true`).
@@ -227,6 +230,22 @@ The following arguments are supported:
 
 * `hidden`: (Optional) Boolean controlling whether this option should be hidden from the UI on the job run page.
   Defaults to `false`.
+
+The "value_choices_url_options" block to parameterize using a URL to fill a list of options has the following structure:
+
+* `json_filter`: (Optional) A [JSON path](https://en.wikipedia.org/wiki/JSONPath) filter to apply to the response from the URL. The filter should be an expression that selects a list of keys or key-values from the response.
+
+* `authentication_type`: (Optional) The type of authentication to use when fetching the URL. Can be `BASIC`, `API_KEY` or `BEARER_TOKEN`.
+
+* `username`: (Optional) The username to use for basic authentication. Only used if the authentication type is `BASIC`.
+
+* `password_storage_path`: (Optional) The path to the password in the Rundeck key storage. Only used if the authentication type is `BASIC`.
+
+* `api_token_reporter`: (Optional) Only used if the authentication type is `API_KEY`. The location where the API key can be located. This should be either `QUERY_PARAM` or `HEADER`.
+
+* `key_name`: (Optional) The name of the key in the query parameter or header. Only used if the authentication type is `API_KEY`.
+
+* `token_storage_path`: (Optional) The path to the API key in the Rundeck key storage. This is required if the authentication type is `API_KEY` or `BEARER_TOKEN`.
 
 `command` blocks must have any one of the following combinations of arguments as contents:
 

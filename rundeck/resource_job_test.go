@@ -106,6 +106,54 @@ func TestAccJob_cmd_referred_job(t *testing.T) {
 	})
 }
 
+func TestAccJob_optionURLParameters(t *testing.T) {
+	var job JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobCheckDestroy(&job),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_optionURLParameters,
+				Check: resource.ComposeTestCheckFunc(
+					testAccJobCheckExists("rundeck_job.test", &job),
+					func(s *terraform.State) error {
+						if expected := "url-parameters-test"; job.Name != expected {
+							return fmt.Errorf("wrong name; expected %v, got %v", expected, job.Name)
+						}
+						if expected := "BASIC"; job.OptionsConfig.Options[0].JobValueChoicesURL.AuthenticationType != expected {
+							return fmt.Errorf("failed to set option value; expected %v, got %v", expected, job.OptionsConfig.Options[0].JobValueChoicesURL.AuthenticationType)
+						}
+						if expected := "admin"; job.OptionsConfig.Options[0].JobValueChoicesURL.Username != expected {
+							return fmt.Errorf("failed to set option value; expected %v, got %v", expected, job.OptionsConfig.Options[0].JobValueChoicesURL.Username)
+						}
+						if expected := "/keys/test/path"; job.OptionsConfig.Options[0].JobValueChoicesURL.PasswordStoragePath != expected {
+							return fmt.Errorf("failed to set option value; expected %v, got %v", expected, job.OptionsConfig.Options[0].JobValueChoicesURL.PasswordStoragePath)
+						}
+						if expected := "API_KEY"; job.OptionsConfig.Options[1].JobValueChoicesURL.AuthenticationType != expected {
+							return fmt.Errorf("failed to set option value; expected %v, got %v", expected, job.OptionsConfig.Options[1].JobValueChoicesURL.AuthenticationType)
+						}
+						if expected := "My-RunDeck-Auth-Token"; job.OptionsConfig.Options[1].JobValueChoicesURL.KeyName != expected {
+							return fmt.Errorf("failed to set option value; expected %v, got %v", expected, job.OptionsConfig.Options[1].JobValueChoicesURL.KeyName)
+						}
+						if expected := "HEADER"; job.OptionsConfig.Options[1].JobValueChoicesURL.ApiTokenReporter != expected {
+							return fmt.Errorf("failed to set option value; expected %v, got %v", expected, job.OptionsConfig.Options[1].JobValueChoicesURL.ApiTokenReporter)
+						}
+						if expected := "/keys/test/path"; job.OptionsConfig.Options[1].JobValueChoicesURL.TokenStoragePath != expected {
+							return fmt.Errorf("failed to set option value; expected %v, got %v", expected, job.OptionsConfig.Options[1].JobValueChoicesURL.TokenStoragePath)
+						}
+						if expected := "BEARER_TOKEN"; job.OptionsConfig.Options[2].JobValueChoicesURL.AuthenticationType != expected {
+							return fmt.Errorf("failed to set option value; expected %v, got %v", expected, job.OptionsConfig.Options[2].JobValueChoicesURL.AuthenticationType)
+						}
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
+
 func TestOchestrator_high_low(t *testing.T) {
 	var job JobDetail
 
@@ -550,6 +598,64 @@ resource "rundeck_job" "test" {
 		  recipients = ["foo@foo.bar"]
 	  }
 	  webhook_urls = ["http://localhost/testing"]
+  }
+}
+`
+
+const testAccJobConfig_optionURLParameters = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-option-url-parameters"
+  description = "parent project for job acceptance tests"
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourcexml"
+        file = "/tmp/terraform-acc-tests.xml"
+    }
+  }
+}
+resource "rundeck_job" "test" {
+  name = "url-parameters-test"
+  project_name = "${rundeck_project.test.name}"
+  description = "Testing idempotency"
+  execution_enabled = false
+  allow_concurrent_executions = false
+
+  option {
+    name = "url_source_basic"
+    required = "true"
+	value = "http://localhost:8080"
+	value_choices_url_options {
+		authentication_type = "BASIC"
+		username = "admin"
+		password_storage_path = "/keys/test/path"
+	}
+  }
+
+  option {
+    name = "url_source_api_key"
+    required = "true"
+	value = "http://localhost:8080"
+	value_choices_url_options {
+		authentication_type = "API_KEY"
+		api_token_reporter = "HEADER"
+		key_name = "My-RunDeck-Auth-Token"
+		token_storage_path = "/keys/test/path"
+	}
+  }
+
+  option {
+    name = "url_source_bearer"
+    required = "true"
+	value = "http://localhost:8080"
+	value_choices_url_options {
+		authentication_type = "BEARER_TOKEN"
+		token_storage_path = "/keys/test/path"
+	}
+  }
+
+  command {
+    shell_command = "echo hello"
   }
 }
 `

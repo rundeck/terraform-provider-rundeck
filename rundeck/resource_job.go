@@ -272,6 +272,12 @@ func resourceRundeckJob() *schema.Resource {
 							Optional: true,
 						},
 
+						"value_choices_url_options": {
+							Type:     schema.TypeMap,
+							Optional: true,
+							Elem:     resourceRundeckValuesUrlOptions(),
+						},
+
 						"require_predefined_choice": {
 							Type:     schema.TypeBool,
 							Optional: true,
@@ -333,6 +339,33 @@ func resourceRundeckJob() *schema.Resource {
 				Type:     schema.TypeList,
 				Required: true,
 				Elem:     resourceRundeckJobCommand(),
+			},
+		},
+	}
+}
+
+func resourceRundeckValuesUrlOptions() *schema.Resource {
+	return &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"json_filter": {
+				Type:     schema.TypeString,
+				Required: false,
+			},
+			"authentication_type": {
+				Type:     schema.TypeString,
+				Required: false,
+			},
+			"password_storage_path": {
+				Type:     schema.TypeString,
+				Required: false,
+			},
+			"username": {
+				Type:     schema.TypeString,
+				Required: false,
+			},
+			"api_token_reporter": {
+				Type:     schema.TypeString,
+				Required: false,
 			},
 		},
 	}
@@ -805,11 +838,14 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 		for _, optionI := range optionConfigsI {
 			optionMap := optionI.(map[string]interface{})
 			option := JobOption{
-				Name:                    optionMap["name"].(string),
-				Label:                   optionMap["label"].(string),
-				DefaultValue:            optionMap["default_value"].(string),
-				ValueChoices:            JobValueChoices([]string{}),
-				ValueChoicesURL:         optionMap["value_choices_url"].(string),
+				Name:            optionMap["name"].(string),
+				Label:           optionMap["label"].(string),
+				DefaultValue:    optionMap["default_value"].(string),
+				ValueChoices:    JobValueChoices([]string{}),
+				ValueChoicesURL: optionMap["value_choices_url"].(string),
+				// Mark: This should be a map[string]string of sorts to be able to parse the subset of URL options
+				// and should reference
+				JobValueChoicesURL:      JobValueChoicesURL{},
 				RequirePredefinedChoice: optionMap["require_predefined_choice"].(bool),
 				ValidationRegex:         optionMap["validation_regex"].(string),
 				Description:             optionMap["description"].(string),
@@ -1055,6 +1091,7 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 				"default_value":             option.DefaultValue,
 				"value_choices":             option.ValueChoices,
 				"value_choices_url":         option.ValueChoicesURL,
+				"value_choices_url_options": option.JobValueChoicesURL,
 				"require_predefined_choice": option.RequirePredefinedChoice,
 				"validation_regex":          option.ValidationRegex,
 				"description":               option.Description,
