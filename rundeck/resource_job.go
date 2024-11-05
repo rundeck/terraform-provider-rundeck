@@ -367,6 +367,14 @@ func resourceRundeckValuesUrlOptions() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: false,
 			},
+			"key_name": {
+				Type:     schema.TypeString,
+				Required: false,
+			},
+			"token_storage_path": {
+				Type:     schema.TypeString,
+				Required: false,
+			},
 		},
 	}
 }

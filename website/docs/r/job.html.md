@@ -231,7 +231,7 @@ The following arguments are supported:
 * `hidden`: (Optional) Boolean controlling whether this option should be hidden from the UI on the job run page.
   Defaults to `false`.
 
-The "value_choices_url_options" block to parameterize using a URL to fill a list of options has the following structure:
+The `value_choices_url_options` block to parameterize using a URL to fill a list of options has the following structure:
 
 * `json_filter`: (Optional) A [JSON path](https://en.wikipedia.org/wiki/JSONPath) filter to apply to the response from the URL. The filter should be an expression that selects a list of keys or key-values from the response.
 
