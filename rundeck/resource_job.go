@@ -967,9 +967,6 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 	if err := d.Set("schedule_enabled", job.ScheduleEnabled); err != nil {
 		return err
 	}
-	if err := d.Set("nodes_selected_by_default", job.NodesSelectedByDefault); err != nil {
-		return err
-	}
 	if err := d.Set("time_zone", job.TimeZone); err != nil {
 		return err
 	}
@@ -1006,6 +1003,9 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 		if err := d.Set("success_on_empty_node_filter", job.Dispatch.SuccessOnEmptyNodeFilter); err != nil {
 			return err
 		}
+		if err := d.Set("nodes_selected_by_default", job.NodesSelectedByDefault); err != nil {
+			return err
+		}
 	} else {
 		if err := d.Set("max_thread_count", 1); err != nil {
 			return err
@@ -1017,6 +1017,10 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 			return err
 		}
 		if err := d.Set("rank_order", "ascending"); err != nil {
+			return err
+		}
+		// if not dispatch, nodes_selected_by_default is always empty and default to be true
+		if err := d.Set("nodes_selected_by_default", true); err != nil {
 			return err
 		}
 	}
