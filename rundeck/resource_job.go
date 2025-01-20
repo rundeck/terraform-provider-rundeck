@@ -56,7 +56,7 @@ func resourceRundeckJob() *schema.Resource {
 			},
 
 			"log_limit": {
-				Type:     schema.TypeList,
+				Type:     schema.TypeMap,
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
@@ -67,12 +67,12 @@ func resourceRundeckJob() *schema.Resource {
 						},
 						"action": {
 							Type:        schema.TypeString,
-							Optional:    true,
+							Required:    true,
 							Description: "Enter either \"halt\" or \"truncate\" to specify the action to take when the log limit is reached.",
 						},
 						"status": {
 							Type:        schema.TypeString,
-							Optional:    true,
+							Required:    true,
 							Description: "Enter either \"failed\" or \"canceled\" or any custom status.",
 						},
 					},
@@ -742,31 +742,28 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 	}
 
 	if v, ok := d.GetOk("log_limit"); ok {
-		logLimitList := v.([]interface{})
+		logLimit := v.(map[string]interface{})
 
-		if len(logLimitList) > 0 {
-			logLimit := logLimitList[0].(map[string]interface{})
+		output, outputOk := logLimit["output"].(string)
+		if !outputOk {
+			return nil, fmt.Errorf("log_limit.output is required")
+		}
 
-			output, outputOk := logLimit["output"].(string)
-			if !outputOk || output == "" {
-				return nil, fmt.Errorf("log_limit.output is required and can't be empty")
-			}
+		action, actionOk := logLimit["action"].(string)
+		if !actionOk || (action != "halt" && action != "truncate") {
+			return nil, fmt.Errorf("log_limit.action is required and must be either 'halt' or 'truncate'")
+		}
 
-			action, actionOk := logLimit["action"].(string)
-			if actionOk && action != "" && action != "halt" && action != "truncate" {
-				return nil, fmt.Errorf("log_limit.action must be either 'halt' or 'truncate'")
-			}
+		status, statusOk := logLimit["status"].(string)
 
-			status, statusOk := logLimit["status"].(string)
-			if !statusOk {
-				return nil, fmt.Errorf("log_limit.status could be either \"failed\" or \"canceled\" or any custom status)")
-			}
+		if !statusOk || status == "" {
+			return nil, fmt.Errorf("log_limit.status is required and can't be empty (any custom status in case of log limit reached and action is halt)")
+		}
 
-			job.LoggingLimit = &JobLoggingLimit{
-				Output: output,
-				Action: action,
-				Status: status,
-			}
+		job.LoggingLimit = &JobLoggingLimit{
+			Output: output,
+			Action: action,
+			Status: status,
 		}
 	}
 
