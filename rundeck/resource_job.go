@@ -180,6 +180,7 @@ func resourceRundeckJob() *schema.Resource {
 			"nodes_selected_by_default": {
 				Type:     schema.TypeBool,
 				Optional: true,
+				Default:  true,
 			},
 
 			"time_zone": {
