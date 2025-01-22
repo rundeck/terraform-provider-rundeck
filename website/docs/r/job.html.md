@@ -228,6 +228,8 @@ The following arguments are supported:
 * `hidden`: (Optional) Boolean controlling whether this option should be hidden from the UI on the job run page.
   Defaults to `false`.
 
+* `type`: (Optional) Option type. One of: `file`, `text`. Defaults to `text`.
+
 `command` blocks must have any one of the following combinations of arguments as contents:
 
 * `description`: (Optional) gives a description to the command block.

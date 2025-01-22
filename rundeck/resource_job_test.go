@@ -319,6 +319,39 @@ func TestAccJobOptions_secure_choice(t *testing.T) {
 	})
 }
 
+func TestAccJobOptions_option_type(t *testing.T) {
+	var job JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobCheckDestroy(&job),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobOptions_option_type,
+				Check: resource.ComposeTestCheckFunc(
+					testAccJobCheckExists("rundeck_job.test", &job),
+					func(s *terraform.State) error {
+						fileOption := job.OptionsConfig.Options[0]
+						if expected := "file"; fileOption.Type != expected {
+							return fmt.Errorf("wrong option type; expected %v, got %v", expected, fileOption.Type)
+						}
+						filenameOption := job.OptionsConfig.Options[1]
+						if expected := "text"; filenameOption.Type != expected {
+							return fmt.Errorf("wrong option type; expected %v, got %v", expected, filenameOption.Type)
+						}
+						fileextensionOption := job.OptionsConfig.Options[2]
+						if expected := "text"; fileextensionOption.Type != expected {
+							return fmt.Errorf("wrong option type; expected %v, got %v", expected, fileextensionOption.Type)
+						}
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
+
 func TestAccJob_plugins(t *testing.T) {
 	var job JobDetail
 
@@ -698,6 +731,47 @@ resource "rundeck_job" "test" {
   command {
     description = "Prints Hello World"
     shell_command = "echo Hello World"
+  }
+}
+`
+
+const testAccJobOptions_option_type = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-job-option-option-type"
+  description = "parent project for job acceptance tests"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourcexml"
+        file = "/tmp/terraform-acc-tests.xml"
+    }
+  }
+}
+resource "rundeck_job" "test" {
+  project_name = "${rundeck_project.test.name}"
+  name = "basic-job"
+  description = "A basic job"
+
+  preserve_options_order = true
+
+  option {
+    name = "input_file"
+    type = "file"
+  }
+
+  option {
+    name = "output_file_name"
+  }
+
+  option {
+    name = "output_file_extension"
+    type = "text"
+  }
+
+  command {
+    description = "Prints the contents of the input file"
+    shell_command = "cat $${file.input_file} > $${option.output_file_name}.$${option.output_file_extension}"
   }
 }
 `
