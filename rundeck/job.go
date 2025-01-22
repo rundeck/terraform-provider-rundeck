@@ -62,6 +62,7 @@ type JobDetail struct {
 	Description               string              `xml:"description"`
 	ExecutionEnabled          bool                `xml:"executionEnabled"`
 	LogLevel                  string              `xml:"loglevel,omitempty"`
+	LoggingLimit              *JobLoggingLimit    `xml:"logging,omitempty"`
 	AllowConcurrentExecutions bool                `xml:"multipleExecutions,omitempty"`
 	Dispatch                  *JobDispatch        `xml:"dispatch,omitempty"`
 	CommandSequence           *JobCommandSequence `xml:"sequence,omitempty"`
@@ -83,6 +84,13 @@ type JobDetail struct {
 
 type Boolean struct {
 	Value bool `xml:",chardata"`
+}
+
+// JobLoggingLimit represents the logging limit options for a job.
+type JobLoggingLimit struct {
+	Output string `xml:"limit,attr"`
+	Action string `xml:"limitAction,attr"`
+	Status string `xml:"status,attr"`
 }
 
 type Retry struct {

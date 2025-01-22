@@ -55,6 +55,30 @@ func resourceRundeckJob() *schema.Resource {
 				Default:  "INFO",
 			},
 
+			"log_limit": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"output": {
+							Type:        schema.TypeString,
+							Required:    true,
+							Description: "Enter either maximum total line-count (e.g. \"100\"), maximum per-node line-count (\"100/node\"), or maximum log file size (\"100MB\", \"100KB\", etc.), using \"GB\",\"MB\",\"KB\",\"B\" as Giga- Mega- Kilo- and bytes.",
+						},
+						"action": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "Enter either \"halt\" or \"truncate\" to specify the action to take when the log limit is reached.",
+						},
+						"status": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "Enter either \"failed\" or \"canceled\" or any custom status.",
+						},
+					},
+				},
+			},
+
 			"allow_concurrent_executions": {
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -722,6 +746,35 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 		job.Dispatch.SuccessOnEmptyNodeFilter = successOnEmpty.(bool)
 	}
 
+	if v, ok := d.GetOk("log_limit"); ok {
+		logLimitList := v.([]interface{})
+
+		if len(logLimitList) > 0 {
+			logLimit := logLimitList[0].(map[string]interface{})
+
+			output, outputOk := logLimit["output"].(string)
+			if !outputOk || output == "" {
+				return nil, fmt.Errorf("log_limit.output is required and can't be empty")
+			}
+
+			action, actionOk := logLimit["action"].(string)
+			if actionOk && action != "" && action != "halt" && action != "truncate" {
+				return nil, fmt.Errorf("log_limit.action must be either 'halt' or 'truncate'")
+			}
+
+			status, statusOk := logLimit["status"].(string)
+			if !statusOk {
+				return nil, fmt.Errorf("log_limit.status could be either \"failed\" or \"canceled\" or any custom status)")
+			}
+
+			job.LoggingLimit = &JobLoggingLimit{
+				Output: output,
+				Action: action,
+				Status: status,
+			}
+		}
+	}
+
 	orchList := d.Get("orchestrator").([]interface{})
 	if len(orchList) > 1 {
 		return nil, fmt.Errorf("rundeck command may have no more than one orchestrator")
@@ -984,6 +1037,16 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 	}
 	if err := d.Set("log_level", job.LogLevel); err != nil {
 		return err
+	}
+	if job.LoggingLimit != nil {
+		logLimit := map[string]interface{}{
+			"output": job.LoggingLimit.Output,
+			"action": job.LoggingLimit.Action,
+			"status": job.LoggingLimit.Status,
+		}
+		if err := d.Set("log_limit", logLimit); err != nil {
+			return err
+		}
 	}
 	if err := d.Set("allow_concurrent_executions", job.AllowConcurrentExecutions); err != nil {
 		return err
