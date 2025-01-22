@@ -355,6 +355,16 @@ func resourceRundeckJob() *schema.Resource {
 							Optional: true,
 							Default:  "text",
 						},
+
+						"is_date": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+
+						"date_format": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
 					},
 				},
 			},
@@ -890,12 +900,17 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 				StoragePath:             optionMap["storage_path"].(string),
 				Hidden:                  optionMap["hidden"].(bool),
 				Type:                    optionMap["type"].(string),
+				IsDate:                  optionMap["is_date"].(bool),
+				DateFormat:              optionMap["date_format"].(string),
 			}
 			if option.StoragePath != "" && !option.ObscureInput {
 				return nil, fmt.Errorf("argument \"obscure_input\" must be set to `true` when \"storage_path\" is not empty")
 			}
 			if option.ValueIsExposedToScripts && !option.ObscureInput {
 				return nil, fmt.Errorf("argument \"obscure_input\" must be set to `true` when \"exposed_to_scripts\" is set to true")
+			}
+			if option.DateFormat != "" && option.IsDate == false {
+				return nil, fmt.Errorf("Argument \"is_date\" must be set to `true` when \"date_format\" is not empty.")
 			}
 
 			for _, iv := range optionMap["value_choices"].([]interface{}) {
@@ -1150,6 +1165,8 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 				"obscure_input":             option.ObscureInput,
 				"exposed_to_scripts":        option.ValueIsExposedToScripts,
 				"storage_path":              option.StoragePath,
+				"is_date":                   option.IsDate,
+				"date_format":               option.DateFormat,
 				"hidden":                    option.Hidden,
 				"type":                      option.Type,
 			}
