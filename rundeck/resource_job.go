@@ -73,12 +73,12 @@ func resourceRundeckJob() *schema.Resource {
 						},
 						"action": {
 							Type:        schema.TypeString,
-							Optional:    true,
+							Required:    true,
 							Description: "Enter either \"halt\" or \"truncate\" to specify the action to take when the log limit is reached.",
 						},
 						"status": {
 							Type:        schema.TypeString,
-							Optional:    true,
+							Required:    true,
 							Description: "Enter either \"failed\" or \"canceled\" or any custom status.",
 						},
 					},
@@ -1068,10 +1068,12 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 		return err
 	}
 	if job.LoggingLimit != nil {
-		logLimit := map[string]interface{}{
-			"output": job.LoggingLimit.Output,
-			"action": job.LoggingLimit.Action,
-			"status": job.LoggingLimit.Status,
+		logLimit := []map[string]interface{}{
+			{
+				"output": job.LoggingLimit.Output,
+				"action": job.LoggingLimit.Action,
+				"status": job.LoggingLimit.Status,
+			},
 		}
 		if err := d.Set("log_limit", logLimit); err != nil {
 			return err

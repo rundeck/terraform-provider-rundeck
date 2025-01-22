@@ -115,8 +115,8 @@ The following arguments are supported:
   The `log_limit` block has the following structure:
 
   * `output` - (Required) Enter either maximum total line-count (e.g. "100"), maximum per-node line-count ("100/node"), or maximum log file size ("100MB", "100KB", etc.), using "GB","MB","KB","B" as Giga- Mega- Kilo- and bytes.
-  * `action` - (Optional) Enter either "halt" or "truncate" to specify the action to take when the log limit is reached.
-  * `status` - (Optional) Enter either "failed" or "aborted" or any custom status.
+  * `action` - (Required) Enter either "halt" or "truncate" to specify the action to take when the log limit is reached.
+  * `status` - (Required) Enter either "failed" or "aborted" or any custom status.
 
 * `timeout` - (Optional) The maximum time for an execution to run. Time in seconds, or specify time units: "120m", "2h", "3d". Use blank or 0 to indicate no timeout.
 
