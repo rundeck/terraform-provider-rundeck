@@ -72,6 +72,25 @@ Each job belongs to a project. A project can be created with the `rundeck_projec
 
 ```
 
+## Example Usage (Specify Log Limit)
+```hcl
+resource "rundeck_job" "example_with_log_limit" {
+    name              = "Example Job with Log Limit"
+    project_name      = rundeck_project.terraform.name
+    description       = "An example job with log limit settings"
+
+    log_limit {
+        output = "100MB"
+        action = "halt"
+        status = "failed"
+    }
+
+    command {
+        shell_command = "echo 'Hello, World!'"
+    }
+}
+```
+
 ## Argument Reference
 
 The following arguments are supported:
@@ -84,10 +103,20 @@ The following arguments are supported:
 
 * `execution_enabled` - (Optional) If you want job execution to be enabled or disabled. Defaults to `true`.
 
+* `default_tab` - (Optional) The default tab to show during job execution. Set to 'output' to follow the execution log. Must be set to `output`, `html`, or `nodes`
+
 * `group_name` - (Optional) The name of a group within the project in which to place the job.
   Setting this creates collapsable subcategories within the Rundeck UI's project job index.
 
 * `log_level` - (Optional) The log level that Rundeck should use for this job. Defaults to "INFO".
+
+* `log_limit` - (Optional) A block defining the log limit settings for the job. The structure of this nested block is described below.
+
+  The `log_limit` block has the following structure:
+
+  * `output` - (Required) Enter either maximum total line-count (e.g. "100"), maximum per-node line-count ("100/node"), or maximum log file size ("100MB", "100KB", etc.), using "GB","MB","KB","B" as Giga- Mega- Kilo- and bytes.
+  * `action` - (Optional) Enter either "halt" or "truncate" to specify the action to take when the log limit is reached.
+  * `status` - (Optional) Enter either "failed" or "aborted" or any custom status.
 
 * `timeout` - (Optional) The maximum time for an execution to run. Time in seconds, or specify time units: "120m", "2h", "3d". Use blank or 0 to indicate no timeout.
 
@@ -232,6 +261,8 @@ The following arguments are supported:
 * `hidden`: (Optional) Boolean controlling whether this option should be hidden from the UI on the job run page.
   Defaults to `false`.
 
+* `type`: (Optional) Option type. One of: `file`, `text`. Defaults to `text`.
+
 `command` blocks must have any one of the following combinations of arguments as contents:
 
 * `description`: (Optional) gives a description to the command block.
@@ -283,9 +314,9 @@ A command's `job` block has the following structure:
 
 * `skip_notifications` (Optional) If the referenced job has notifications, they will be skipped.
 
-* `fail_on_disable` (Optional) If the referenced job has disabled execution, it will be considered a failure 
+* `fail_on_disable` (Optional) If the referenced job has disabled execution, it will be considered a failure
 
-* `child_nodes`: (Optional) If the referenced job is from another project, you can use referenced job node list instead of the parent's nodes. 
+* `child_nodes`: (Optional) If the referenced job is from another project, you can use referenced job node list instead of the parent's nodes.
 
 * `node_filters`: (Optional) A map for overriding the referenced job's node filters.
 

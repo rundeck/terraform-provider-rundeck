@@ -61,7 +61,9 @@ type JobDetail struct {
 	OptionsConfig             *JobOptions         `xml:"context>options,omitempty"`
 	Description               string              `xml:"description"`
 	ExecutionEnabled          bool                `xml:"executionEnabled"`
+	DefaultTab                string              `xml:"defaultTab"`
 	LogLevel                  string              `xml:"loglevel,omitempty"`
+	LoggingLimit              *JobLoggingLimit    `xml:"logging,omitempty"`
 	AllowConcurrentExecutions bool                `xml:"multipleExecutions,omitempty"`
 	Dispatch                  *JobDispatch        `xml:"dispatch,omitempty"`
 	CommandSequence           *JobCommandSequence `xml:"sequence,omitempty"`
@@ -83,6 +85,13 @@ type JobDetail struct {
 
 type Boolean struct {
 	Value bool `xml:",chardata"`
+}
+
+// JobLoggingLimit represents the logging limit options for a job.
+type JobLoggingLimit struct {
+	Output string `xml:"limit,attr"`
+	Action string `xml:"limitAction,attr"`
+	Status string `xml:"status,attr"`
 }
 
 type Retry struct {
@@ -217,6 +226,9 @@ type JobOption struct {
 
 	// Option should be hidden from job run page
 	Hidden bool `xml:"hidden,omitempty"`
+
+	// Type of the option. One of: text, file
+	Type string `xml:"type,attr,omitempty"`
 }
 
 // JobValueChoices is a specialization of []string representing a sequence of predefined values

@@ -49,10 +49,40 @@ func resourceRundeckJob() *schema.Resource {
 				Default:  true,
 			},
 
+			"default_tab": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "nodes",
+			},
+
 			"log_level": {
 				Type:     schema.TypeString,
 				Optional: true,
 				Default:  "INFO",
+			},
+
+			"log_limit": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"output": {
+							Type:        schema.TypeString,
+							Required:    true,
+							Description: "Enter either maximum total line-count (e.g. \"100\"), maximum per-node line-count (\"100/node\"), or maximum log file size (\"100MB\", \"100KB\", etc.), using \"GB\",\"MB\",\"KB\",\"B\" as Giga- Mega- Kilo- and bytes.",
+						},
+						"action": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "Enter either \"halt\" or \"truncate\" to specify the action to take when the log limit is reached.",
+						},
+						"status": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "Enter either \"failed\" or \"canceled\" or any custom status.",
+						},
+					},
+				},
 			},
 
 			"allow_concurrent_executions": {
@@ -180,6 +210,7 @@ func resourceRundeckJob() *schema.Resource {
 			"nodes_selected_by_default": {
 				Type:     schema.TypeBool,
 				Optional: true,
+				Default:  true,
 			},
 
 			"time_zone": {
@@ -318,6 +349,11 @@ func resourceRundeckJob() *schema.Resource {
 						"hidden": {
 							Type:     schema.TypeBool,
 							Optional: true,
+						},
+						"type": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  "text",
 						},
 
 						"is_date": {
@@ -704,6 +740,7 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 		ProjectName:               d.Get("project_name").(string),
 		Description:               d.Get("description").(string),
 		ExecutionEnabled:          d.Get("execution_enabled").(bool),
+		DefaultTab:                d.Get("default_tab").(string),
 		Timeout:                   d.Get("timeout").(string),
 		ScheduleEnabled:           d.Get("schedule_enabled").(bool),
 		NodesSelectedByDefault:    d.Get("nodes_selected_by_default").(bool),
@@ -721,10 +758,42 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 			RankOrder:               d.Get("rank_order").(string),
 		},
 	}
+	if !(job.DefaultTab == "nodes" || job.DefaultTab == "output" || job.DefaultTab == "html") {
+		return nil, fmt.Errorf("Argument \"default_tab\" must be set to one of `nodes`, `output`, `html`.")
+	}
 
 	successOnEmpty := d.Get("success_on_empty_node_filter")
 	if successOnEmpty != nil {
 		job.Dispatch.SuccessOnEmptyNodeFilter = successOnEmpty.(bool)
+	}
+
+	if v, ok := d.GetOk("log_limit"); ok {
+		logLimitList := v.([]interface{})
+
+		if len(logLimitList) > 0 {
+			logLimit := logLimitList[0].(map[string]interface{})
+
+			output, outputOk := logLimit["output"].(string)
+			if !outputOk || output == "" {
+				return nil, fmt.Errorf("log_limit.output is required and can't be empty")
+			}
+
+			action, actionOk := logLimit["action"].(string)
+			if actionOk && action != "" && action != "halt" && action != "truncate" {
+				return nil, fmt.Errorf("log_limit.action must be either 'halt' or 'truncate'")
+			}
+
+			status, statusOk := logLimit["status"].(string)
+			if !statusOk {
+				return nil, fmt.Errorf("log_limit.status could be either \"failed\" or \"canceled\" or any custom status)")
+			}
+
+			job.LoggingLimit = &JobLoggingLimit{
+				Output: output,
+				Action: action,
+				Status: status,
+			}
+		}
 	}
 
 	orchList := d.Get("orchestrator").([]interface{})
@@ -830,6 +899,7 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 				ValueIsExposedToScripts: optionMap["exposed_to_scripts"].(bool),
 				StoragePath:             optionMap["storage_path"].(string),
 				Hidden:                  optionMap["hidden"].(bool),
+				Type:                    optionMap["type"].(string),
 				IsDate:                  optionMap["is_date"].(bool),
 				DateFormat:              optionMap["date_format"].(string),
 			}
@@ -850,6 +920,9 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 				option.ValueChoices = append(option.ValueChoices, iv.(string))
 			}
 
+			if option.Type != "" && option.Type != "text" && option.Type != "file" {
+				return nil, fmt.Errorf("argument \"type\" cannot have \"%s\" as a value; allowed values: \"text\", \"file\"", option.Type)
+			}
 			optionsConfig.Options = append(optionsConfig.Options, option)
 		}
 		job.OptionsConfig = optionsConfig
@@ -979,6 +1052,9 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 	if err := d.Set("execution_enabled", job.ExecutionEnabled); err != nil {
 		return err
 	}
+	if err := d.Set("default_tab", job.DefaultTab); err != nil {
+		return err
+	}
 	if err := d.Set("schedule_enabled", job.ScheduleEnabled); err != nil {
 		return err
 	}
@@ -990,6 +1066,16 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 	}
 	if err := d.Set("log_level", job.LogLevel); err != nil {
 		return err
+	}
+	if job.LoggingLimit != nil {
+		logLimit := map[string]interface{}{
+			"output": job.LoggingLimit.Output,
+			"action": job.LoggingLimit.Action,
+			"status": job.LoggingLimit.Status,
+		}
+		if err := d.Set("log_limit", logLimit); err != nil {
+			return err
+		}
 	}
 	if err := d.Set("allow_concurrent_executions", job.AllowConcurrentExecutions); err != nil {
 		return err
@@ -1082,6 +1168,10 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 				"is_date":                   option.IsDate,
 				"date_format":               option.DateFormat,
 				"hidden":                    option.Hidden,
+				"type":                      option.Type,
+			}
+			if optionConfigI["type"] == "" {
+				optionConfigI["type"] = "text"
 			}
 			optionConfigsI = append(optionConfigsI, optionConfigI)
 		}
