@@ -73,12 +73,12 @@ func resourceRundeckJob() *schema.Resource {
 						},
 						"action": {
 							Type:        schema.TypeString,
-							Optional:    true,
+							Required:    true,
 							Description: "Enter either \"halt\" or \"truncate\" to specify the action to take when the log limit is reached.",
 						},
 						"status": {
 							Type:        schema.TypeString,
-							Optional:    true,
+							Required:    true,
 							Description: "Enter either \"failed\" or \"canceled\" or any custom status.",
 						},
 					},
@@ -1068,10 +1068,12 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 		return err
 	}
 	if job.LoggingLimit != nil {
-		logLimit := map[string]interface{}{
-			"output": job.LoggingLimit.Output,
-			"action": job.LoggingLimit.Action,
-			"status": job.LoggingLimit.Status,
+		logLimit := []map[string]interface{}{
+			{
+				"output": job.LoggingLimit.Output,
+				"action": job.LoggingLimit.Action,
+				"status": job.LoggingLimit.Status,
+			},
 		}
 		if err := d.Set("log_limit", logLimit); err != nil {
 			return err
@@ -1107,6 +1109,9 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 		if err := d.Set("success_on_empty_node_filter", job.Dispatch.SuccessOnEmptyNodeFilter); err != nil {
 			return err
 		}
+		if err := d.Set("nodes_selected_by_default", job.NodesSelectedByDefault); err != nil {
+			return err
+		}
 	} else {
 		if err := d.Set("max_thread_count", 1); err != nil {
 			return err
@@ -1118,6 +1123,10 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 			return err
 		}
 		if err := d.Set("rank_order", "ascending"); err != nil {
+			return err
+		}
+		// if not dispatch, nodes_selected_by_default is always empty and default to be true
+		if err := d.Set("nodes_selected_by_default", true); err != nil {
 			return err
 		}
 	}
