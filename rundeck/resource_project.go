@@ -123,6 +123,13 @@ func CreateProject(d *schema.ResourceData, meta interface{}) error {
 	name := d.Get("name").(string)
 
 	ctx := context.Background()
+
+	project, _ := client.ProjectGet(ctx, name)
+
+	if project.StatusCode != 404 {
+		return fmt.Errorf("project with unique name (%s) already exist", name)
+	}
+
 	_, err := client.ProjectCreate(ctx, rundeck.ProjectCreateRequest{
 		Name: &name,
 	})
