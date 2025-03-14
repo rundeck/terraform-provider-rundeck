@@ -71,6 +71,7 @@ type JobDetail struct {
 	Timeout                   string              `xml:"timeout,omitempty"`
 	Retry                     *Retry              `xml:"retry,omitempty"`
 	NodeFilter                *JobNodeFilter      `xml:"nodefilters,omitempty"`
+	RunnerSelector            *RunnerSelector     `xml:"runnerSelector,omitempty"`
 	Orchestrator              *JobOrchestrator    `xml:"orchestrator,omitempty"`
 
 	/* If Dispatch is enabled, nodesSelectedByDefault is always present with true/false.
@@ -354,6 +355,13 @@ type JobNodeFilter struct {
 	Query             string `xml:"filter,omitempty"`
 	ExcludeQuery      string `xml:"filterExclude,omitempty"`
 	ExcludePrecedence bool   `xml:"excludeprecedence,omitempty"`
+}
+
+// RunnerSelector describes which runner will be used.
+type RunnerSelector struct {
+	Filter     string `xml:"filter,omitempty"`
+	FilterMode string `xml:"runnerFilterMode,omitempty"`
+	FilterType string `xml:"runnerFilterType,omitempty"`
 }
 
 // JobOrchestratorConfig Contains the options for the Job Orchestrators

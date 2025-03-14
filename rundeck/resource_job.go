@@ -158,6 +158,24 @@ func resourceRundeckJob() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 			},
+
+			"runner_selector_filter": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
+			"runner_selector_filter_mode": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "TAGS",
+			},
+
+			"runner_selector_filter_type": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "TAG_FILTER_AND",
+			},
+
 			"timeout": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -938,6 +956,14 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 		job.NodeFilter.ExcludeQuery = nodeFilterExcludeQuery
 	}
 
+	if runnerSelectorFilter := d.Get("runner_selector_filter").(string); runnerSelectorFilter != "" {
+		job.RunnerSelector = &RunnerSelector{
+			Filter:     runnerSelectorFilter,
+			FilterMode: d.Get("runner_selector_filter_mode").(string),
+			FilterType: d.Get("runner_selector_filter_type").(string),
+		}
+	}
+
 	if err := JobScheduleFromResourceData(d, job); err != nil {
 		return nil, err
 	}
@@ -1149,6 +1175,18 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 			return err
 		}
 		if err := d.Set("node_filter_exclude_precedence", nil); err != nil {
+			return err
+		}
+	}
+
+	if job.RunnerSelector != nil {
+		if err := d.Set("runner_selector_filter", job.RunnerSelector.Filter); err != nil {
+			return err
+		}
+		if err := d.Set("runner_selector_filter_mode", job.RunnerSelector.FilterMode); err != nil {
+			return err
+		}
+		if err := d.Set("runner_selector_filter_type", job.RunnerSelector.FilterType); err != nil {
 			return err
 		}
 	}
