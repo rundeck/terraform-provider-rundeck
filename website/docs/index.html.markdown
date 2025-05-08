@@ -8,10 +8,7 @@ description: |-
 
 # Rundeck Provider
 
-The Rundeck provider allows Terraform to create and configure Projects,
-Jobs, ACLs and Keys in [Rundeck](http://www.rundeck.com/). Rundeck is a tool
-for Runbook Automation and execution of arbitrary management tasks,
-allowing operators to avoid logging in to individual machines directly.
+The Rundeck provider allows Terraform to create and configure Projects, Jobs, ACLs and Keys in [Rundeck](http://www.rundeck.com/). Rundeck is a tool for Runbook Automation and execution of arbitrary management tasks, allowing operators to avoid logging in to individual machines directly.
 
 The provider configuration block accepts the following arguments:
 
@@ -33,6 +30,10 @@ The provider configuration block accepts the following arguments:
 > Note: Username and Password auth will not work with SSO configured systems.  It relies on local Rundeck accounts. Please be sensitive to keeping passwords in your plan files!
 
 
+The following configuration is also required on versions 4.x and 5.x.
+`rundeck.feature.legacyXml.enabled=true`  This can be set in framework.properties or System Configuration GUI (5.x and higher)
+
+
 Use the navigation to the left to read about the available resources.
 
 ## Example Usage
@@ -46,7 +47,7 @@ terraform {
   required_providers {
     rundeck = {
       source  = "rundeck/rundeck"
-      version = "0.4.5"
+      version = "0.4.9"
     }
   }
 }
