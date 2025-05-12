@@ -123,11 +123,11 @@ The following arguments are supported:
 * `schedule` - (Optional) The job's schedule in Quartz schedule cron format. Similar to unix crontab, but with seven fields instead of five: Second Minute Hour Day-of-Month Month Day-of-Week Year
 
 * `orchestrator` - (Optional) The orchestrator for the job, described below and [here](https://docs.rundeck.com/docs/manual/orchestrator-plugins/bundled.html)
-    - `type`: Must be one of `subset`, `rankTiered`, `maxPercentage`, `orchestrator-highest-lowest-attribute`
-    - `count`: Required when types is `subset`. Selects that max number of the target nodes at random to process.
-    - `percent`: Required when type is `maxPercentage`. Used to determine max percentage of the nodes to process at once.
-    - `attribute`: Required when type is `orchestrator-highest-lowest-attribute`.  The node attribute to use for sorting.
-    - `sort`:Required when type is `orchestrator-highest-lowest-attribute`.  Values accepted are `highest` or `lowest`.
+  - `type`: Must be one of `subset`, `rankTiered`, `maxPercentage`, `orchestrator-highest-lowest-attribute`
+  - `count`: Required when types is `subset`. Selects that max number of the target nodes at random to process.
+  - `percent`: Required when type is `maxPercentage`. Used to determine max percentage of the nodes to process at once.
+  - `attribute`: Required when type is `orchestrator-highest-lowest-attribute`.  The node attribute to use for sorting.
+  - `sort`:Required when type is `orchestrator-highest-lowest-attribute`.  Values accepted are `highest` or `lowest`.
 
 * `schedule_enabled` - (Optional) Sets the job schedule to be enabled or disabled. Defaults to `true`.
 
@@ -193,6 +193,17 @@ The following arguments are supported:
 
 * `nodes_selected_by_default`: (Optional) Boolean controlling whether nodes that match the node_query_filter are
   selected by default or not.
+
+* `runner_selector_filter`: (Optional) When using the [**Manual** Dispatch Settings](https://docs.rundeck.com/docs/administration/runner/runner-management/project-dispatch-configuration.html#manual-runner-selection) in a Project, this is the Runner Selector filter for a Job definition.
+
+* `runner_selector_filter_mode`: (Optional) When using the [**Manual** Dispatch Settings](https://docs.rundeck.com/docs/administration/runner/runner-management/project-dispatch-configuration.html#manual-runner-selection) in a Project, this defines the _mode_ of the Runner Selector. Accepts the following values:
+  * `TAGS`: User selects the predefined specific Runner tag or tags. _Must_ be used with the `TAGS_FILTER_AND` selection for the `runner_selector_filter_type.
+  * `FILTER`: User defines a freeform filter to capture tags. _Must_ be used with the `TAGS_FILTER_AND` selection for the `runner_selector_filter_type.
+  * `LOCAL`: Job will execute on the Local Runner, meaning on the cluster or SaaS. _Must_ be used with the `LOCAL_RUNNER` selection for the `runner_selector_filter_type`.
+
+* `runner_selector_filter_type`: (Optional) When using the [**Manual** Dispatch Settings](https://docs.rundeck.com/docs/administration/runner/runner-management/project-dispatch-configuration.html#manual-runner-selection) in a Project, this defines whether the Job is dispatching to remote Runners or running on the Local Runner. Accepts the following values:
+  * `TAGS_FILTER_AND`: Job will utilize remote Runners.
+  * `LOCAL_RUNNER`: Job will execute on the Local Runner (ie. the cluster or SaaS).
 
 * `command`: (Required) Nested block defining one step in the job workflow. A job must have one or
   more commands. The structure of this nested block is described below.
@@ -333,7 +344,7 @@ A command's `plugins` block has the following structure:
 * `log_filter_plugin`: A log filter plugin to add to the command. Can be repeated to add multiple log filters. See below for the structure.
 
 A command's `log_filter_plugin`, `step_plugin`  or `node_step_plugin` block both have the following structure, as does the job's
-  `global_log_filter` blocks:
+`global_log_filter` blocks:
 
 * `type`: (Required) The name of the plugin to execute.
 
