@@ -1,3 +1,10 @@
+## 0.5.1
+- Runner Selector support on Job Resource
+
+## 0.5.0
+- Added a fix which introduces validation in the CreateProject function of the Go client for the Rundeck provider to ensure a project with the same name does not already exist before attempting to create it.
+
+
 ## 0.4.9
 - Added flags for using Job Reference steps.
 
