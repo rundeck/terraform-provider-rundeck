@@ -367,9 +367,9 @@ A command's `log_filter_plugin`, `step_plugin`  or `node_step_plugin` block both
 
 * `webhook_urls`: (Optional) A list of urls to send a webhook notification.
 
-* `format` - (Optional) The webhook payload format. Values can be `json` or `xml`. (Usefull only with `webhook_urls`)
+* `format` - (Optional) The webhook payload format. Values can be `json` or `xml`. (Useful only with `webhook_urls`)
 
-* `http_method` - (Optional) HTTP method to use for webhook delivery. Values can be `post` or `get`. (Usefull only with `webhook_urls`)
+* `http_method` - (Optional) HTTP method to use for webhook delivery. Values can be `post` or `get`. (Useful only with `webhook_urls`)
 
 * `plugin`: (Optional) A block listed below to send notifications using a plugin.
 
