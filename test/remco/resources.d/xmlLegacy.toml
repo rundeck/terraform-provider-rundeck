@@ -1,0 +1,4 @@
+[[template]]
+    src         = "${REMCO_TEMPLATE_DIR}/xmlLegacy.properties"
+    dst         = "${REMCO_TMP_DIR}/rundeck-config/rundeck-config-xmlLegacy.properties"
+    mode        = "0644"
