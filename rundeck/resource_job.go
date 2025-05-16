@@ -436,6 +436,16 @@ func resourceRundeckJobCommand() *schema.Resource {
 				Optional: true,
 			},
 
+			"expand_token_in_script_file": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+
+			"file_extension": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
 			"script_interpreter": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -506,6 +516,16 @@ func resourceRundeckJobCommandErrorHandler() *schema.Resource {
 			},
 
 			"script_file_args": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
+			"expand_token_in_script_file": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+
+			"file_extension": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
@@ -1360,13 +1380,15 @@ func scheduleToCronSpec(schedule *JobSchedule) (string, error) {
 func commandFromResourceData(commandI interface{}) (*JobCommand, error) {
 	commandMap := commandI.(map[string]interface{})
 	command := &JobCommand{
-		Description:        commandMap["description"].(string),
-		ShellCommand:       commandMap["shell_command"].(string),
-		Script:             commandMap["inline_script"].(string),
-		ScriptUrl:          commandMap["script_url"].(string),
-		ScriptFile:         commandMap["script_file"].(string),
-		ScriptFileArgs:     commandMap["script_file_args"].(string),
-		KeepGoingOnSuccess: commandMap["keep_going_on_success"].(bool),
+		Description:             commandMap["description"].(string),
+		ShellCommand:            commandMap["shell_command"].(string),
+		Script:                  commandMap["inline_script"].(string),
+		ScriptUrl:               commandMap["script_url"].(string),
+		ScriptFile:              commandMap["script_file"].(string),
+		ScriptFileArgs:          commandMap["script_file_args"].(string),
+		ExpandTokenInScriptFile: commandMap["expand_token_in_script_file"].(bool),
+		FileExtension:           commandMap["file_extension"].(string),
+		KeepGoingOnSuccess:      commandMap["keep_going_on_success"].(bool),
 	}
 
 	// Because of the lack of schema recursion, the inner command has a separate schema without an error_handler
@@ -1499,13 +1521,15 @@ func singlePluginFromResourceData(key string, commandMap map[string]interface{})
 
 func commandToResourceData(command *JobCommand) (map[string]interface{}, error) {
 	commandConfigI := map[string]interface{}{
-		"description":           command.Description,
-		"shell_command":         command.ShellCommand,
-		"inline_script":         command.Script,
-		"script_url":            command.ScriptUrl,
-		"script_file":           command.ScriptFile,
-		"script_file_args":      command.ScriptFileArgs,
-		"keep_going_on_success": command.KeepGoingOnSuccess,
+		"description":                 command.Description,
+		"shell_command":               command.ShellCommand,
+		"inline_script":               command.Script,
+		"script_url":                  command.ScriptUrl,
+		"script_file":                 command.ScriptFile,
+		"script_file_args":            command.ScriptFileArgs,
+		"expand_token_in_script_file": command.ExpandTokenInScriptFile,
+		"file_extension":              command.FileExtension,
+		"keep_going_on_success":       command.KeepGoingOnSuccess,
 	}
 
 	if command.ErrorHandler != nil {

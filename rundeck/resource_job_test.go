@@ -467,6 +467,44 @@ resource "rundeck_job" "test" {
 }
 `
 
+const testAccJobConfig_script = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-job"
+  description = "parent project for job acceptance tests"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourcexml"
+        file = "/tmp/terraform-acc-tests.xml"
+    }
+  }
+}
+resource "rundeck_job" "test" {
+  project_name = "${rundeck_project.test.name}"
+  name = "script-job"
+  description = "A job using script"
+
+  option {
+    name = "foo"
+	default_value = "bar"
+	value_choices = ["", "foo"]
+  }
+
+  command {
+    description = "runs a script from a URL"
+    script_url = "https://raw.githubusercontent.com/fleschutz/PowerShell/refs/heads/main/scripts/check-xml-file.ps1"
+    script_file_args = "/tmp/terraform-acc-tests.xml"
+    file_extension = ".ps1"
+    expand_token_in_script_file = true
+    script_interpreter {
+      args_quoted       = false
+      invocation_string = "pwsh -f $${scriptfile}"
+    }
+  }
+}
+`
+
 const testAccJobConfig_withLogLimit = `
 resource "rundeck_project" "test" {
   name = "terraform-acc-test-job"
