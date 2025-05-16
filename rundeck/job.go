@@ -288,6 +288,10 @@ type JobCommand struct {
 	// A pre-existing file (on the target nodes) that will be executed.
 	ScriptFile string `xml:"scriptfile,omitempty"`
 
+	// Whether to expand variables in the script file.
+	// If set, the script file will be expanded before being executed.
+	ExpandTokenInScriptFile bool `xml:"expandTokenInScriptFile,omitempty"`
+
 	// When ScriptFile is set, the arguments to provide to the script when executing it.
 	ScriptFileArgs string `xml:"scriptargs,omitempty"`
 

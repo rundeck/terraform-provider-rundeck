@@ -287,6 +287,10 @@ The following arguments are supported:
 
 * `script_url` can be used to provide a URL to execute a script from a specified url.
 
+* `file_extension` when used with `inline_script` determines the file extension of the script that is executed on the nodes.
+
+* `expand_token_in_script_file` when used with `script_file` or `script_url` will expand Rundeck token values in the script before its ran. (ex. @option.value@)
+
 * A `script_interpreter` block (Optional), described below, is an advanced feature specifying how
   to invoke the script file.
 
