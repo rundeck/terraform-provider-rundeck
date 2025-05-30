@@ -420,6 +420,110 @@ func TestAccJob_plugins(t *testing.T) {
 	})
 }
 
+func TestAccJobWebhookNotification(t *testing.T) {
+	var job JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobCheckDestroy(&job),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_webhookNotification,
+				Check: resource.ComposeTestCheckFunc(
+					testAccJobCheckExists("rundeck_job.test_webhook", &job),
+					func(s *terraform.State) error {
+						if job.Notification == nil {
+							return fmt.Errorf("job notification should not be nil")
+						}
+
+						// Test on_success notification
+						if job.Notification.OnSuccess == nil {
+							return fmt.Errorf("job notification on_success should not be nil")
+						}
+						if expected := "json"; job.Notification.OnSuccess.Format != expected {
+							return fmt.Errorf("wrong format for on_success notification; expected %v, got %v", expected, job.Notification.OnSuccess.Format)
+						}
+						if expected := "post"; job.Notification.OnSuccess.HttpMethod != expected {
+							return fmt.Errorf("wrong httpMethod for on_success notification; expected %v, got %v", expected, job.Notification.OnSuccess.HttpMethod)
+						}
+
+						// Test on_failure notification
+						if job.Notification.OnFailure == nil {
+							return fmt.Errorf("job notification on_failure should not be nil")
+						}
+						if expected := ""; job.Notification.OnFailure.Format != expected {
+							return fmt.Errorf("format for on_failure notification should be empty, got %v", job.Notification.OnFailure.Format)
+						}
+						if expected := ""; job.Notification.OnFailure.HttpMethod != expected {
+							return fmt.Errorf("httpMethod for on_failure notification should be empty, got %v", job.Notification.OnFailure.HttpMethod)
+						}
+
+						// Test on_start notification
+						if job.Notification.OnStart == nil {
+							return fmt.Errorf("job notification on_start should not be nil")
+						}
+						if expected := "json"; job.Notification.OnStart.Format != expected {
+							return fmt.Errorf("wrong format for on_start notification; expected %v, got %v", expected, job.Notification.OnStart.Format)
+						}
+						if expected := "post"; job.Notification.OnStart.HttpMethod != expected {
+							return fmt.Errorf("wrong httpMethod for on_start notification; expected %v, got %v", expected, job.Notification.OnStart.HttpMethod)
+						}
+
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
+
+const testAccJobConfig_webhookNotification = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-webhook"
+  description = "Test project for webhook notifications"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourcexml"
+        file = "/tmp/terraform-acc-tests.xml"
+    }
+  }
+}
+
+resource "rundeck_job" "test_webhook" {
+  project_name = "${rundeck_project.test.name}"
+  name = "webhook-notification-test"
+  description = "A job with webhook notifications"
+  execution_enabled = true
+  
+  command {
+    description = "Prints Hello World"
+    shell_command = "echo Hello World"
+  }
+  
+  notification {
+    type = "on_success"
+    format = "json"
+    http_method = "post"
+    webhook_urls = ["https://example.com/webhook"]
+  }
+  
+  notification {
+    type = "on_failure"
+    webhook_urls = ["https://example.com/webhook"]
+  }
+  
+  notification {
+    type = "on_start"
+    format = "json"
+    http_method = "post"
+    webhook_urls = ["https://example.com/webhook"]
+  }
+}
+`
+
 const testAccJobConfig_basic = `
 resource "rundeck_project" "test" {
   name = "terraform-acc-test-job"

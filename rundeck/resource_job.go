@@ -246,6 +246,16 @@ func resourceRundeckJob() *schema.Resource {
 							Required:    true,
 							Description: "Option of `on_success`, `on_failure`, `on_start`",
 						},
+						"format": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "The webhook payload format (`json` or `xml`)",
+						},
+						"http_method": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "HTTP method to use for webhook delivery (`post` or `get`)",
+						},
 						"email": {
 							Type:     schema.TypeList,
 							Optional: true,
@@ -1013,6 +1023,14 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 					notification.Email = &email
 				}
 
+				if format, ok := notificationMap["format"].(string); ok && format != "" {
+					notification.Format = format
+				}
+
+				if httpMethod, ok := notificationMap["http_method"].(string); ok && httpMethod != "" {
+					notification.HttpMethod = httpMethod
+				}
+
 				// Webhook notification
 				webHookUrls := notificationMap["webhook_urls"].([]interface{})
 				if len(webHookUrls) > 0 {
@@ -1631,6 +1649,14 @@ func readNotification(notification *Notification, notificationType string) map[s
 			},
 		}
 	}
+
+	if notification.Format != "" {
+		notificationConfigI["format"] = notification.Format
+	}
+	if notification.HttpMethod != "" {
+		notificationConfigI["http_method"] = notification.HttpMethod
+	}
+
 	return notificationConfigI
 }
 
