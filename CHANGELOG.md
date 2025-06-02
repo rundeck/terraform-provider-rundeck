@@ -1,3 +1,9 @@
+## 0.5.2
+- Adds two new command options for Rundeck jobs to support custom script file extensions and token expansion in external scripts.
+- Introduces file_extension and expand_token_in_script_file to Terraform schema and mapping functions
+- Introduces support for configuring webhook notifications in Rundeck jobs by adding the ability to specify payload formats and HTTP methods.
+
+
 ## 0.5.1
 - Runner Selector support on Job Resource
 
