@@ -107,9 +107,11 @@ type JobNotification struct {
 }
 
 type Notification struct {
-	Email   *EmailNotification   `xml:"email,omitempty"`
-	WebHook *WebHookNotification `xml:"webhook,omitempty"`
-	Plugin  *JobPlugin           `xml:"plugin"`
+	Email      *EmailNotification   `xml:"email,omitempty"`
+	WebHook    *WebHookNotification `xml:"webhook,omitempty"`
+	Plugin     *JobPlugin           `xml:"plugin"`
+	Format     string               `xml:"format,omitempty"`
+	HttpMethod string               `xml:"httpMethod,omitempty"`
 }
 
 type EmailNotification struct {

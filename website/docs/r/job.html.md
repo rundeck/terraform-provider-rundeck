@@ -91,6 +91,26 @@ resource "rundeck_job" "example_with_log_limit" {
 }
 ```
 
+## Example Usage (Webhook Notification Configuration)
+```hcl
+resource "rundeck_job" "example_with_webhook" {
+    name              = "Example Job with Webhook Settings"
+    project_name      = rundeck_project.terraform.name
+    description       = "An example job with webhook notification settings"
+
+    command {
+        shell_command = "echo 'Hello, World!'"
+    }
+
+    notification {
+        type = "on_success"
+        format = "json"
+        http_method = "post"
+        webhook_urls = ["https://example.com/webhook"]
+    }
+}
+```
+
 ## Argument Reference
 
 The following arguments are supported:
@@ -361,6 +381,10 @@ A command's `log_filter_plugin`, `step_plugin`  or `node_step_plugin` block both
 * `email`: (Optional) block listed below to send emails as notificiation.
 
 * `webhook_urls`: (Optional) A list of urls to send a webhook notification.
+
+* `format` - (Optional) The webhook payload format. Values can be `json` or `xml`. (Useful only with `webhook_urls`)
+
+* `http_method` - (Optional) HTTP method to use for webhook delivery. Values can be `post` or `get`. (Useful only with `webhook_urls`)
 
 * `plugin`: (Optional) A block listed below to send notifications using a plugin.
 
