@@ -82,6 +82,7 @@ type JobDetail struct {
 	Schedule               *JobSchedule `xml:"schedule,omitempty"`
 	ScheduleEnabled        bool         `xml:"scheduleEnabled"`
 	TimeZone               string       `xml:"timeZone,omitempty"`
+	NodeFilterEditable     bool         `xml:"nodeFilterEditable"`
 }
 
 type Boolean struct {
