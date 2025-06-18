@@ -138,6 +138,13 @@ The following arguments are supported:
   * `action` - (Required) Enter either "halt" or "truncate" to specify the action to take when the log limit is reached.
   * `status` - (Required) Enter either "failed" or "aborted" or any custom status.
 
+* `project_schedule` - (Optional) One or more blocks defining project-level schedules for the job. The structure of this nested block is described below.
+
+  The `project_schedule` block has the following structure:
+
+  * `name` - (Required) The name of the Project Schedule.
+  * `job_options` - (Optional) A string of job options to pass to the schedule. In the form: -optname value -opt2name value2
+
 * `timeout` - (Optional) The maximum time for an execution to run. Time in seconds, or specify time units: "120m", "2h", "3d". Use blank or 0 to indicate no timeout.
 
 * `schedule` - (Optional) The job's schedule in Quartz schedule cron format. Similar to unix crontab, but with seven fields instead of five: Second Minute Hour Day-of-Month Month Day-of-Week Year
