@@ -90,6 +90,12 @@ func resourceRundeckJob() *schema.Resource {
 				Optional: true,
 			},
 
+			"node_filter_editable": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  true,
+			},
+
 			"retry": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -805,6 +811,7 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 			RankAttribute:           d.Get("rank_attribute").(string),
 			RankOrder:               d.Get("rank_order").(string),
 		},
+		NodeFilterEditable: d.Get("node_filter_editable").(bool),
 	}
 	if !(job.DefaultTab == "nodes" || job.DefaultTab == "output" || job.DefaultTab == "html") {
 		return nil, fmt.Errorf("Argument \"default_tab\" must be set to one of `nodes`, `output`, `html`.")
@@ -1129,6 +1136,9 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 		return err
 	}
 	if err := d.Set("log_level", job.LogLevel); err != nil {
+		return err
+	}
+	if err := d.Set("node_filter_editable", job.NodeFilterEditable); err != nil {
 		return err
 	}
 	if job.LoggingLimit != nil {
