@@ -214,6 +214,9 @@ type JobOption struct {
 	// A sequence of predefined choices for this option. Mutually exclusive with ValueChoicesURL.
 	ValueChoices JobValueChoices `xml:"values,attr"`
 
+	// If set, the predefined choices will be sorted in the Rundeck UI.
+	SortValues bool `xml:"sortValues,attr,omitempty"`
+
 	// A URL from which the predefined choices for this option will be retrieved.
 	// Mutually exclusive with ValueChoices
 	ValueChoicesURL string `xml:"valuesUrl,attr,omitempty"`

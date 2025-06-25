@@ -253,6 +253,8 @@ The following arguments are supported:
 * `value_choices_url`: (Optional) Can be used instead of `value_choices` to cause Rundeck to
   obtain a list of choices dynamically by fetching this URL.
 
+* `sort_values`: (Optional) Boolean controlling whether the predefined choices should be sorted in the UI.
+
 * `require_predefined_choice`: (Optional) Boolean controlling whether the user is allowed to
   enter values not included in the predefined set of choices (`false`, the default) or whether
   a predefined choice is required (`true`).
