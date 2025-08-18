@@ -7,7 +7,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
-	"github.com/rundeck/go-rundeck/rundeck"
 )
 
 func TestAccAclPolicy_basic(t *testing.T) {
@@ -38,7 +37,8 @@ func TestAccAclPolicy_basic(t *testing.T) {
 
 func testAccAclPolicyCheckDestroy(policyName string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		client := testAccProvider.Meta().(*rundeck.BaseClient)
+		clients := testAccProvider.Meta().(*RundeckClients)
+		client := clients.V1
 		ctx := context.Background()
 		resp, err := client.SystemACLPolicyGet(ctx, policyName)
 		if err != nil || resp.StatusCode != 404 {
@@ -60,7 +60,8 @@ func testAccAclPolicyCheckExists(rn string, aclPolicy *string) resource.TestChec
 			return fmt.Errorf("job id not set")
 		}
 
-		client := testAccProvider.Meta().(*rundeck.BaseClient)
+		clients := testAccProvider.Meta().(*RundeckClients)
+		client := clients.V1
 		ctx := context.Background()
 		resp, err := client.SystemACLPolicyGet(ctx, rs.Primary.ID)
 		if err != nil || resp.StatusCode != 200 {

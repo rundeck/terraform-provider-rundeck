@@ -34,7 +34,8 @@ func resourceRundeckAclPolicy() *schema.Resource {
 }
 
 func CreateAclPolicy(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.BaseClient)
+	clients := meta.(*RundeckClients)
+	client := clients.V1
 
 	name := d.Get("name").(string)
 	policy := d.Get("policy").(string)
@@ -64,7 +65,8 @@ func CreateAclPolicy(d *schema.ResourceData, meta interface{}) error {
 }
 
 func UpdateAclPolicy(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.BaseClient)
+	clients := meta.(*RundeckClients)
+	client := clients.V1
 
 	name := d.Get("name").(string)
 	policy := d.Get("policy").(string)
@@ -85,7 +87,8 @@ func UpdateAclPolicy(d *schema.ResourceData, meta interface{}) error {
 }
 
 func ReadAclPolicy(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.BaseClient)
+	clients := meta.(*RundeckClients)
+	client := clients.V1
 	ctx := context.Background()
 
 	name := d.Id()
@@ -108,7 +111,8 @@ func ReadAclPolicy(d *schema.ResourceData, meta interface{}) error {
 }
 
 func AclPolicyExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	client := meta.(*rundeck.BaseClient)
+	clients := meta.(*RundeckClients)
+	client := clients.V1
 	ctx := context.Background()
 
 	name := d.Id()
@@ -128,7 +132,8 @@ func AclPolicyExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 }
 
 func AclPolicyDelete(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.BaseClient)
+	clients := meta.(*RundeckClients)
+	client := clients.V1
 	ctx := context.Background()
 
 	name := d.Id()

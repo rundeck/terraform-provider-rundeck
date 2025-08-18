@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/rundeck/go-rundeck/rundeck"
 )
 
 func resourceRundeckJob() *schema.Resource {
@@ -698,7 +697,8 @@ func resourceRundeckJobFilter() *schema.Resource {
 }
 
 func CreateJob(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.BaseClient)
+	clients := meta.(*RundeckClients)
+	client := clients.V1
 
 	job, err := jobFromResourceData(d)
 	if err != nil {
@@ -716,7 +716,8 @@ func CreateJob(d *schema.ResourceData, meta interface{}) error {
 }
 
 func UpdateJob(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.BaseClient)
+	clients := meta.(*RundeckClients)
+	client := clients.V1
 
 	job, err := jobFromResourceData(d)
 	if err != nil {
@@ -734,7 +735,8 @@ func UpdateJob(d *schema.ResourceData, meta interface{}) error {
 }
 
 func DeleteJob(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.BaseClient)
+	clients := meta.(*RundeckClients)
+	client := clients.V1
 	ctx := context.Background()
 
 	_, err := client.JobDelete(ctx, d.Id())
@@ -748,7 +750,8 @@ func DeleteJob(d *schema.ResourceData, meta interface{}) error {
 }
 
 func JobExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	client := meta.(*rundeck.BaseClient)
+	clients := meta.(*RundeckClients)
+	client := clients.V1
 	ctx := context.Background()
 
 	resp, err := client.JobGet(ctx, d.Id(), "")
@@ -770,7 +773,8 @@ func JobExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 }
 
 func ReadJob(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.BaseClient)
+	clients := meta.(*RundeckClients)
+	client := clients.V1
 
 	job, err := GetJob(client, d.Id())
 	if err != nil {
@@ -1573,6 +1577,7 @@ func commandToResourceData(command *JobCommand) (map[string]interface{}, error) 
 		jobRefConfigI := map[string]interface{}{
 			"name":                 command.Job.Name,
 			"group_name":           command.Job.GroupName,
+			"project_name":         command.Job.Project,
 			"run_for_each_node":    command.Job.RunForEachNode,
 			"args":                 command.Job.Arguments,
 			"child_nodes":          command.Job.ChildNodes,

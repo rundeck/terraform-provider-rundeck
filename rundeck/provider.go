@@ -1,12 +1,14 @@
 package rundeck
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 
+	openapi "github.com/rundeck/go-rundeck-v2"
 	"github.com/rundeck/go-rundeck/rundeck"
 	"github.com/rundeck/go-rundeck/rundeck/auth"
 )
@@ -47,12 +49,14 @@ func Provider() terraform.ResourceProvider {
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
-			"rundeck_project":     resourceRundeckProject(),
-			"rundeck_job":         resourceRundeckJob(),
-			"rundeck_private_key": resourceRundeckPrivateKey(),
-			"rundeck_password":    resourceRundeckPassword(),
-			"rundeck_public_key":  resourceRundeckPublicKey(),
-			"rundeck_acl_policy":  resourceRundeckAclPolicy(),
+			"rundeck_project":        resourceRundeckProject(),
+			"rundeck_job":            resourceRundeckJob(),
+			"rundeck_private_key":    resourceRundeckPrivateKey(),
+			"rundeck_password":       resourceRundeckPassword(),
+			"rundeck_public_key":     resourceRundeckPublicKey(),
+			"rundeck_acl_policy":     resourceRundeckAclPolicy(),
+			"rundeck_system_runner":  resourceRundeckSystemRunner(),
+			"rundeck_project_runner": resourceRundeckProjectRunner(),
 		},
 
 		ConfigureFunc: providerConfigure,
@@ -89,8 +93,43 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		return nil, fmt.Errorf("auth_token need to be set of auth_username and auth_password")
 	}
 
-	client := rundeck.NewRundeckWithBaseURI(apiURL.String())
-	client.Authorizer = &auth.TokenAuthorizer{Token: token}
+	// Create the original v1 client
+	clientV1 := rundeck.NewRundeckWithBaseURI(apiURL.String())
+	clientV1.Authorizer = &auth.TokenAuthorizer{Token: token}
 
-	return &client, nil
+	// Create the new v2 client
+	configuration := openapi.NewConfiguration()
+	configuration.Servers = openapi.ServerConfigurations{
+		{
+			URL: apiURL.Host,
+		},
+	}
+
+	// Create a context with the API token as a header
+	ctx := context.WithValue(context.Background(), openapi.ContextAPIKeys, map[string]openapi.APIKey{
+		"rundeckApiToken": {
+			Key: token,
+		},
+	})
+
+	cfg := openapi.NewConfiguration()
+	cfg.Host = apiURL.Host
+	cfg.Scheme = apiURL.Scheme
+
+	clientV2 := openapi.NewAPIClient(cfg)
+
+	return &RundeckClients{
+		V1:    &clientV1,
+		V2:    clientV2,
+		Token: token,
+		ctx:   ctx,
+	}, nil
+}
+
+// RundeckClients wraps both v1 and v2 clients
+type RundeckClients struct {
+	V1    *rundeck.BaseClient
+	V2    *openapi.APIClient
+	Token string
+	ctx   context.Context
 }
