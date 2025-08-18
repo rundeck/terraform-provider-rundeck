@@ -7,7 +7,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
-	"github.com/rundeck/go-rundeck/rundeck"
 )
 
 func TestAccJob_basic(t *testing.T) {
@@ -98,7 +97,7 @@ func TestAccJob_cmd_nodefilter(t *testing.T) {
 						if job.CommandSequence.Commands[0].Job.ImportOptions != true {
 							return fmt.Errorf("ImportOptions should be enabled")
 						}
-						if expected := "source_test_job"; job.CommandSequence.Commands[0].Job.Name != expected {
+						if expected := "Other Job Name"; job.CommandSequence.Commands[0].Job.Name != expected {
 							return fmt.Errorf("wrong referenced job name; expected %v, got %v", expected, job.CommandSequence.Commands[0].Job.Name)
 						}
 						if expected := "source_project"; job.CommandSequence.Commands[0].Job.Project != expected {
@@ -234,13 +233,14 @@ func TestAccJob_Idempotency(t *testing.T) {
 
 func testAccJobCheckDestroy(job *JobDetail) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		client := testAccProvider.Meta().(*rundeck.BaseClient)
+		clients := testAccProvider.Meta().(*RundeckClients)
+		client := clients.V1
 		_, err := GetJob(client, job.ID)
 		if err == nil {
-			return fmt.Errorf("key still exists")
+			return fmt.Errorf("job still exists")
 		}
 		if _, ok := err.(*NotFoundError); !ok {
-			return fmt.Errorf("got something other than NotFoundError (%v) when getting key", err)
+			return fmt.Errorf("got something other than NotFoundError (%v) when getting job", err)
 		}
 
 		return nil
@@ -258,7 +258,8 @@ func testAccJobCheckExists(rn string, job *JobDetail) resource.TestCheckFunc {
 			return fmt.Errorf("job id not set")
 		}
 
-		client := testAccProvider.Meta().(*rundeck.BaseClient)
+		clients := testAccProvider.Meta().(*RundeckClients)
+		client := clients.V1
 		gotJob, err := GetJob(client, rs.Primary.ID)
 		if err != nil {
 			return fmt.Errorf("error getting job details: %s", err)
@@ -560,7 +561,7 @@ resource "rundeck_job" "test" {
     shell_command = "echo Hello World"
   }
   command {
-    script_url = "notarealurl.end"
+    script_file = "notarealurl.end"
   }
   notification {
 	  type = "on_success"
@@ -653,14 +654,14 @@ resource "rundeck_project" "test" {
     }
   }
 }
-resource "rundeck_job" "test" {
+resource "rundeck_job" "source_test_job" {
   project_name = "${rundeck_project.test.name}"
   name = "basic-job-with-node-filter"
   description = "A basic job"
   execution_enabled = true
   node_filter_query = "example"
   allow_concurrent_executions = true
-	nodes_selected_by_default = false
+  nodes_selected_by_default = false
   max_thread_count = 1
   rank_order = "ascending"
 	schedule = "0 0 12 * * * *"
@@ -676,7 +677,12 @@ resource "rundeck_job" "test" {
   command {
     job {
       name = "Other Job Name"
+	  project_name = "source_project"
       run_for_each_node = true
+	  child_nodes = true
+      fail_on_disable = true
+      ignore_notifications = true
+      import_options = true
       node_filters {
         filter = "name: tacobell"
       }
@@ -726,6 +732,10 @@ resource "rundeck_job" "source_test_job" {
     name = "foo"
     default_value = "bar"
   }
+  command {
+    description = "Prints Hello World"
+	shell_command = "echo Hello World"
+  }
 }
 resource "rundeck_job" "target_test_job" {
   project_name = "${rundeck_project.target_test.name}"
@@ -735,6 +745,7 @@ resource "rundeck_job" "target_test_job" {
   option {
     name = "foo"
     default_value = "bar"
+  }
   command {
     job {
       name = "${rundeck_job.source_test_job.name}"
@@ -745,6 +756,7 @@ resource "rundeck_job" "target_test_job" {
       ignore_notifications = true
       import_options = true
     }
+    description = "Referenced job execution"
   }
 }
 `

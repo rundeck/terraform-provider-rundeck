@@ -12,7 +12,8 @@ import (
 
 func testAccBaseKeyCheckDestroy(key *rundeck.StorageKeyListResponse) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		client := testAccProvider.Meta().(*rundeck.BaseClient)
+		clients := testAccProvider.Meta().(*RundeckClients)
+		client := clients.V1
 		ctx := context.Background()
 
 		resp, err := client.StorageKeyGetMetadata(ctx, *key.Path)
@@ -39,7 +40,8 @@ func testAccBaseKeyCheckExists(rn string, key *rundeck.StorageKeyListResponse) r
 			return fmt.Errorf("key id not set")
 		}
 
-		client := testAccProvider.Meta().(*rundeck.BaseClient)
+		clients := testAccProvider.Meta().(*RundeckClients)
+		client := clients.V1
 		ctx := context.Background()
 		gotKey, err := client.StorageKeyGetMetadata(ctx, rs.Primary.ID)
 		if gotKey.StatusCode == 404 || err != nil {
