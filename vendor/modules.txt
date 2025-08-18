@@ -314,6 +314,9 @@ github.com/posener/complete
 github.com/posener/complete/cmd
 github.com/posener/complete/cmd/install
 github.com/posener/complete/match
+# github.com/rundeck/go-rundeck-v2 v0.0.0 => ../go-rundeck/rundeck-v2
+## explicit; go 1.18
+github.com/rundeck/go-rundeck-v2
 # github.com/rundeck/go-rundeck/rundeck v0.0.0-20190510195016-2cf9670bbcc4
 ## explicit; go 1.12
 github.com/rundeck/go-rundeck/rundeck
@@ -566,3 +569,7 @@ google.golang.org/protobuf/types/known/fieldmaskpb
 google.golang.org/protobuf/types/known/structpb
 google.golang.org/protobuf/types/known/timestamppb
 google.golang.org/protobuf/types/known/wrapperspb
+# gopkg.in/validator.v2 v2.0.1
+## explicit; go 1.18
+gopkg.in/validator.v2
+# github.com/rundeck/go-rundeck-v2 => ../go-rundeck/rundeck-v2

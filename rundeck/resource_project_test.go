@@ -45,7 +45,8 @@ func TestAccProject_basic(t *testing.T) {
 
 func testAccProjectCheckDestroy(project *rundeck.Project) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		client := testAccProvider.Meta().(*rundeck.BaseClient)
+		clients := testAccProvider.Meta().(*RundeckClients)
+		client := clients.V1
 		ctx := context.Background()
 		resp, err := client.ProjectGet(ctx, *project.Name)
 		if err == nil && resp.StatusCode == 200 {
@@ -70,7 +71,8 @@ func testAccProjectCheckExists(rn string, project *rundeck.Project) resource.Tes
 			return fmt.Errorf("project id not set")
 		}
 
-		client := testAccProvider.Meta().(*rundeck.BaseClient)
+		clients := testAccProvider.Meta().(*RundeckClients)
+		client := clients.V1
 		ctx := context.Background()
 		gotProject, err := client.ProjectGet(ctx, rs.Primary.ID)
 		if err != nil {

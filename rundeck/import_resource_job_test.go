@@ -26,6 +26,8 @@ func TestAccRundeckJob_Import(t *testing.T) {
 				ImportStateIdPrefix: fmt.Sprintf("%s/", project_name),
 				ImportState:         true,
 				ImportStateVerify:   true,
+				// These fields have default values that may not be returned by the API
+				ImportStateVerifyIgnore: []string{"runner_selector_filter_mode", "runner_selector_filter_type"},
 			},
 		},
 	})

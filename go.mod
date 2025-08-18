@@ -3,6 +3,7 @@ module github.com/terraform-providers/terraform-provider-rundeck
 require (
 	github.com/hashicorp/terraform-plugin-sdk v1.1.0
 	github.com/rundeck/go-rundeck/rundeck v0.0.0-20190510195016-2cf9670bbcc4
+	github.com/rundeck/go-rundeck/rundeck-v2 v0.0.0-20251023151714-f1ab6ee00810
 )
 
 require (

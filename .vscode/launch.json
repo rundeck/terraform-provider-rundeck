@@ -1,0 +1,67 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Go Test",
+            "type": "go",
+            "request": "launch",
+            "mode": "test",
+            "program": "${workspaceFolder}/rundeck",
+            "args": [
+                "-test.v",
+                "-test.run",
+                "TestAccRundeckSystemRunner_basic"
+            ],
+            "env": {
+                "TF_ACC": "1"
+            },
+            "showLog": true,
+            "trace": "verbose"
+        },
+        {
+            "name": "Debug Project Runner Test",
+            "type": "go",
+            "request": "launch",
+            "mode": "test",
+            "program": "${workspaceFolder}/rundeck",
+            "args": [
+                "-test.v",
+                "-test.run",
+                "TestAccRundeckProjectRunner_basic"
+            ],
+            "env": {
+                "TF_ACC": "1"
+            },
+            "showLog": true,
+            "trace": "verbose"
+        },
+        {
+            "name": "Debug All Runner Tests",
+            "type": "go",
+            "request": "launch",
+            "mode": "test",
+            "program": "${workspaceFolder}/rundeck",
+            "args": [
+                "-test.v",
+                "-test.run",
+                "TestAccRundeck.*Runner"
+            ],
+            "env": {
+                "TF_ACC": "1"
+            },
+            "showLog": true,
+            "trace": "verbose"
+        },
+        {
+            "name": "Debug Current Test File",
+            "type": "go",
+            "request": "launch",
+            "mode": "test",
+            "program": "${file}",
+            "env": {
+                "TF_ACC": "1"
+            },
+            "showLog": true
+        }
+    ]
+}
