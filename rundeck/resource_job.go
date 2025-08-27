@@ -337,6 +337,11 @@ func resourceRundeckJob() *schema.Resource {
 							Optional: true,
 						},
 
+						"sort_values": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+
 						"require_predefined_choice": {
 							Type:     schema.TypeBool,
 							Optional: true,
@@ -944,6 +949,7 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 				DefaultValue:            optionMap["default_value"].(string),
 				ValueChoices:            JobValueChoices([]string{}),
 				ValueChoicesURL:         optionMap["value_choices_url"].(string),
+				SortValues:              optionMap["sort_values"].(bool),
 				RequirePredefinedChoice: optionMap["require_predefined_choice"].(bool),
 				ValidationRegex:         optionMap["validation_regex"].(string),
 				Description:             optionMap["description"].(string),
@@ -1251,6 +1257,7 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 				"default_value":             option.DefaultValue,
 				"value_choices":             option.ValueChoices,
 				"value_choices_url":         option.ValueChoicesURL,
+				"sort_values":               option.SortValues,
 				"require_predefined_choice": option.RequirePredefinedChoice,
 				"validation_regex":          option.ValidationRegex,
 				"description":               option.Description,
