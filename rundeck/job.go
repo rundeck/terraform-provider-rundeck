@@ -78,11 +78,12 @@ type JobDetail struct {
 	 * by this reason omitempty cannot be present.
 	 * This has to be handle by the user.
 	 */
-	NodesSelectedByDefault bool              `xml:"nodesSelectedByDefault"`
-	Schedule               *JobSchedule      `xml:"schedule,omitempty"`
-	ScheduleEnabled        bool              `xml:"scheduleEnabled"`
-	TimeZone               string            `xml:"timeZone,omitempty"`
-	Schedules              []ProjectSchedule `xml:"schedules>schedule,omitempty"`
+	NodesSelectedByDefault bool         `xml:"nodesSelectedByDefault"`
+	Schedule               *JobSchedule `xml:"schedule,omitempty"`
+	ScheduleEnabled        bool         `xml:"scheduleEnabled"`
+	TimeZone               string       `xml:"timeZone,omitempty"`
+	NodeFilterEditable     bool         `xml:"nodeFilterEditable"`
+  Schedules              []ProjectSchedule `xml:"schedules>schedule,omitempty"`
 }
 
 type Boolean struct {
@@ -214,6 +215,9 @@ type JobOption struct {
 
 	// A sequence of predefined choices for this option. Mutually exclusive with ValueChoicesURL.
 	ValueChoices JobValueChoices `xml:"values,attr"`
+
+	// If set, the predefined choices will be sorted in the Rundeck UI.
+	SortValues bool `xml:"sortValues,attr,omitempty"`
 
 	// A URL from which the predefined choices for this option will be retrieved.
 	// Mutually exclusive with ValueChoices

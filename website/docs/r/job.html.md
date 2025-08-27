@@ -221,6 +221,8 @@ The following arguments are supported:
 * `nodes_selected_by_default`: (Optional) Boolean controlling whether nodes that match the node_query_filter are
   selected by default or not.
 
+* `node_filter_editable` - (Optional) Boolean that controls whether the node filter is editable at job run time in the Rundeck UI. The default is `true` if not set.
+
 * `runner_selector_filter`: (Optional) When using the [**Manual** Dispatch Settings](https://docs.rundeck.com/docs/administration/runner/runner-management/project-dispatch-configuration.html#manual-runner-selection) in a Project, this is the Runner Selector filter for a Job definition.
 
 * `runner_selector_filter_mode`: (Optional) When using the [**Manual** Dispatch Settings](https://docs.rundeck.com/docs/administration/runner/runner-management/project-dispatch-configuration.html#manual-runner-selection) in a Project, this defines the _mode_ of the Runner Selector. Accepts the following values:
@@ -259,6 +261,8 @@ The following arguments are supported:
 
 * `value_choices_url`: (Optional) Can be used instead of `value_choices` to cause Rundeck to
   obtain a list of choices dynamically by fetching this URL.
+
+* `sort_values`: (Optional) Boolean controlling whether the predefined choices should be sorted in the UI. If set to `true`, choices are sorted in ascending alphabetical order. When used with `value_choices_url`, sorting applies to the dynamically fetched choices unless the response provides its own ordering.
 
 * `require_predefined_choice`: (Optional) Boolean controlling whether the user is allowed to
   enter values not included in the predefined set of choices (`false`, the default) or whether

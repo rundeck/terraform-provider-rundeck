@@ -90,6 +90,12 @@ func resourceRundeckJob() *schema.Resource {
 				Optional: true,
 			},
 
+			"node_filter_editable": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  true,
+			},
+
 			"retry": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -328,6 +334,11 @@ func resourceRundeckJob() *schema.Resource {
 
 						"value_choices_url": {
 							Type:     schema.TypeString,
+							Optional: true,
+						},
+
+						"sort_values": {
+							Type:     schema.TypeBool,
 							Optional: true,
 						},
 
@@ -822,6 +833,7 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 			RankAttribute:           d.Get("rank_attribute").(string),
 			RankOrder:               d.Get("rank_order").(string),
 		},
+		NodeFilterEditable: d.Get("node_filter_editable").(bool),
 	}
 	if !(job.DefaultTab == "nodes" || job.DefaultTab == "output" || job.DefaultTab == "html") {
 		return nil, fmt.Errorf("Argument \"default_tab\" must be set to one of `nodes`, `output`, `html`.")
@@ -954,6 +966,7 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 				DefaultValue:            optionMap["default_value"].(string),
 				ValueChoices:            JobValueChoices([]string{}),
 				ValueChoicesURL:         optionMap["value_choices_url"].(string),
+				SortValues:              optionMap["sort_values"].(bool),
 				RequirePredefinedChoice: optionMap["require_predefined_choice"].(bool),
 				ValidationRegex:         optionMap["validation_regex"].(string),
 				Description:             optionMap["description"].(string),
@@ -1162,6 +1175,9 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 	if err := d.Set("log_level", job.LogLevel); err != nil {
 		return err
 	}
+	if err := d.Set("node_filter_editable", job.NodeFilterEditable); err != nil {
+		return err
+	}
 	if job.LoggingLimit != nil {
 		logLimit := []map[string]interface{}{
 			{
@@ -1272,6 +1288,7 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 				"default_value":             option.DefaultValue,
 				"value_choices":             option.ValueChoices,
 				"value_choices_url":         option.ValueChoicesURL,
+				"sort_values":               option.SortValues,
 				"require_predefined_choice": option.RequirePredefinedChoice,
 				"validation_regex":          option.ValidationRegex,
 				"description":               option.Description,
