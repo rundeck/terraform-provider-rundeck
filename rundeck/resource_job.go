@@ -421,7 +421,6 @@ func resourceRundeckJob() *schema.Resource {
 						"job_options": {
 							Type:     schema.TypeString,
 							Optional: true,
-							Default:  nil,
 						},
 					},
 				},
