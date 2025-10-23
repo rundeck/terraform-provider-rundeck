@@ -8,8 +8,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 
-	openapi "github.com/rundeck/go-rundeck-v2"
 	"github.com/rundeck/go-rundeck/rundeck"
+	openapi "github.com/rundeck/go-rundeck/rundeck-v2"
 	"github.com/rundeck/go-rundeck/rundeck/auth"
 )
 

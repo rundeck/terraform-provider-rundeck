@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	openapi "github.com/rundeck/go-rundeck-v2"
+	openapi "github.com/rundeck/go-rundeck/rundeck-v2"
 )
 
 func resourceRundeckProjectRunner() *schema.Resource {
@@ -154,7 +154,7 @@ func CreateProjectRunner(d *schema.ResourceData, meta interface{}) error {
 	runnerRequest.SetReplicaType(replicaType)
 
 	// Create the project runner request wrapper
-	projectRunnerRequest := openapi.NewCreateProjectRunnerRequest()
+	projectRunnerRequest := openapi.NewCreateProjectRunnerRequest(name, description)
 	projectRunnerRequest.SetNewRunnerRequest(*runnerRequest)
 
 	// Debug output

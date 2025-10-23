@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
-	openapi "github.com/rundeck/go-rundeck-v2"
+	openapi "github.com/rundeck/go-rundeck/rundeck-v2"
 )
 
 func TestAccRundeckSystemRunner_basic(t *testing.T) {
