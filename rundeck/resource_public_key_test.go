@@ -3,7 +3,6 @@ package rundeck
 import (
 	"context"
 	"fmt"
-	"io"
 	"strings"
 	"testing"
 
@@ -15,7 +14,6 @@ import (
 
 func TestAccPublicKey_basic(t *testing.T) {
 	var key rundeck.StorageKeyListResponse
-	var keyMaterial string
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -25,7 +23,7 @@ func TestAccPublicKey_basic(t *testing.T) {
 			{
 				Config: testAccPublicKeyConfig_basic,
 				Check: resource.ComposeTestCheckFunc(
-					testAccPublicKeyCheckExists("rundeck_public_key.test", &key, &keyMaterial),
+					testAccPublicKeyCheckExists("rundeck_public_key.test", &key),
 					func(s *terraform.State) error {
 						if expected := "keys/terraform_acceptance_tests/public_key"; *key.Path != expected {
 							return fmt.Errorf("wrong path; expected %v, got %v", expected, key.Path)
@@ -39,11 +37,8 @@ func TestAccPublicKey_basic(t *testing.T) {
 						if expected := rundeck.Public; key.Meta.RundeckKeyType != expected {
 							return fmt.Errorf("wrong key type; expected %v, got %v", expected, key.Meta.RundeckKeyType)
 						}
-						/*
-							if !strings.Contains(keyMaterial, "test+public+key+for+terraform") {
-								return fmt.Errorf("wrong key material")
-							}
-						*/
+						// Note: We don't check key material because the go-rundeck client's
+						// StorageKeyGetMaterial returns JSON metadata instead of actual content for public keys
 						return nil
 					},
 				),
@@ -71,7 +66,7 @@ func testAccPublicKeyCheckDestroy(key *rundeck.StorageKeyListResponse) resource.
 	}
 }
 
-func testAccPublicKeyCheckExists(rn string, key *rundeck.StorageKeyListResponse, keyMaterial *string) resource.TestCheckFunc {
+func testAccPublicKeyCheckExists(rn string, key *rundeck.StorageKeyListResponse) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[rn]
 		if !ok {
@@ -92,18 +87,6 @@ func testAccPublicKeyCheckExists(rn string, key *rundeck.StorageKeyListResponse,
 
 		*key = gotKey
 
-		resp, err := client.StorageKeyGetMaterial(ctx, rs.Primary.ID)
-		if err != nil {
-			return fmt.Errorf("error getting key contents: %s", err)
-		}
-
-		respMaterial, err2 := io.ReadAll(resp.Body)
-		if err2 != nil {
-			return fmt.Errorf("error getting key contents: %s", err)
-		}
-
-		*keyMaterial = string(respMaterial)
-
 		return nil
 	}
 }
@@ -111,6 +94,6 @@ func testAccPublicKeyCheckExists(rn string, key *rundeck.StorageKeyListResponse,
 const testAccPublicKeyConfig_basic = `
 resource "rundeck_public_key" "test" {
   path = "terraform_acceptance_tests/public_key"
-  key_material = "ssh-rsa test+public+key+for+terraform nobody@nowhere"
+  key_material = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC3m5YqLb8PlVdJQL+5yx+KEirU3Pp5ONh7TCuT7gJPV8R1KTVI7TzGD1lR3e3L8P06rFvFnhgQkPJBPL6CcBdABLm9N/xVLQhFjkl0l4pGT6rZh3LiLXXvvULgVqyN+hLd5VXF6p5IjZKZQy9O3hGYhKh+rCt7gJxV4j5A6hXKZQ test-key-for-terraform"
 }
 `

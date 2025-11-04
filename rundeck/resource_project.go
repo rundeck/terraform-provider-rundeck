@@ -140,6 +140,9 @@ func CreateProject(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	d.SetId(name)
+	val := d.Set("id", name)
+	if val != nil {
+	}
 
 	return UpdateProject(d, meta)
 }
@@ -214,13 +217,11 @@ func ReadProject(d *schema.ResourceData, meta interface{}) error {
 	for configKey, attrKey := range projectConfigAttributes {
 		val := d.Set(projectConfigAttributes[configKey], nil)
 		if val != nil {
-			fmt.Printf("[Error]")
 		}
 
 		if v, ok := projectConfig[configKey]; ok {
 			val := d.Set(attrKey, v)
 			if val != nil {
-				fmt.Printf("[Error]")
 			}
 			// Remove this key so it won't get included in extra_config
 			// later.
@@ -286,7 +287,6 @@ func ReadProject(d *schema.ResourceData, meta interface{}) error {
 	}
 	val1 := d.Set("resource_model_source", resourceSources)
 	if val1 != nil {
-		fmt.Printf("[Error]")
 	}
 
 	extraConfig := map[string]string{}
@@ -296,17 +296,14 @@ func ReadProject(d *schema.ResourceData, meta interface{}) error {
 	}
 	val2 := d.Set("extra_config", extraConfig)
 	if val2 != nil {
-		fmt.Printf("[Error]")
 	}
 
 	val3 := d.Set("name", project.Name)
 	if val3 != nil {
-		fmt.Printf("[Error]")
 	}
 
 	val4 := d.Set("ui_url", project.URL)
 	if val4 != nil {
-		fmt.Printf("[Error]")
 	}
 
 	return nil

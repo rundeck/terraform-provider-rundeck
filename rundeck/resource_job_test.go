@@ -2,6 +2,7 @@ package rundeck
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 	"testing"
 
@@ -561,7 +562,7 @@ resource "rundeck_job" "test" {
     shell_command = "echo Hello World"
   }
   command {
-    script_file = "notarealurl.end"
+    script_url = "http://example.com/script.sh"
   }
   notification {
 	  type = "on_success"
@@ -642,9 +643,9 @@ resource "rundeck_job" "testWithAllLimitsSpecified" {
 `
 
 const testAccJobConfig_cmd_nodefilter = `
-resource "rundeck_project" "test" {
-  name = "terraform-acc-test-job"
-  description = "parent project for job acceptance tests"
+resource "rundeck_project" "source_test" {
+  name = "source_project"
+  description = "Source project for node filter acceptance tests"
 
   resource_model_source {
     type = "file"
@@ -655,8 +656,8 @@ resource "rundeck_project" "test" {
   }
 }
 resource "rundeck_job" "source_test_job" {
-  project_name = "${rundeck_project.test.name}"
-  name = "basic-job-with-node-filter"
+  project_name = "${rundeck_project.source_test.name}"
+  name = "source_test_job"
   description = "A basic job"
   execution_enabled = true
   node_filter_query = "example"
@@ -676,10 +677,10 @@ resource "rundeck_job" "source_test_job" {
   }
   command {
     job {
-      name = "Other Job Name"
-	  project_name = "source_project"
+      name = "source_test_job"
+      project_name = "source_project"
       run_for_each_node = true
-	  child_nodes = true
+      child_nodes = true
       fail_on_disable = true
       ignore_notifications = true
       import_options = true
@@ -1146,6 +1147,483 @@ resource "rundeck_project" "test" {
 	}
   }
   `
+
+func TestAccJob_executionLifecyclePlugin(t *testing.T) {
+	var job JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobCheckDestroy(&job),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_executionLifecyclePlugin,
+				Check: resource.ComposeTestCheckFunc(
+					testAccJobCheckExists("rundeck_job.test", &job),
+					func(s *terraform.State) error {
+						if job.ExecutionLifecycle == nil || len(job.ExecutionLifecycle) == 0 {
+							return fmt.Errorf("execution lifecycle plugins should not be empty")
+						}
+						if len(job.ExecutionLifecycle) != 1 {
+							return fmt.Errorf("expected 1 execution lifecycle plugin, got %d", len(job.ExecutionLifecycle))
+						}
+						plugin := job.ExecutionLifecycle[0]
+						if expected := "killhandler"; plugin.Type != expected {
+							return fmt.Errorf("wrong plugin type; expected %v, got %v", expected, plugin.Type)
+						}
+						if plugin.Configuration == nil {
+							return fmt.Errorf("plugin configuration should not be nil")
+						}
+						if plugin.Configuration.Data != true {
+							return fmt.Errorf("plugin configuration data attribute should be true")
+						}
+						if len(plugin.Configuration.ConfigValues) != 1 {
+							return fmt.Errorf("expected 1 config value, got %d", len(plugin.Configuration.ConfigValues))
+						}
+						// Check for specific config values
+						configMap := make(map[string]string)
+						for _, cv := range plugin.Configuration.ConfigValues {
+							configMap[cv.Key] = cv.Value
+						}
+						if expected := "true"; configMap["killChilds"] != expected {
+							return fmt.Errorf("wrong config value for killChilds; expected %v, got %v", expected, configMap["killChilds"])
+						}
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
+
+func TestAccJob_executionLifecyclePlugin_multiple(t *testing.T) {
+	// Skip this test if not running against Rundeck Enterprise
+	if v := os.Getenv("RUNDECK_ENTERPRISE_TESTS"); v != "1" {
+		t.Skip("Skipping Rundeck Enterprise test - set RUNDECK_ENTERPRISE_TESTS=1 to run")
+	}
+
+	var job JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobCheckDestroy(&job),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_executionLifecyclePlugin_multiple,
+				Check: resource.ComposeTestCheckFunc(
+					testAccJobCheckExists("rundeck_job.test", &job),
+					func(s *terraform.State) error {
+						if job.ExecutionLifecycle == nil || len(job.ExecutionLifecycle) == 0 {
+							return fmt.Errorf("execution lifecycle plugins should not be empty")
+						}
+						if len(job.ExecutionLifecycle) != 2 {
+							return fmt.Errorf("expected 2 execution lifecycle plugins, got %d", len(job.ExecutionLifecycle))
+						}
+						// Check for the two Enterprise plugins
+						pluginTypes := make(map[string]bool)
+						for _, plugin := range job.ExecutionLifecycle {
+							pluginTypes[plugin.Type] = true
+						}
+						if !pluginTypes["result-data-json-template"] {
+							return fmt.Errorf("expected result-data-json-template plugin")
+						}
+						if !pluginTypes["roi-metrics"] {
+							return fmt.Errorf("expected roi-metrics plugin")
+						}
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
+
+func TestAccJob_executionLifecyclePlugin_noConfig(t *testing.T) {
+	var job JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobCheckDestroy(&job),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_executionLifecyclePlugin_noConfig,
+				Check: resource.ComposeTestCheckFunc(
+					testAccJobCheckExists("rundeck_job.test", &job),
+					func(s *terraform.State) error {
+						if job.ExecutionLifecycle == nil || len(job.ExecutionLifecycle) == 0 {
+							return fmt.Errorf("execution lifecycle plugins should not be empty")
+						}
+						plugin := job.ExecutionLifecycle[0]
+						if expected := "killhandler"; plugin.Type != expected {
+							return fmt.Errorf("wrong plugin type; expected %v, got %v", expected, plugin.Type)
+						}
+						// killhandler plugin may have default config even when we don't provide any
+						// Just verify the plugin exists and is the right type
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
+
+// TestAccJob_projectSchedule tests a job with a single project schedule.
+// NOTE: Project schedules are a Rundeck Enterprise feature only.
+// PREREQUISITE: For this test to pass, you must create a project schedule named "my-schedule"
+// in the Rundeck Enterprise UI before running the test. In Rundeck, go to:
+// Project Settings > Edit Configuration > Other > Schedules
+func TestAccJob_projectSchedule(t *testing.T) {
+	// Skip this test if not running against Rundeck Enterprise
+	if v := os.Getenv("RUNDECK_ENTERPRISE_TESTS"); v != "1" {
+		t.Skip("Skipping Rundeck Enterprise test - set RUNDECK_ENTERPRISE_TESTS=1 to run")
+	}
+
+	var job JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobCheckDestroy(&job),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_projectSchedule,
+				Check: resource.ComposeTestCheckFunc(
+					testAccJobCheckExists("rundeck_job.test", &job),
+					func(s *terraform.State) error {
+						if job.Schedules == nil || len(job.Schedules) == 0 {
+							return fmt.Errorf("project schedules should not be empty")
+						}
+						if len(job.Schedules) != 1 {
+							return fmt.Errorf("expected 1 project schedule, got %d", len(job.Schedules))
+						}
+						schedule := job.Schedules[0]
+						if expected := "my-schedule"; schedule.Name != expected {
+							return fmt.Errorf("wrong schedule name; expected %v, got %v", expected, schedule.Name)
+						}
+						if expected := "-option1 value1"; schedule.JobParams != expected {
+							return fmt.Errorf("wrong job_options; expected %v, got %v", expected, schedule.JobParams)
+						}
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
+
+// TestAccJob_projectSchedule_multiple tests a job with multiple project schedules.
+// NOTE: Project schedules are a Rundeck Enterprise feature only.
+// PREREQUISITE: For this test to pass, you must create TWO project schedules in the Rundeck
+// Enterprise UI before running the test:
+//  1. A schedule named "schedule-1"
+//  2. A schedule named "schedule-2"
+//
+// In Rundeck, go to: Project Settings > Edit Configuration > Other > Schedules
+func TestAccJob_projectSchedule_multiple(t *testing.T) {
+	// Skip this test if not running against Rundeck Enterprise
+	if v := os.Getenv("RUNDECK_ENTERPRISE_TESTS"); v != "1" {
+		t.Skip("Skipping Rundeck Enterprise test - set RUNDECK_ENTERPRISE_TESTS=1 to run")
+	}
+
+	var job JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobCheckDestroy(&job),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_projectSchedule_multiple,
+				Check: resource.ComposeTestCheckFunc(
+					testAccJobCheckExists("rundeck_job.test", &job),
+					func(s *terraform.State) error {
+						if job.Schedules == nil || len(job.Schedules) == 0 {
+							return fmt.Errorf("project schedules should not be empty")
+						}
+						if len(job.Schedules) != 2 {
+							return fmt.Errorf("expected 2 project schedules, got %d", len(job.Schedules))
+						}
+						// Check first schedule
+						schedule1 := job.Schedules[0]
+						if expected := "schedule-1"; schedule1.Name != expected {
+							return fmt.Errorf("wrong first schedule name; expected %v, got %v", expected, schedule1.Name)
+						}
+						if expected := "-opt1 val1"; schedule1.JobParams != expected {
+							return fmt.Errorf("wrong first schedule job_options; expected %v, got %v", expected, schedule1.JobParams)
+						}
+						// Check second schedule
+						schedule2 := job.Schedules[1]
+						if expected := "schedule-2"; schedule2.Name != expected {
+							return fmt.Errorf("wrong second schedule name; expected %v, got %v", expected, schedule2.Name)
+						}
+						if expected := "-opt2 val2"; schedule2.JobParams != expected {
+							return fmt.Errorf("wrong second schedule job_options; expected %v, got %v", expected, schedule2.JobParams)
+						}
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
+
+// TestAccJob_projectSchedule_noOptions tests a job with a project schedule that has no job options.
+// NOTE: Project schedules are a Rundeck Enterprise feature only.
+// PREREQUISITE: For this test to pass, you must create a project schedule named "simple-schedule"
+// in the Rundeck Enterprise UI before running the test. In Rundeck, go to:
+// Project Settings > Edit Configuration > Other > Schedules
+func TestAccJob_projectSchedule_noOptions(t *testing.T) {
+	// Skip this test if not running against Rundeck Enterprise
+	if v := os.Getenv("RUNDECK_ENTERPRISE_TESTS"); v != "1" {
+		t.Skip("Skipping Rundeck Enterprise test - set RUNDECK_ENTERPRISE_TESTS=1 to run")
+	}
+
+	var job JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobCheckDestroy(&job),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_projectSchedule_noOptions,
+				Check: resource.ComposeTestCheckFunc(
+					testAccJobCheckExists("rundeck_job.test", &job),
+					func(s *terraform.State) error {
+						if job.Schedules == nil || len(job.Schedules) == 0 {
+							return fmt.Errorf("project schedules should not be empty")
+						}
+						schedule := job.Schedules[0]
+						if expected := "simple-schedule"; schedule.Name != expected {
+							return fmt.Errorf("wrong schedule name; expected %v, got %v", expected, schedule.Name)
+						}
+						if schedule.JobParams != "" {
+							return fmt.Errorf("job_options should be empty, got %v", schedule.JobParams)
+						}
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
+
+// Project Schedule Test Configurations
+//
+// The following test configurations require Rundeck Enterprise and pre-created schedules.
+// Before running these tests, you must manually create the following schedules in your
+// Rundeck Enterprise instance via: Project Settings > Edit Configuration > Other > Schedules
+//
+// Required schedules:
+//   - "my-schedule" (for testAccJobConfig_projectSchedule)
+//   - "schedule-1" and "schedule-2" (for testAccJobConfig_projectSchedule_multiple)
+//   - "simple-schedule" (for testAccJobConfig_projectSchedule_noOptions)
+//
+// The schedules can be created with any cron expression (e.g., "0 0 * * * ? *" for daily at midnight).
+// The actual schedule timing doesn't matter for the tests - only that the schedules exist by name.
+
+const testAccJobConfig_projectSchedule = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-job-project-schedule"
+  description = "parent project for job acceptance tests with project schedules"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourcexml"
+        file = "/tmp/terraform-acc-tests.xml"
+    }
+  }
+}
+resource "rundeck_job" "test" {
+  project_name = "${rundeck_project.test.name}"
+  name = "job-with-project-schedule"
+  description = "A job with project schedule"
+  execution_enabled = true
+  
+  command {
+    description = "Prints Hello World"
+    shell_command = "echo Hello World"
+  }
+  
+  project_schedule {
+    name = "my-schedule"
+    job_options = "-option1 value1"
+  }
+}
+`
+
+const testAccJobConfig_projectSchedule_multiple = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-job-project-schedule-multi"
+  description = "parent project for job acceptance tests with multiple project schedules"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourcexml"
+        file = "/tmp/terraform-acc-tests.xml"
+    }
+  }
+}
+resource "rundeck_job" "test" {
+  project_name = "${rundeck_project.test.name}"
+  name = "job-with-multiple-project-schedules"
+  description = "A job with multiple project schedules"
+  execution_enabled = true
+  
+  command {
+    description = "Prints Hello World"
+    shell_command = "echo Hello World"
+  }
+  
+  project_schedule {
+    name = "schedule-1"
+    job_options = "-opt1 val1"
+  }
+  
+  project_schedule {
+    name = "schedule-2"
+    job_options = "-opt2 val2"
+  }
+}
+`
+
+const testAccJobConfig_projectSchedule_noOptions = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-job-project-schedule-noopts"
+  description = "parent project for job acceptance tests with project schedule without options"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourcexml"
+        file = "/tmp/terraform-acc-tests.xml"
+    }
+  }
+}
+resource "rundeck_job" "test" {
+  project_name = "${rundeck_project.test.name}"
+  name = "job-with-project-schedule-no-options"
+  description = "A job with project schedule without job_options"
+  execution_enabled = true
+  
+  command {
+    description = "Prints Hello World"
+    shell_command = "echo Hello World"
+  }
+  
+  project_schedule {
+    name = "simple-schedule"
+  }
+}
+`
+
+const testAccJobConfig_executionLifecyclePlugin = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-job-lifecycle"
+  description = "parent project for job acceptance tests with execution lifecycle plugins"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourcexml"
+        file = "/tmp/terraform-acc-tests.xml"
+    }
+  }
+}
+resource "rundeck_job" "test" {
+  project_name = "${rundeck_project.test.name}"
+  name = "job-with-lifecycle-plugin"
+  description = "A job with execution lifecycle plugin"
+  execution_enabled = true
+  
+  command {
+    description = "Prints Hello World"
+    shell_command = "echo Hello World"
+  }
+  
+  execution_lifecycle_plugin {
+    type = "killhandler"
+    config = {
+      killChilds = "true"
+    }
+  }
+}
+`
+
+const testAccJobConfig_executionLifecyclePlugin_multiple = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-job-lifecycle-multi"
+  description = "parent project for job acceptance tests with multiple execution lifecycle plugins"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourcexml"
+        file = "/tmp/terraform-acc-tests.xml"
+    }
+  }
+}
+resource "rundeck_job" "test" {
+  project_name = "${rundeck_project.test.name}"
+  name = "job-with-multiple-lifecycle-plugins"
+  description = "A job with multiple execution lifecycle plugins (Enterprise)"
+  execution_enabled = true
+  
+  command {
+    description = "Prints Hello World"
+    shell_command = "echo Hello World"
+  }
+  
+  execution_lifecycle_plugin {
+    type = "result-data-json-template"
+    config = {
+      jsonTemplate = "{\"export\":{\"value\":\"$${data.value}\"}}"
+    }
+  }
+  
+  execution_lifecycle_plugin {
+    type = "roi-metrics"
+    config = {
+      userRoiData = "[{\"key\":\"hours\",\"label\":\"Hours\",\"value\":\"1\",\"desc\":\"Field key hours\"}]"
+    }
+  }
+}
+`
+
+const testAccJobConfig_executionLifecyclePlugin_noConfig = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-job-lifecycle-noconfig"
+  description = "parent project for job acceptance tests with execution lifecycle plugin without config"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourcexml"
+        file = "/tmp/terraform-acc-tests.xml"
+    }
+  }
+}
+resource "rundeck_job" "test" {
+  project_name = "${rundeck_project.test.name}"
+  name = "job-with-lifecycle-plugin-no-config"
+  description = "A job with execution lifecycle plugin without configuration"
+  execution_enabled = true
+  
+  command {
+    description = "Prints Hello World"
+    shell_command = "echo Hello World"
+  }
+  
+  execution_lifecycle_plugin {
+    type = "killhandler"
+    config = {}
+  }
+}
+`
 
 const testAccJobConfig_plugins = `
 resource "rundeck_project" "test" {
