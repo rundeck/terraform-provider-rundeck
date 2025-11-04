@@ -1135,6 +1135,230 @@ resource "rundeck_project" "test" {
   }
   `
 
+func TestAccJob_executionLifecyclePlugin(t *testing.T) {
+	var job JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobCheckDestroy(&job),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_executionLifecyclePlugin,
+				Check: resource.ComposeTestCheckFunc(
+					testAccJobCheckExists("rundeck_job.test", &job),
+					func(s *terraform.State) error {
+						if job.ExecutionLifecycle == nil || len(job.ExecutionLifecycle) == 0 {
+							return fmt.Errorf("execution lifecycle plugins should not be empty")
+						}
+						if len(job.ExecutionLifecycle) != 1 {
+							return fmt.Errorf("expected 1 execution lifecycle plugin, got %d", len(job.ExecutionLifecycle))
+						}
+						plugin := job.ExecutionLifecycle[0]
+						if expected := "example-plugin"; plugin.Type != expected {
+							return fmt.Errorf("wrong plugin type; expected %v, got %v", expected, plugin.Type)
+						}
+						if plugin.Configuration == nil {
+							return fmt.Errorf("plugin configuration should not be nil")
+						}
+						if plugin.Configuration.Data != true {
+							return fmt.Errorf("plugin configuration data attribute should be true")
+						}
+						if len(plugin.Configuration.ConfigValues) != 2 {
+							return fmt.Errorf("expected 2 config values, got %d", len(plugin.Configuration.ConfigValues))
+						}
+						// Check for specific config values
+						configMap := make(map[string]string)
+						for _, cv := range plugin.Configuration.ConfigValues {
+							configMap[cv.Key] = cv.Value
+						}
+						if expected := "value1"; configMap["key1"] != expected {
+							return fmt.Errorf("wrong config value for key1; expected %v, got %v", expected, configMap["key1"])
+						}
+						if expected := "value2"; configMap["key2"] != expected {
+							return fmt.Errorf("wrong config value for key2; expected %v, got %v", expected, configMap["key2"])
+						}
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
+
+func TestAccJob_executionLifecyclePlugin_multiple(t *testing.T) {
+	var job JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobCheckDestroy(&job),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_executionLifecyclePlugin_multiple,
+				Check: resource.ComposeTestCheckFunc(
+					testAccJobCheckExists("rundeck_job.test", &job),
+					func(s *terraform.State) error {
+						if job.ExecutionLifecycle == nil || len(job.ExecutionLifecycle) == 0 {
+							return fmt.Errorf("execution lifecycle plugins should not be empty")
+						}
+						if len(job.ExecutionLifecycle) != 2 {
+							return fmt.Errorf("expected 2 execution lifecycle plugins, got %d", len(job.ExecutionLifecycle))
+						}
+						// Check first plugin
+						plugin1 := job.ExecutionLifecycle[0]
+						if expected := "plugin-one"; plugin1.Type != expected {
+							return fmt.Errorf("wrong first plugin type; expected %v, got %v", expected, plugin1.Type)
+						}
+						// Check second plugin
+						plugin2 := job.ExecutionLifecycle[1]
+						if expected := "plugin-two"; plugin2.Type != expected {
+							return fmt.Errorf("wrong second plugin type; expected %v, got %v", expected, plugin2.Type)
+						}
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
+
+func TestAccJob_executionLifecyclePlugin_noConfig(t *testing.T) {
+	var job JobDetail
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccJobCheckDestroy(&job),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_executionLifecyclePlugin_noConfig,
+				Check: resource.ComposeTestCheckFunc(
+					testAccJobCheckExists("rundeck_job.test", &job),
+					func(s *terraform.State) error {
+						if job.ExecutionLifecycle == nil || len(job.ExecutionLifecycle) == 0 {
+							return fmt.Errorf("execution lifecycle plugins should not be empty")
+						}
+						plugin := job.ExecutionLifecycle[0]
+						if expected := "simple-plugin"; plugin.Type != expected {
+							return fmt.Errorf("wrong plugin type; expected %v, got %v", expected, plugin.Type)
+						}
+						if plugin.Configuration != nil {
+							return fmt.Errorf("plugin configuration should be nil when no config is provided")
+						}
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
+
+const testAccJobConfig_executionLifecyclePlugin = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-job-lifecycle"
+  description = "parent project for job acceptance tests with execution lifecycle plugins"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourcexml"
+        file = "/tmp/terraform-acc-tests.xml"
+    }
+  }
+}
+resource "rundeck_job" "test" {
+  project_name = "${rundeck_project.test.name}"
+  name = "job-with-lifecycle-plugin"
+  description = "A job with execution lifecycle plugin"
+  execution_enabled = true
+  
+  command {
+    description = "Prints Hello World"
+    shell_command = "echo Hello World"
+  }
+  
+  execution_lifecycle_plugin {
+    type = "example-plugin"
+    config = {
+      key1 = "value1"
+      key2 = "value2"
+    }
+  }
+}
+`
+
+const testAccJobConfig_executionLifecyclePlugin_multiple = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-job-lifecycle-multi"
+  description = "parent project for job acceptance tests with multiple execution lifecycle plugins"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourcexml"
+        file = "/tmp/terraform-acc-tests.xml"
+    }
+  }
+}
+resource "rundeck_job" "test" {
+  project_name = "${rundeck_project.test.name}"
+  name = "job-with-multiple-lifecycle-plugins"
+  description = "A job with multiple execution lifecycle plugins"
+  execution_enabled = true
+  
+  command {
+    description = "Prints Hello World"
+    shell_command = "echo Hello World"
+  }
+  
+  execution_lifecycle_plugin {
+    type = "plugin-one"
+    config = {
+      setting1 = "value1"
+    }
+  }
+  
+  execution_lifecycle_plugin {
+    type = "plugin-two"
+    config = {
+      setting2 = "value2"
+    }
+  }
+}
+`
+
+const testAccJobConfig_executionLifecyclePlugin_noConfig = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-job-lifecycle-noconfig"
+  description = "parent project for job acceptance tests with execution lifecycle plugin without config"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourcexml"
+        file = "/tmp/terraform-acc-tests.xml"
+    }
+  }
+}
+resource "rundeck_job" "test" {
+  project_name = "${rundeck_project.test.name}"
+  name = "job-with-lifecycle-plugin-no-config"
+  description = "A job with execution lifecycle plugin without configuration"
+  execution_enabled = true
+  
+  command {
+    description = "Prints Hello World"
+    shell_command = "echo Hello World"
+  }
+  
+  execution_lifecycle_plugin {
+    type = "simple-plugin"
+    config = {}
+  }
+}
+`
+
 const testAccJobConfig_plugins = `
 resource "rundeck_project" "test" {
   name = "terraform-acc-test-job"

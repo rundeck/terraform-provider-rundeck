@@ -1384,23 +1384,23 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 		return err
 	}
 
-	exectionLifecyclePluginsI := make([]interface{}, 0)
+	executionLifecyclePluginsI := make([]interface{}, 0)
 	if job.ExecutionLifecycle != nil && len(job.ExecutionLifecycle) > 0 {
-		for _, executionLifecycleplugin := range job.ExecutionLifecycle {
-			exectionLifecyclePluginI := map[string]interface{}{
-				"type": executionLifecycleplugin.Type,
+		for _, executionLifecyclePlugin := range job.ExecutionLifecycle {
+			executionLifecyclePluginI := map[string]interface{}{
+				"type": executionLifecyclePlugin.Type,
 			}
-			if executionLifecycleplugin.Configuration != nil {
+			if executionLifecyclePlugin.Configuration != nil {
 				executionLifecyclePluginConfig := map[string]interface{}{}
-				for _, executionLifecyclepluginConfig := range executionLifecycleplugin.Configuration.ConfigValues {
-					executionLifecyclePluginConfig[executionLifecyclepluginConfig.Key] = executionLifecyclepluginConfig.Value
+				for _, executionLifecyclePluginConfigValue := range executionLifecyclePlugin.Configuration.ConfigValues {
+					executionLifecyclePluginConfig[executionLifecyclePluginConfigValue.Key] = executionLifecyclePluginConfigValue.Value
 				}
-				exectionLifecyclePluginI["config"] = executionLifecyclePluginConfig
+				executionLifecyclePluginI["config"] = executionLifecyclePluginConfig
 			}
-			exectionLifecyclePluginsI = append(exectionLifecyclePluginsI, exectionLifecyclePluginI)
+			executionLifecyclePluginsI = append(executionLifecyclePluginsI, executionLifecyclePluginI)
 		}
 	}
-	if err := d.Set("execution_lifecycle_plugin", exectionLifecyclePluginsI); err != nil {
+	if err := d.Set("execution_lifecycle_plugin", executionLifecyclePluginsI); err != nil {
 		return err
 	}
 
