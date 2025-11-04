@@ -140,25 +140,14 @@ func ReadPublicKey(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 
-	resp, err := client.StorageKeyGetMaterial(ctx, path)
-	if err != nil {
-		return err
-	}
-
-	keyMaterial, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	val1 := d.Set("key_material", string(keyMaterial))
-	if val1 != nil {
-		fmt.Printf("[Error]")
-	}
-
 	val2 := d.Set("url", *key.URL)
 	if val2 != nil {
 		fmt.Printf("[Error]")
 	}
+
+	// Note: We don't read back the key_material for public keys, similar to private keys.
+	// The go-rundeck client's StorageKeyGetMaterial returns JSON metadata instead of
+	// the actual key content for public keys, which appears to be a known limitation.
 
 	return nil
 }

@@ -173,13 +173,13 @@ func resourceRundeckJob() *schema.Resource {
 			"runner_selector_filter_mode": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Default:  "TAGS",
+				Computed: true,
 			},
 
 			"runner_selector_filter_type": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Default:  "TAG_FILTER_AND",
+				Computed: true,
 			},
 
 			"timeout": {
@@ -1137,7 +1137,6 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 		}
 	}
 
-
 	executionLifecyclePluginConfigsI := d.Get("execution_lifecycle_plugin").([]interface{})
 	if len(executionLifecyclePluginConfigsI) > 0 {
 		executionLifecyclePlugins := []ExecutionLifecyclePlugin{}
@@ -1691,6 +1690,7 @@ func commandToResourceData(command *JobCommand) (map[string]interface{}, error) 
 		jobRefConfigI := map[string]interface{}{
 			"name":                 command.Job.Name,
 			"group_name":           command.Job.GroupName,
+			"project_name":         command.Job.Project,
 			"run_for_each_node":    command.Job.RunForEachNode,
 			"args":                 command.Job.Arguments,
 			"child_nodes":          command.Job.ChildNodes,

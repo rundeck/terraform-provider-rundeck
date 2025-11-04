@@ -351,10 +351,10 @@ type JobCommandJobRef struct {
 	Dispatch            *JobDispatch              `xml:"dispatch,omitempty"`
 	NodeFilter          *JobNodeFilter            `xml:"nodefilters,omitempty"`
 	Arguments           JobCommandJobRefArguments `xml:"arg"`
-	ChildNodes          bool                      `xml:"childNodes,attr"`
-	FailOnDisable       bool                      `xml:"failOnDisable,attr"`
-	IgnoreNotifications bool                      `xml:"ignoreNotifications,attr"`
-	ImportOptions       bool                      `xml:"importOptions,attr"`
+	ChildNodes          bool                      `xml:"childNodes"`
+	FailOnDisable       bool                      `xml:"failOnDisable"`
+	IgnoreNotifications bool                      `xml:"ignoreNotifications"`
+	ImportOptions       bool                      `xml:"importOptions"`
 }
 
 // JobCommandJobRefArguments is a string representing the arguments in a JobCommandJobRef.
