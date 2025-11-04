@@ -420,6 +420,21 @@ func resourceRundeckJob() *schema.Resource {
 				Elem:     resourceRundeckJobCommand(),
 			},
 
+			"project_schedule": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"name": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"job_options": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
 			"execution_lifecycle_plugin": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -1107,6 +1122,20 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 			return nil, fmt.Errorf("can only have up to three notfication blocks, `on_success`, `on_failure`, `on_start`")
 		}
 	}
+	// Handle project_schedule block
+	projectSchedulesI := d.Get("project_schedule").([]interface{})
+	if len(projectSchedulesI) > 0 {
+		job.Schedules = make([]ProjectSchedule, 0, len(projectSchedulesI))
+		for _, psI := range projectSchedulesI {
+			psMap := psI.(map[string]interface{})
+			ps := ProjectSchedule{
+				Name:      psMap["name"].(string),
+				JobParams: psMap["job_options"].(string),
+			}
+			job.Schedules = append(job.Schedules, ps)
+		}
+	}
+
 
 	executionLifecyclePluginConfigsI := d.Get("execution_lifecycle_plugin").([]interface{})
 	if len(executionLifecyclePluginConfigsI) > 0 {
@@ -1384,6 +1413,16 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 		return err
 	}
 
+	// Handle JobDetail.Schedules -> project_schedule block
+	projectSchedules := make([]interface{}, 0)
+	for _, ps := range job.Schedules {
+		psMap := map[string]interface{}{
+			"name":        ps.Name,
+			"job_options": ps.JobParams,
+		}
+		projectSchedules = append(projectSchedules, psMap)
+	}
+	if err := d.Set("project_schedule", projectSchedules); err != nil {
 	executionLifecyclePluginsI := make([]interface{}, 0)
 	if job.ExecutionLifecycle != nil && len(job.ExecutionLifecycle) > 0 {
 		for _, executionLifecyclePlugin := range job.ExecutionLifecycle {

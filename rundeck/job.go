@@ -78,6 +78,12 @@ type JobDetail struct {
 	 * by this reason omitempty cannot be present.
 	 * This has to be handle by the user.
 	 */
+	NodesSelectedByDefault bool              `xml:"nodesSelectedByDefault"`
+	Schedule               *JobSchedule      `xml:"schedule,omitempty"`
+	ScheduleEnabled        bool              `xml:"scheduleEnabled"`
+	TimeZone               string            `xml:"timeZone,omitempty"`
+	NodeFilterEditable     bool              `xml:"nodeFilterEditable"`
+	Schedules              []ProjectSchedule `xml:"schedules>schedule,omitempty"`
 	NodesSelectedByDefault bool                       `xml:"nodesSelectedByDefault"`
 	Schedule               *JobSchedule               `xml:"schedule,omitempty"`
 	ScheduleEnabled        bool                       `xml:"scheduleEnabled"`
@@ -675,4 +681,10 @@ func (r *jobImportResult) JobSummary() *JobSummary {
 		GroupName:   r.GroupName,
 		ProjectName: r.ProjectName,
 	}
+}
+
+// ProjectSchedule represents a commercial Rundeck Project Schedule association.
+type ProjectSchedule struct {
+	Name      string `xml:"name,attr"`
+	JobParams string `xml:"jobParams,attr"`
 }
