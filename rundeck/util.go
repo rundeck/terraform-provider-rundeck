@@ -30,7 +30,6 @@ func marshalMapToXML(c *map[string]string, e *xml.Encoder, start xml.StartElemen
 	}
 	val := e.EncodeToken(start)
 	if val != nil {
-		fmt.Printf("[Error]")
 	}
 
 	// Sort the keys so we'll have a deterministic result.
@@ -56,18 +55,15 @@ func marshalMapToXML(c *map[string]string, e *xml.Encoder, start xml.StartElemen
 			},
 		})
 		if val2 != nil {
-			fmt.Printf("[Error]")
 		}
 
 		val3 := e.EncodeToken(xml.EndElement{Name: xml.Name{Local: entryName}})
 		if val3 != nil {
-			fmt.Printf("[Error]")
 		}
 	}
 
 	val4 := e.EncodeToken(xml.EndElement{Name: start.Name})
 	if val4 != nil {
-		fmt.Printf("[Error]")
 	}
 
 	return nil

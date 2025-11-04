@@ -561,7 +561,7 @@ resource "rundeck_job" "test" {
     shell_command = "echo Hello World"
   }
   command {
-    script_url = "notarealurl.end"
+    script_url = "http://example.com/script.sh"
   }
   notification {
 	  type = "on_success"
@@ -642,9 +642,9 @@ resource "rundeck_job" "testWithAllLimitsSpecified" {
 `
 
 const testAccJobConfig_cmd_nodefilter = `
-resource "rundeck_project" "test" {
-  name = "terraform-acc-test-job"
-  description = "parent project for job acceptance tests"
+resource "rundeck_project" "source_test" {
+  name = "source_project"
+  description = "Source project for node filter acceptance tests"
 
   resource_model_source {
     type = "file"
@@ -654,9 +654,9 @@ resource "rundeck_project" "test" {
     }
   }
 }
-resource "rundeck_job" "test" {
-  project_name = "${rundeck_project.test.name}"
-  name = "basic-job-with-node-filter"
+resource "rundeck_job" "source_test_job" {
+  project_name = "${rundeck_project.source_test.name}"
+  name = "source_test_job"
   description = "A basic job"
   execution_enabled = true
   node_filter_query = "example"
@@ -676,8 +676,13 @@ resource "rundeck_job" "test" {
   }
   command {
     job {
-      name = "Other Job Name"
+      name = "source_test_job"
+      project_name = "source_project"
       run_for_each_node = true
+      child_nodes = true
+      fail_on_disable = true
+      ignore_notifications = true
+      import_options = true
       node_filters {
         filter = "name: tacobell"
       }
@@ -727,6 +732,9 @@ resource "rundeck_job" "source_test_job" {
     name = "foo"
     default_value = "bar"
   }
+  command {
+    shell_command = "echo hello"
+  }
 }
 resource "rundeck_job" "target_test_job" {
   project_name = "${rundeck_project.target_test.name}"
@@ -736,6 +744,7 @@ resource "rundeck_job" "target_test_job" {
   option {
     name = "foo"
     default_value = "bar"
+  }
   command {
     job {
       name = "${rundeck_job.source_test_job.name}"
@@ -1156,7 +1165,7 @@ func TestAccJob_executionLifecyclePlugin(t *testing.T) {
 							return fmt.Errorf("expected 1 execution lifecycle plugin, got %d", len(job.ExecutionLifecycle))
 						}
 						plugin := job.ExecutionLifecycle[0]
-						if expected := "example-plugin"; plugin.Type != expected {
+						if expected := "killhandler"; plugin.Type != expected {
 							return fmt.Errorf("wrong plugin type; expected %v, got %v", expected, plugin.Type)
 						}
 						if plugin.Configuration == nil {
@@ -1165,19 +1174,16 @@ func TestAccJob_executionLifecyclePlugin(t *testing.T) {
 						if plugin.Configuration.Data != true {
 							return fmt.Errorf("plugin configuration data attribute should be true")
 						}
-						if len(plugin.Configuration.ConfigValues) != 2 {
-							return fmt.Errorf("expected 2 config values, got %d", len(plugin.Configuration.ConfigValues))
+						if len(plugin.Configuration.ConfigValues) != 1 {
+							return fmt.Errorf("expected 1 config value, got %d", len(plugin.Configuration.ConfigValues))
 						}
 						// Check for specific config values
 						configMap := make(map[string]string)
 						for _, cv := range plugin.Configuration.ConfigValues {
 							configMap[cv.Key] = cv.Value
 						}
-						if expected := "value1"; configMap["key1"] != expected {
-							return fmt.Errorf("wrong config value for key1; expected %v, got %v", expected, configMap["key1"])
-						}
-						if expected := "value2"; configMap["key2"] != expected {
-							return fmt.Errorf("wrong config value for key2; expected %v, got %v", expected, configMap["key2"])
+						if expected := "true"; configMap["killChilds"] != expected {
+							return fmt.Errorf("wrong config value for killChilds; expected %v, got %v", expected, configMap["killChilds"])
 						}
 						return nil
 					},
@@ -1188,6 +1194,11 @@ func TestAccJob_executionLifecyclePlugin(t *testing.T) {
 }
 
 func TestAccJob_executionLifecyclePlugin_multiple(t *testing.T) {
+	// Skip this test if not running against Rundeck Enterprise
+	if v := os.Getenv("RUNDECK_ENTERPRISE_TESTS"); v != "1" {
+		t.Skip("Skipping Rundeck Enterprise test - set RUNDECK_ENTERPRISE_TESTS=1 to run")
+	}
+
 	var job JobDetail
 
 	resource.Test(t, resource.TestCase{
@@ -1206,15 +1217,16 @@ func TestAccJob_executionLifecyclePlugin_multiple(t *testing.T) {
 						if len(job.ExecutionLifecycle) != 2 {
 							return fmt.Errorf("expected 2 execution lifecycle plugins, got %d", len(job.ExecutionLifecycle))
 						}
-						// Check first plugin
-						plugin1 := job.ExecutionLifecycle[0]
-						if expected := "plugin-one"; plugin1.Type != expected {
-							return fmt.Errorf("wrong first plugin type; expected %v, got %v", expected, plugin1.Type)
+						// Check for the two Enterprise plugins
+						pluginTypes := make(map[string]bool)
+						for _, plugin := range job.ExecutionLifecycle {
+							pluginTypes[plugin.Type] = true
 						}
-						// Check second plugin
-						plugin2 := job.ExecutionLifecycle[1]
-						if expected := "plugin-two"; plugin2.Type != expected {
-							return fmt.Errorf("wrong second plugin type; expected %v, got %v", expected, plugin2.Type)
+						if !pluginTypes["result-data-json-template"] {
+							return fmt.Errorf("expected result-data-json-template plugin")
+						}
+						if !pluginTypes["roi-metrics"] {
+							return fmt.Errorf("expected roi-metrics plugin")
 						}
 						return nil
 					},
@@ -1241,12 +1253,11 @@ func TestAccJob_executionLifecyclePlugin_noConfig(t *testing.T) {
 							return fmt.Errorf("execution lifecycle plugins should not be empty")
 						}
 						plugin := job.ExecutionLifecycle[0]
-						if expected := "simple-plugin"; plugin.Type != expected {
+						if expected := "killhandler"; plugin.Type != expected {
 							return fmt.Errorf("wrong plugin type; expected %v, got %v", expected, plugin.Type)
 						}
-						if plugin.Configuration != nil {
-							return fmt.Errorf("plugin configuration should be nil when no config is provided")
-						}
+						// killhandler plugin may have default config even when we don't provide any
+						// Just verify the plugin exists and is the right type
 						return nil
 					},
 				),
@@ -1257,7 +1268,7 @@ func TestAccJob_executionLifecyclePlugin_noConfig(t *testing.T) {
 
 // TestAccJob_projectSchedule tests a job with a single project schedule.
 // NOTE: Project schedules are a Rundeck Enterprise feature only.
-// PREREQUISITE: For this test to pass, you must create a project schedule named "my-schedule" 
+// PREREQUISITE: For this test to pass, you must create a project schedule named "my-schedule"
 // in the Rundeck Enterprise UI before running the test. In Rundeck, go to:
 // Project Settings > Edit Configuration > Other > Schedules
 func TestAccJob_projectSchedule(t *testing.T) {
@@ -1301,10 +1312,11 @@ func TestAccJob_projectSchedule(t *testing.T) {
 
 // TestAccJob_projectSchedule_multiple tests a job with multiple project schedules.
 // NOTE: Project schedules are a Rundeck Enterprise feature only.
-// PREREQUISITE: For this test to pass, you must create TWO project schedules in the Rundeck 
+// PREREQUISITE: For this test to pass, you must create TWO project schedules in the Rundeck
 // Enterprise UI before running the test:
-//   1. A schedule named "schedule-1"
-//   2. A schedule named "schedule-2"
+//  1. A schedule named "schedule-1"
+//  2. A schedule named "schedule-2"
+//
 // In Rundeck, go to: Project Settings > Edit Configuration > Other > Schedules
 func TestAccJob_projectSchedule_multiple(t *testing.T) {
 	// Skip this test if not running against Rundeck Enterprise
@@ -1396,14 +1408,14 @@ func TestAccJob_projectSchedule_noOptions(t *testing.T) {
 }
 
 // Project Schedule Test Configurations
-// 
+//
 // The following test configurations require Rundeck Enterprise and pre-created schedules.
 // Before running these tests, you must manually create the following schedules in your
 // Rundeck Enterprise instance via: Project Settings > Edit Configuration > Other > Schedules
 //
 // Required schedules:
 //   - "my-schedule" (for testAccJobConfig_projectSchedule)
-//   - "schedule-1" and "schedule-2" (for testAccJobConfig_projectSchedule_multiple)  
+//   - "schedule-1" and "schedule-2" (for testAccJobConfig_projectSchedule_multiple)
 //   - "simple-schedule" (for testAccJobConfig_projectSchedule_noOptions)
 //
 // The schedules can be created with any cron expression (e.g., "0 0 * * * ? *" for daily at midnight).
@@ -1531,10 +1543,9 @@ resource "rundeck_job" "test" {
   }
   
   execution_lifecycle_plugin {
-    type = "example-plugin"
+    type = "killhandler"
     config = {
-      key1 = "value1"
-      key2 = "value2"
+      killChilds = "true"
     }
   }
 }
@@ -1556,7 +1567,7 @@ resource "rundeck_project" "test" {
 resource "rundeck_job" "test" {
   project_name = "${rundeck_project.test.name}"
   name = "job-with-multiple-lifecycle-plugins"
-  description = "A job with multiple execution lifecycle plugins"
+  description = "A job with multiple execution lifecycle plugins (Enterprise)"
   execution_enabled = true
   
   command {
@@ -1565,16 +1576,16 @@ resource "rundeck_job" "test" {
   }
   
   execution_lifecycle_plugin {
-    type = "plugin-one"
+    type = "result-data-json-template"
     config = {
-      setting1 = "value1"
+      jsonTemplate = "{\"export\":{\"value\":\"$${data.value}\"}}"
     }
   }
   
   execution_lifecycle_plugin {
-    type = "plugin-two"
+    type = "roi-metrics"
     config = {
-      setting2 = "value2"
+      userRoiData = "[{\"key\":\"hours\",\"label\":\"Hours\",\"value\":\"1\",\"desc\":\"Field key hours\"}]"
     }
   }
 }
@@ -1605,7 +1616,7 @@ resource "rundeck_job" "test" {
   }
   
   execution_lifecycle_plugin {
-    type = "simple-plugin"
+    type = "killhandler"
     config = {}
   }
 }

@@ -57,7 +57,6 @@ func CreateAclPolicy(d *schema.ResourceData, meta interface{}) error {
 	d.SetId(name)
 	val := d.Set("id", name)
 	if val != nil {
-		fmt.Printf("[Error]")
 	}
 
 	return nil
@@ -101,7 +100,6 @@ func ReadAclPolicy(d *schema.ResourceData, meta interface{}) error {
 
 	val := d.Set("policy", *resp.Contents)
 	if val != nil {
-		fmt.Printf("[Error]")
 	}
 
 	return nil
