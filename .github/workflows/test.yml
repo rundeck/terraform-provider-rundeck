@@ -75,7 +75,7 @@ jobs:
     - name: Start Rundeck
       run: |
         cd test
-        docker-compose up -d
+        docker compose up -d
         cd ..
     
     - name: Wait for Rundeck to be ready
@@ -99,5 +99,5 @@ jobs:
       if: always()
       run: |
         cd test
-        docker-compose down -v
+        docker compose down -v
         cd ..
