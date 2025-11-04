@@ -74,22 +74,40 @@ This will start a Rundeck instance at `http://localhost:4440` with default crede
 Some tests require **Rundeck Enterprise** features and will fail on Rundeck Community Edition. These tests are automatically skipped by default to prevent CI/CD failures.
 
 **Enterprise-only features tested:**
-- Project schedules (job scheduling via project-level schedules)
-- Execution lifecycle plugins
+- **Runner resources** - System runners and project runners (5 tests)
+- **Project schedules** - Job scheduling via project-level schedules (3 tests)
+- **Execution lifecycle plugins**
 
 **To run Enterprise tests locally:**
 
 1. Ensure you have Rundeck Enterprise running (locally or remote)
-2. Pre-create required schedules in your Rundeck project:
-   - `my-schedule` - Used by basic project schedule test
-   - `schedule-1` and `schedule-2` - Used by multiple schedule test
-   - `simple-schedule` - Used by schedule without options test
-3. Set the environment variable to enable Enterprise tests:
+2. Set the environment variable to enable Enterprise tests:
 
 ```sh
 $ export RUNDECK_ENTERPRISE_TESTS=1
 $ make testacc
 ```
+
+**Project Schedule Tests (Additional Setup Required):**
+
+The project schedule tests require manual setup because Rundeck requires schedules to exist in the project configuration before jobs can reference them. This cannot be automated through the Terraform provider.
+
+To run project schedule tests:
+
+1. Create a project named `terraform-schedules-test` in your Rundeck Enterprise instance
+2. Add the following schedules to the project configuration:
+   - `my-schedule` - Used by basic project schedule test
+   - `schedule-1` and `schedule-2` - Used by multiple schedule test
+   - `simple-schedule` - Used by schedule without options test
+3. Set both environment variables:
+
+```sh
+$ export RUNDECK_ENTERPRISE_TESTS=1
+$ export RUNDECK_PROJECT_SCHEDULES_CONFIGURED=1
+$ make testacc
+```
+
+Without `RUNDECK_PROJECT_SCHEDULES_CONFIGURED=1`, the project schedule tests will be skipped even when `RUNDECK_ENTERPRISE_TESTS=1` is set.
 
 **In CI/CD pipelines:**
 
@@ -98,6 +116,7 @@ By default, Enterprise tests are skipped unless `RUNDECK_ENTERPRISE_TESTS=1` is 
 ```yaml
 env:
   RUNDECK_ENTERPRISE_TESTS: 1
+  RUNDECK_PROJECT_SCHEDULES_CONFIGURED: 1  # Only if project schedule tests should run
   RUNDECK_URL: https://your-enterprise-rundeck.example.com
   RUNDECK_AUTH_TOKEN: ${{ secrets.RUNDECK_TOKEN }}
 ```
