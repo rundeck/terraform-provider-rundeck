@@ -140,10 +140,12 @@ The following arguments are supported:
 
 * `project_schedule` - (Optional) One or more blocks defining project-level schedules for the job. The structure of this nested block is described below.
 
+  **Note:** Project Schedules are a **Rundeck Enterprise** feature. This option is only available in Rundeck Enterprise or Process Automation (commercial) versions. Using this with Rundeck Community/OSS will result in validation errors. Additionally, the referenced schedule must already exist in the project for the job to be created successfully.
+
   The `project_schedule` block has the following structure:
 
-  * `name` - (Required) The name of the Project Schedule.
-  * `job_options` - (Optional) A string of job options to pass to the schedule. In the form: -optname value -opt2name value2
+  * `name` - (Required) The name of an existing Project Schedule that has already been created in the Rundeck project.
+  * `job_options` - (Optional) A string of job options to pass to the schedule when it triggers the job. Must be in the form: `-optname value -opt2name value2`
 
 * `timeout` - (Optional) The maximum time for an execution to run. Time in seconds, or specify time units: "120m", "2h", "3d". Use blank or 0 to indicate no timeout.
 
@@ -418,10 +420,11 @@ A notification's `plugin` block has the following structure:
 
 `execution_lifecycle_plugin` blocks have the following structure:
 
+**Note:** Execution Lifecycle Plugins require that the corresponding plugin is installed and available in your Rundeck instance. If the plugin type specified does not exist, Rundeck will return a validation error. These plugins control job execution behavior across different lifecycle phases (e.g., before execution, after execution).
 
-* `type` - (Required) The name of the plugin to use.
+* `type` - (Required) The name of the execution lifecycle plugin to use. Must match an installed plugin type in Rundeck.
 
-* `config` - (Required) Map of arbitrary configuration properties for the selected plugin.
+* `config` - (Optional) Map of arbitrary configuration properties for the selected plugin. The available configuration options depend on the specific plugin being used.
 ## Attributes Reference
 
 The following attribute is exported:

@@ -435,6 +435,7 @@ func resourceRundeckJob() *schema.Resource {
 						},
 					},
 				},
+			},
 			"execution_lifecycle_plugin": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -1423,6 +1424,9 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 		projectSchedules = append(projectSchedules, psMap)
 	}
 	if err := d.Set("project_schedule", projectSchedules); err != nil {
+		return err
+	}
+
 	executionLifecyclePluginsI := make([]interface{}, 0)
 	if job.ExecutionLifecycle != nil && len(job.ExecutionLifecycle) > 0 {
 		for _, executionLifecyclePlugin := range job.ExecutionLifecycle {
