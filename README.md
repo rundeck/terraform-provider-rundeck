@@ -1,7 +1,5 @@
 # Rundeck Terraform Provider
 
-<img src="https://cdn.rawgit.com/hashicorp/terraform-website/master/content/source/assets/images/logo-hashicorp.svg" width="600px">
-
 ## Overview
 
 The Rundeck Terraform Provider enables infrastructure automation teams to manage Rundeck resources using HashiCorp Terraform. This provider is maintained by the community in the spirit of open source collaboration, with oversight from Rundeck/PagerDuty staff who review and approve contributions.
