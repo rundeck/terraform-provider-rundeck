@@ -419,6 +419,12 @@ func resourceRundeckJob() *schema.Resource {
 				Required: true,
 				Elem:     resourceRundeckJobCommand(),
 			},
+
+			"execution_lifecycle_plugin": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem:     resourceRundeckJobPluginResource(),
+			},
 		},
 	}
 }
@@ -1101,6 +1107,38 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 			return nil, fmt.Errorf("can only have up to three notfication blocks, `on_success`, `on_failure`, `on_start`")
 		}
 	}
+
+	executionLifecyclePluginConfigsI := d.Get("execution_lifecycle_plugin").([]interface{})
+	if len(executionLifecyclePluginConfigsI) > 0 {
+		executionLifecyclePlugins := []ExecutionLifecyclePlugin{}
+		for _, executionLifecyclePluginConfigI := range executionLifecyclePluginConfigsI {
+
+			executionLifecyclePlugin := ExecutionLifecyclePlugin{}
+
+			executionLifecyclePluginConfigMap := executionLifecyclePluginConfigI.(map[string]interface{})
+
+			executionLifecyclePlugin.Type = executionLifecyclePluginConfigMap["type"].(string)
+			executionLifecyclePluginConfig := executionLifecyclePluginConfigMap["config"].(map[string]interface{})
+
+			if len(executionLifecyclePluginConfig) > 0 {
+				executionLifecyclePlugin.Configuration = &ExecutionLifecyclePluginConfig{}
+				executionLifecyclePlugin.Configuration.Data = true
+				executionLifecyclePlugin.Configuration.ConfigValues = []ExecutionLifecyclePluginConfigValue{}
+				for key, value := range executionLifecyclePluginConfig {
+					executionLifecyclePlugin.Configuration.ConfigValues = append(executionLifecyclePlugin.Configuration.ConfigValues, ExecutionLifecyclePluginConfigValue{
+						Key:   key,
+						Value: value.(string),
+					})
+				}
+
+			} else {
+				executionLifecyclePlugin.Configuration = nil
+			}
+
+			executionLifecyclePlugins = append(executionLifecyclePlugins, executionLifecyclePlugin)
+		}
+		job.ExecutionLifecycle = executionLifecyclePlugins
+	}
 	return job, nil
 }
 
@@ -1343,6 +1381,26 @@ func jobToResourceData(job *JobDetail, d *schema.ResourceData) error {
 	}
 
 	if err := d.Set("notification", notificationConfigsI); err != nil {
+		return err
+	}
+
+	executionLifecyclePluginsI := make([]interface{}, 0)
+	if job.ExecutionLifecycle != nil && len(job.ExecutionLifecycle) > 0 {
+		for _, executionLifecyclePlugin := range job.ExecutionLifecycle {
+			executionLifecyclePluginI := map[string]interface{}{
+				"type": executionLifecyclePlugin.Type,
+			}
+			if executionLifecyclePlugin.Configuration != nil {
+				executionLifecyclePluginConfig := map[string]interface{}{}
+				for _, executionLifecyclePluginConfigValue := range executionLifecyclePlugin.Configuration.ConfigValues {
+					executionLifecyclePluginConfig[executionLifecyclePluginConfigValue.Key] = executionLifecyclePluginConfigValue.Value
+				}
+				executionLifecyclePluginI["config"] = executionLifecyclePluginConfig
+			}
+			executionLifecyclePluginsI = append(executionLifecyclePluginsI, executionLifecyclePluginI)
+		}
+	}
+	if err := d.Set("execution_lifecycle_plugin", executionLifecyclePluginsI); err != nil {
 		return err
 	}
 
