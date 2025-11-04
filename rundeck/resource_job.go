@@ -1137,7 +1137,6 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 		}
 	}
 
-
 	executionLifecyclePluginConfigsI := d.Get("execution_lifecycle_plugin").([]interface{})
 	if len(executionLifecyclePluginConfigsI) > 0 {
 		executionLifecyclePlugins := []ExecutionLifecyclePlugin{}
