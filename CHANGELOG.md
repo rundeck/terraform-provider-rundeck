@@ -1,3 +1,9 @@
+## 0.5.3
+- Support for Project Schedules (Enterprise Feature)
+- Support for Execution Lifecycle Plugins
+- Fixed tests so all pass on latest Rundeck release and added ability to test on Enterprise version locally.  (See repo Readme)
+- Fixed GitHub Workflow to properly run Docker and tests
+
 ## 0.5.2
 - Adds two new command options for Rundeck jobs to support custom script file extensions and token expansion in external scripts.
 - Introduces file_extension and expand_token_in_script_file to Terraform schema and mapping functions
