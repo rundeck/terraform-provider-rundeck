@@ -84,6 +84,27 @@ type JobDetail struct {
 	TimeZone               string            `xml:"timeZone,omitempty"`
 	NodeFilterEditable     bool              `xml:"nodeFilterEditable"`
 	Schedules              []ProjectSchedule `xml:"schedules>schedule,omitempty"`
+	NodesSelectedByDefault bool                       `xml:"nodesSelectedByDefault"`
+	Schedule               *JobSchedule               `xml:"schedule,omitempty"`
+	ScheduleEnabled        bool                       `xml:"scheduleEnabled"`
+	TimeZone               string                     `xml:"timeZone,omitempty"`
+	NodeFilterEditable     bool                       `xml:"nodeFilterEditable"`
+	ExecutionLifecycle     []ExecutionLifecyclePlugin `xml:"plugins>ExecutionLifecycle,omitempty"`
+}
+
+type ExecutionLifecyclePlugin struct {
+	Type          string                          `xml:"type,attr"`
+	Configuration *ExecutionLifecyclePluginConfig `xml:"configuration,omitempty"`
+}
+
+type ExecutionLifecyclePluginConfig struct {
+	Data         bool                                  `xml:"data,attr"`
+	ConfigValues []ExecutionLifecyclePluginConfigValue `xml:"map>value,omitempty"`
+}
+
+type ExecutionLifecyclePluginConfigValue struct {
+	Key   string `xml:"key,attr"`
+	Value string `xml:",chardata"`
 }
 
 type Boolean struct {

@@ -247,6 +247,9 @@ The following arguments are supported:
 * `option`: (Optional) Nested block defining an option a user may set when executing this job. A
   job may have any number of options. The structure of this nested block is described below.
 
+* `execution_lifecycle_plugin`: (Optional) Nested block defining an execution lifecycle plugin available to be enabled and configured. A
+  job may have any number of `execution_lifecycle_plugin`s. The structure of this nested block is described below.
+
 `option` blocks have the following structure:
 
 * `name`: (Required) Unique name that will be shown in the UI when entering values and used as
@@ -413,6 +416,12 @@ A notification's `plugin` block has the following structure:
 
 * `config` - (Required) Map of arbitrary configuration properties for the selected plugin.
 
+`execution_lifecycle_plugin` blocks have the following structure:
+
+
+* `type` - (Required) The name of the plugin to use.
+
+* `config` - (Required) Map of arbitrary configuration properties for the selected plugin.
 ## Attributes Reference
 
 The following attribute is exported:
