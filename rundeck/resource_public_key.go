@@ -68,7 +68,6 @@ func CreatePublicKey(d *schema.ResourceData, meta interface{}) error {
 		}
 		val := d.Set("delete", true)
 		if val != nil {
-			fmt.Printf("[Error]")
 		}
 
 	}
@@ -142,7 +141,6 @@ func ReadPublicKey(d *schema.ResourceData, meta interface{}) error {
 
 	val2 := d.Set("url", *key.URL)
 	if val2 != nil {
-		fmt.Printf("[Error]")
 	}
 
 	// Note: We don't read back the key_material for public keys, similar to private keys.
