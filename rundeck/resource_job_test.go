@@ -677,7 +677,7 @@ resource "rundeck_job" "source_test_job" {
   }
   command {
     job {
-      name = "source_test_job"
+      name = "Other Job Name"
       project_name = "source_project"
       run_for_each_node = true
       child_nodes = true

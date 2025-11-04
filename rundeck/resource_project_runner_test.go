@@ -2,6 +2,7 @@ package rundeck
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -11,6 +12,10 @@ import (
 )
 
 func TestAccRundeckProjectRunner_basic(t *testing.T) {
+	if os.Getenv("RUNDECK_ENTERPRISE_TESTS") != "1" {
+		t.Skip("Skipping Rundeck Enterprise test - set RUNDECK_ENTERPRISE_TESTS=1 to run")
+	}
+
 	var runner openapi.RunnerInfo
 
 	resource.Test(t, resource.TestCase{
@@ -40,6 +45,10 @@ func TestAccRundeckProjectRunner_basic(t *testing.T) {
 }
 
 func TestAccRundeckProjectRunner_withNodeDispatch(t *testing.T) {
+	if os.Getenv("RUNDECK_ENTERPRISE_TESTS") != "1" {
+		t.Skip("Skipping Rundeck Enterprise test - set RUNDECK_ENTERPRISE_TESTS=1 to run")
+	}
+
 	var runner openapi.RunnerInfo
 
 	resource.Test(t, resource.TestCase{
@@ -61,6 +70,10 @@ func TestAccRundeckProjectRunner_withNodeDispatch(t *testing.T) {
 }
 
 func TestAccRundeckProjectRunner_update(t *testing.T) {
+	if os.Getenv("RUNDECK_ENTERPRISE_TESTS") != "1" {
+		t.Skip("Skipping Rundeck Enterprise test - set RUNDECK_ENTERPRISE_TESTS=1 to run")
+	}
+
 	var runner openapi.RunnerInfo
 
 	resource.Test(t, resource.TestCase{

@@ -2,6 +2,7 @@ package rundeck
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
@@ -10,6 +11,10 @@ import (
 )
 
 func TestAccRundeckSystemRunner_basic(t *testing.T) {
+	if os.Getenv("RUNDECK_ENTERPRISE_TESTS") != "1" {
+		t.Skip("Skipping Rundeck Enterprise test - set RUNDECK_ENTERPRISE_TESTS=1 to run")
+	}
+
 	var runner openapi.RunnerInfo
 
 	resource.Test(t, resource.TestCase{
@@ -36,6 +41,10 @@ func TestAccRundeckSystemRunner_basic(t *testing.T) {
 }
 
 func TestAccRundeckSystemRunner_update(t *testing.T) {
+	if os.Getenv("RUNDECK_ENTERPRISE_TESTS") != "1" {
+		t.Skip("Skipping Rundeck Enterprise test - set RUNDECK_ENTERPRISE_TESTS=1 to run")
+	}
+
 	var runner openapi.RunnerInfo
 
 	resource.Test(t, resource.TestCase{
