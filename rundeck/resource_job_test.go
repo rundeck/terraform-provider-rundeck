@@ -1274,7 +1274,7 @@ func TestAccJob_executionLifecyclePlugin_noConfig(t *testing.T) {
 // PREREQUISITE: For this test to pass, you must MANUALLY create a project schedule named "my-schedule"
 // in the Rundeck Enterprise UI AFTER the project is created. This test cannot be fully automated
 // because Rundeck requires schedules to exist in project configuration before jobs can reference them.
-// 
+//
 // To run this test:
 // 1. Set RUNDECK_ENTERPRISE_TESTS=1
 // 2. Run the test once (it will create the project but fail)
@@ -1288,7 +1288,7 @@ func TestAccJob_projectSchedule(t *testing.T) {
 	if v := os.Getenv("RUNDECK_ENTERPRISE_TESTS"); v != "1" {
 		t.Skip("Skipping Rundeck Enterprise test - set RUNDECK_ENTERPRISE_TESTS=1 to run")
 	}
-	
+
 	// Skip if project schedules are not manually configured
 	if v := os.Getenv("RUNDECK_PROJECT_SCHEDULES_CONFIGURED"); v != "1" {
 		t.Skip("Skipping project schedule test - requires manual setup. Set RUNDECK_PROJECT_SCHEDULES_CONFIGURED=1 after creating schedules in Rundeck UI")
@@ -1344,7 +1344,7 @@ func TestAccJob_projectSchedule_multiple(t *testing.T) {
 	if v := os.Getenv("RUNDECK_ENTERPRISE_TESTS"); v != "1" {
 		t.Skip("Skipping Rundeck Enterprise test - set RUNDECK_ENTERPRISE_TESTS=1 to run")
 	}
-	
+
 	// Skip if project schedules are not manually configured
 	if v := os.Getenv("RUNDECK_PROJECT_SCHEDULES_CONFIGURED"); v != "1" {
 		t.Skip("Skipping project schedule test - requires manual setup. Set RUNDECK_PROJECT_SCHEDULES_CONFIGURED=1 after creating schedules in Rundeck UI")
@@ -1405,7 +1405,7 @@ func TestAccJob_projectSchedule_noOptions(t *testing.T) {
 	if v := os.Getenv("RUNDECK_ENTERPRISE_TESTS"); v != "1" {
 		t.Skip("Skipping Rundeck Enterprise test - set RUNDECK_ENTERPRISE_TESTS=1 to run")
 	}
-	
+
 	// Skip if project schedules are not manually configured
 	if v := os.Getenv("RUNDECK_PROJECT_SCHEDULES_CONFIGURED"); v != "1" {
 		t.Skip("Skipping project schedule test - requires manual setup. Set RUNDECK_PROJECT_SCHEDULES_CONFIGURED=1 after creating schedules in Rundeck UI")
