@@ -45,7 +45,7 @@ resource "rundeck_project_runner" "example" {
   }
   
   installation_type = "docker"
-  replica_type      = "single"
+  replica_type      = "manual"
   
   # Node dispatch configuration
   runner_as_node_enabled = true
