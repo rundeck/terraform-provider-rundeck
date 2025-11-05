@@ -21,7 +21,7 @@ resource "rundeck_system_runner" "example" {
   }
   
   installation_type = "docker"
-  replica_type      = "persistent"
+  replica_type      = "manual"
 }
 ```
 
