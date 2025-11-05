@@ -323,7 +323,7 @@ func DeleteSystemRunner(d *schema.ResourceData, meta interface{}) error {
 	_, err := client.RunnerAPI.DeleteRunner(ctx, runnerId).Execute()
 	if err != nil {
 		// Log the error but continue with other projects
-		fmt.Printf("Warning: failed to delete runner %s: %v\n", runnerId, err)
+		log.Printf("Warning: failed to delete runner %s: %v", runnerId, err)
 	}
 	// Note: There might not be a global runner delete endpoint
 	// The runner might be automatically cleaned up when removed from all projects
