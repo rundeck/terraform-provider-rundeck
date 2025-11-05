@@ -1,12 +1,9 @@
-# This GitHub action runs your tests for each commit push and/or PR. Optionally
+# This GitHub action runs your tests for each commit push to a PR. Optionally
 # you can turn it on using a cron schedule for regular testing.
 #
 name: Tests
 on:
   pull_request:
-    paths-ignore:
-      - 'README.md'
-  push:
     paths-ignore:
       - 'README.md'
   # For systems with an upstream API that could drift unexpectedly (like most SaaS systems, etc.),
