@@ -156,7 +156,7 @@ func CreateSystemRunner(d *schema.ResourceData, meta interface{}) error {
 	}
 	runnerRequest.SetReplicaType(replicaType)
 
-	// Wrap the runner request in CreateProjectRunnerRequest
+	// Although this is a system runner, the API requires wrapping the runner request in CreateProjectRunnerRequest
 	projectRunnerRequest := openapi.NewCreateProjectRunnerRequest(name, description)
 	projectRunnerRequest.SetNewRunnerRequest(*runnerRequest)
 
