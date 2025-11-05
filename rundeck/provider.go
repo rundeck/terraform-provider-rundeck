@@ -98,12 +98,11 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	clientV1.Authorizer = &auth.TokenAuthorizer{Token: token}
 
 	// Create the new v2 client
-	configuration := openapi.NewConfiguration()
-	configuration.Servers = openapi.ServerConfigurations{
-		{
-			URL: apiURL.Host,
-		},
-	}
+	cfg := openapi.NewConfiguration()
+	cfg.Host = apiURL.Host
+	cfg.Scheme = apiURL.Scheme
+
+	clientV2 := openapi.NewAPIClient(cfg)
 
 	// Create a context with the API token as a header
 	ctx := context.WithValue(context.Background(), openapi.ContextAPIKeys, map[string]openapi.APIKey{
@@ -111,12 +110,6 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 			Key: token,
 		},
 	})
-
-	cfg := openapi.NewConfiguration()
-	cfg.Host = apiURL.Host
-	cfg.Scheme = apiURL.Scheme
-
-	clientV2 := openapi.NewAPIClient(cfg)
 
 	return &RundeckClients{
 		V1:    &clientV1,
