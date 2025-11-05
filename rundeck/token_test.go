@@ -9,7 +9,7 @@ func TestAccToken(t *testing.T) {
 	testAccPreCheck(t)
 
 	username := os.Getenv("RUNDECK_AUTH_USERNAME")
-	password := os.Getenv("e")
+	password := os.Getenv("RUNDECK_AUTH_PASSWORD")
 	apiVersion := os.Getenv("RUNDECK_API_VERSION")
 	if apiVersion == "" {
 		apiVersion = "14"
