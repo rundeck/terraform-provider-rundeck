@@ -156,7 +156,7 @@ func CreateSystemRunner(d *schema.ResourceData, meta interface{}) error {
 	}
 	runnerRequest.SetReplicaType(replicaType)
 
-	// Wrap the runner request in CreateProjectRunnerRequest
+	// Although this is a system runner, the API requires wrapping the runner request in CreateProjectRunnerRequest
 	projectRunnerRequest := openapi.NewCreateProjectRunnerRequest(name, description)
 	projectRunnerRequest.SetNewRunnerRequest(*runnerRequest)
 
@@ -250,7 +250,7 @@ func UpdateSystemRunner(d *schema.ResourceData, meta interface{}) error {
 				d.SetId("")
 				return nil
 			}
-			return fmt.Errorf("failed to get runner info: %v", err)
+			return fmt.Errorf("failed to save runner: %v", err)
 		}
 
 		log.Printf("[DEBUG] Save Runner API response status: %d", resp.StatusCode)
