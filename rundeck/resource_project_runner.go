@@ -327,7 +327,7 @@ func UpdateProjectRunner(d *schema.ResourceData, meta interface{}) error {
 				d.SetId("")
 				return nil
 			}
-			return fmt.Errorf("failed Updating node dispatch configuration for runner: %v", err)
+			return fmt.Errorf("failed updating node dispatch configuration for runner: %v", err)
 		}
 
 		// Debug output
