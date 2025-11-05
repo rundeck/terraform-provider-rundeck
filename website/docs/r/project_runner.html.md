@@ -72,7 +72,7 @@ The following arguments are supported:
 
 * `installation_type` - (Optional) Installation type of the runner. Valid values are `"linux"`, `"windows"`, `"kubernetes"`, and `"docker"`.
 
-* `replica_type` - (Optional) Replica type of the runner (e.g., "single", "multi").
+* `replica_type` - (Optional) Replica type of the runner (e.g., "manual", "ephemeral").
 
 * `runner_as_node_enabled` - (Optional) Enable the runner to act as a node. Defaults to `false`.
 
