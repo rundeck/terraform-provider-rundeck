@@ -111,7 +111,8 @@ func resourceRundeckProject() *schema.Resource {
 }
 
 func CreateProject(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.BaseClient)
+	clients := meta.(*RundeckClients)
+	client := clients.V1
 
 	// Rundeck's model is a little inconsistent in that we can create
 	// a project via a high-level structure but yet we must update
@@ -147,7 +148,8 @@ func CreateProject(d *schema.ResourceData, meta interface{}) error {
 }
 
 func UpdateProject(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.BaseClient)
+	clients := meta.(*RundeckClients)
+	client := clients.V1
 
 	// In Rundeck, updates are always in terms of the low-level config
 	// properties map, so we need to transform our data structure
@@ -195,7 +197,8 @@ func UpdateProject(d *schema.ResourceData, meta interface{}) error {
 }
 
 func ReadProject(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.BaseClient)
+	clients := meta.(*RundeckClients)
+	client := clients.V1
 
 	name := d.Id()
 	ctx := context.Background()
@@ -307,7 +310,8 @@ func ReadProject(d *schema.ResourceData, meta interface{}) error {
 }
 
 func ProjectExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	client := meta.(*rundeck.BaseClient)
+	clients := meta.(*RundeckClients)
+	client := clients.V1
 
 	name := d.Id()
 	ctx := context.Background()
@@ -325,7 +329,8 @@ func ProjectExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 }
 
 func DeleteProject(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.BaseClient)
+	clients := meta.(*RundeckClients)
+	client := clients.V1
 
 	name := d.Id()
 	ctx := context.Background()

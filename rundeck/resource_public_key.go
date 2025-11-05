@@ -50,7 +50,8 @@ func resourceRundeckPublicKey() *schema.Resource {
 }
 
 func CreatePublicKey(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.BaseClient)
+	clients := meta.(*RundeckClients)
+	client := clients.V1
 	ctx := context.Background()
 
 	path := d.Get("path").(string)
@@ -59,17 +60,13 @@ func CreatePublicKey(d *schema.ResourceData, meta interface{}) error {
 	keyMaterialReader := io.NopCloser(strings.NewReader(keyMaterial))
 
 	if keyMaterial != "" {
-		resp, err := client.StorageKeyCreate(ctx, path, keyMaterialReader, "application/pgp-keys")
-		if resp.StatusCode == 409 {
-			err = fmt.Errorf("conflict creating key at : %s", path)
-		}
+		_, err := client.StorageKeyCreate(ctx, path, keyMaterialReader, "application/pgp-keys")
 		if err != nil {
-			return err
+			return fmt.Errorf("error creating key at %s: %v", path, err)
 		}
 		val := d.Set("delete", true)
 		if val != nil {
 		}
-
 	}
 
 	d.SetId(path)
@@ -78,7 +75,8 @@ func CreatePublicKey(d *schema.ResourceData, meta interface{}) error {
 }
 
 func UpdatePublicKey(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.BaseClient)
+	clients := meta.(*RundeckClients)
+	client := clients.V1
 	ctx := context.Background()
 
 	if d.HasChange("key_material") {
@@ -87,12 +85,9 @@ func UpdatePublicKey(d *schema.ResourceData, meta interface{}) error {
 
 		keyMaterialReader := io.NopCloser(strings.NewReader(keyMaterial))
 
-		resp, err := client.StorageKeyUpdate(ctx, path, keyMaterialReader, "application/pgp-keys")
-		if resp.StatusCode == 409 || err != nil {
-			return fmt.Errorf("Error updating or adding key: Key exists")
-		}
+		_, err := client.StorageKeyUpdate(ctx, path, keyMaterialReader, "application/pgp-keys")
 		if err != nil {
-			return err
+			return fmt.Errorf("error updating key: %v", err)
 		}
 	}
 
@@ -100,7 +95,8 @@ func UpdatePublicKey(d *schema.ResourceData, meta interface{}) error {
 }
 
 func DeletePublicKey(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.BaseClient)
+	clients := meta.(*RundeckClients)
+	client := clients.V1
 	ctx := context.Background()
 
 	path := d.Id()
@@ -125,18 +121,23 @@ func DeletePublicKey(d *schema.ResourceData, meta interface{}) error {
 }
 
 func ReadPublicKey(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.BaseClient)
+	clients := meta.(*RundeckClients)
+	client := clients.V1
 	ctx := context.Background()
 
 	path := d.Id()
 
 	key, err := client.StorageKeyGetMetadata(ctx, path)
-	if key.StatusCode == 404 {
-		err = fmt.Errorf("key not found at: %s", path)
-	}
-
 	if err != nil {
 		return err
+	}
+
+	if key.StatusCode == 404 {
+		return fmt.Errorf("key not found at: %s", path)
+	}
+
+	if key.Meta == nil || key.URL == nil {
+		return fmt.Errorf("invalid response: meta or URL is nil")
 	}
 
 	val2 := d.Set("url", *key.URL)
@@ -151,14 +152,23 @@ func ReadPublicKey(d *schema.ResourceData, meta interface{}) error {
 }
 
 func PublicKeyExists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	client := meta.(*rundeck.BaseClient)
+	clients := meta.(*RundeckClients)
+	client := clients.V1
 	ctx := context.Background()
 
 	path := d.Id()
 
 	resp, err := client.StorageKeyGetMetadata(ctx, path)
-	if resp.StatusCode == 404 || err != nil {
+	if err != nil {
 		return false, err
+	}
+
+	if resp.StatusCode == 404 {
+		return false, nil
+	}
+
+	if resp.Meta == nil {
+		return false, fmt.Errorf("response meta is nil")
 	}
 
 	if resp.Meta.RundeckKeyType != rundeck.Public {

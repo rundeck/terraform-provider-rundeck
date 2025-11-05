@@ -467,7 +467,7 @@ type JobDispatch struct {
 func GetJob(c *rundeck.BaseClient, id string) (*JobDetail, error) {
 	ctx := context.Background()
 	jobList := &jobDetailList{}
-	resp, err := c.JobGet(ctx, id, "")
+	resp, err := c.JobGet(ctx, id, "xml") // Explicitly request XML format
 	if err != nil {
 		return nil, err
 	}

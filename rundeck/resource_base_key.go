@@ -9,8 +9,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-
-	"github.com/rundeck/go-rundeck/rundeck"
 )
 
 type BaseKeyType int32
@@ -21,7 +19,8 @@ const (
 )
 
 func CreateOrUpdateBaseKey(d *schema.ResourceData, meta interface{}, baseKeyType BaseKeyType) error {
-	client := meta.(*rundeck.BaseClient)
+	clients := meta.(*RundeckClients)
+	client := clients.V1
 
 	var payload string
 	path := d.Get("path").(string)
@@ -39,25 +38,21 @@ func CreateOrUpdateBaseKey(d *schema.ResourceData, meta interface{}, baseKeyType
 		contentType = "application/x-rundeck-data-password"
 		payload = d.Get("password").(string)
 	default:
-		return fmt.Errorf("Internal error. Unknown key type")
+		return fmt.Errorf("internal error: unknown key type")
 	}
 
 	payloadReader := io.NopCloser(strings.NewReader(payload))
 
 	if d.Id() != "" {
-		resp, err := client.StorageKeyUpdate(ctx, path, payloadReader, contentType)
-		if resp.StatusCode == 409 || err != nil {
-			return fmt.Errorf("Error updating or adding key: Key exists")
+		_, err = client.StorageKeyUpdate(ctx, path, payloadReader, contentType)
+		if err != nil {
+			return fmt.Errorf("error updating key: %v", err)
 		}
 	} else {
-		resp, err := client.StorageKeyCreate(ctx, path, payloadReader, contentType)
-		if resp.StatusCode == 409 || err != nil {
-			return fmt.Errorf("Error updating or adding key: Key exists")
+		_, err = client.StorageKeyCreate(ctx, path, payloadReader, contentType)
+		if err != nil {
+			return fmt.Errorf("error creating key: %v", err)
 		}
-	}
-
-	if err != nil {
-		return err
 	}
 
 	d.SetId(path)
@@ -66,7 +61,8 @@ func CreateOrUpdateBaseKey(d *schema.ResourceData, meta interface{}, baseKeyType
 }
 
 func DeleteBaseKey(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*rundeck.BaseClient)
+	clients := meta.(*RundeckClients)
+	client := clients.V1
 	ctx := context.Background()
 
 	path := d.Id()
@@ -91,17 +87,24 @@ func ReadBaseKey(d *schema.ResourceData, meta interface{}) error {
 }
 
 func BaseKeyExists(d *schema.ResourceData, meta interface{}, baseKeyType BaseKeyType) (bool, error) {
-	client := meta.(*rundeck.BaseClient)
+	clients := meta.(*RundeckClients)
+	client := clients.V1
 	ctx := context.Background()
 
 	path := d.Id()
 
 	resp, err := client.StorageKeyGetMetadata(ctx, path)
 	if err != nil {
-		if resp.StatusCode != 404 {
-			err = nil
-		}
 		return false, err
+	}
+
+	if resp.StatusCode == 404 {
+		return false, nil
+	}
+
+	// Check if Meta or RundeckContentType is nil
+	if resp.Meta == nil || resp.Meta.RundeckContentType == nil {
+		return false, fmt.Errorf("response meta or content type is nil")
 	}
 
 	// If the resource is not password or private key as far as this resource is
@@ -121,7 +124,7 @@ func BaseKeyExists(d *schema.ResourceData, meta interface{}, baseKeyType BaseKey
 			return false, nil
 		}
 	default:
-		return false, fmt.Errorf("Internal error. Unknown key type")
+		return false, fmt.Errorf("internal error: unknown key type")
 	}
 
 	return true, nil
