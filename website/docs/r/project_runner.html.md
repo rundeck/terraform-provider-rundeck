@@ -70,7 +70,7 @@ The following arguments are supported:
 
 * `project_runner_as_node` - (Optional) Map of projects where the runner acts as a node (boolean values).
 
-* `installation_type` - (Optional) Installation type of the runner (e.g., "docker", "jar").
+* `installation_type` - (Optional) Installation type of the runner. Valid values are `"linux"`, `"windows"`, `"kubernetes"`, and `"docker"`.
 
 * `replica_type` - (Optional) Replica type of the runner (e.g., "single", "multi").
 
