@@ -292,7 +292,7 @@ func UpdateProjectRunner(d *schema.ResourceData, meta interface{}) error {
 				d.SetId("")
 				return nil
 			}
-			return fmt.Errorf("failed to get runner info: %v", err)
+			return fmt.Errorf("failed to save project runner: %v", err)
 		}
 
 		log.Printf("[DEBUG] Save Project Runner API response status: %d", resp.StatusCode)
