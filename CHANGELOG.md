@@ -1,3 +1,9 @@
+## 0.5.4
+- Support for Enterprise Runners (system_runner and project_runner resources)
+- Introduces rundeck-v2 Go Client Library for runner management
+- Refinement for Project Schedule tests (added RUNDECK_PROJECT_SCHEDULES_CONFIGURED flag)
+- Updated README with comprehensive testing documentation
+
 ## 0.5.3
 - Support for Project Schedules (Enterprise Feature)
 - Support for Execution Lifecycle Plugins

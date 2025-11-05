@@ -1,6 +1,14 @@
-# rundeck_project_runner
+---
+layout: "rundeck"
+page_title: "Rundeck: rundeck_project_runner"
+sidebar_current: "docs-rundeck-resource-project-runner"
+description: |-
+  The rundeck_project_runner resource allows Project based Enterprise Runners to be managed by Terraform.
+---
 
-The project runner resource allows Rundeck project-specific runners to be managed by Terraform. Project runners are created within the context of a specific project and are typically used for project-scoped execution.
+# rundeck\_project\_runner
+
+The project runner resource allows project-specific Enterprise Runners to be managed by Terraform. Project runners are created within the context of a specific project and are typically used for project-scoped execution.
 
 ## Example Usage
 
