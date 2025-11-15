@@ -233,7 +233,7 @@ func jobCommandNestedBlock() schema.ListNestedBlock {
 	}
 }
 
-// Option nested block schema  
+// Option nested block schema
 func jobOptionNestedBlock() schema.ListNestedBlock {
 	return schema.ListNestedBlock{
 		Description: "Job options/parameters",
@@ -473,20 +473,19 @@ func jobExecutionLifecyclePluginNestedBlock() schema.ListNestedBlock {
 // Command model type
 var commandObjectType = types.ObjectType{
 	AttrTypes: map[string]attr.Type{
-		"description":                   types.StringType,
-		"shell_command":                 types.StringType,
-		"inline_script":                 types.StringType,
-		"script_url":                    types.StringType,
-		"script_file":                   types.StringType,
-		"script_file_args":              types.StringType,
-		"expand_token_in_script_file":   types.BoolType,
-		"file_extension":                types.StringType,
-		"keep_going_on_success":         types.BoolType,
-		"script_interpreter":            types.ListType{ElemType: types.ObjectType{}},
-		"job":                           types.ListType{ElemType: types.ObjectType{}},
-		"step_plugin":                   types.ListType{ElemType: types.ObjectType{}},
-		"node_step_plugin":              types.ListType{ElemType: types.ObjectType{}},
-		"error_handler":                 types.ListType{ElemType: types.ObjectType{}},
+		"description":                 types.StringType,
+		"shell_command":               types.StringType,
+		"inline_script":               types.StringType,
+		"script_url":                  types.StringType,
+		"script_file":                 types.StringType,
+		"script_file_args":            types.StringType,
+		"expand_token_in_script_file": types.BoolType,
+		"file_extension":              types.StringType,
+		"keep_going_on_success":       types.BoolType,
+		"script_interpreter":          types.ListType{ElemType: types.ObjectType{}},
+		"job":                         types.ListType{ElemType: types.ObjectType{}},
+		"step_plugin":                 types.ListType{ElemType: types.ObjectType{}},
+		"node_step_plugin":            types.ListType{ElemType: types.ObjectType{}},
+		"error_handler":               types.ListType{ElemType: types.ObjectType{}},
 	},
 }
-

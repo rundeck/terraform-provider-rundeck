@@ -15,9 +15,9 @@ func TestAccProject_basic(t *testing.T) {
 	var project rundeck.Project
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
+		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
-		CheckDestroy: testAccProjectCheckDestroy(&project),
+		CheckDestroy:             testAccProjectCheckDestroy(&project),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccProjectConfig_basic,

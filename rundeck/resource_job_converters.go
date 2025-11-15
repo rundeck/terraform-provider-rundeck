@@ -12,7 +12,7 @@ import (
 // convertCommandsToJSON converts Framework command list to JSON array
 func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]interface{}, diag.Diagnostics) {
 	var diags diag.Diagnostics
-	
+
 	if commandsList.IsNull() || commandsList.IsUnknown() {
 		return nil, diags
 	}
@@ -83,7 +83,7 @@ func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]inte
 			if len(jobs) > 0 {
 				jobAttrs := jobs[0].Attributes()
 				jobMap := make(map[string]interface{})
-				
+
 				if name, ok := jobAttrs["name"].(types.String); ok && !name.IsNull() {
 					jobMap["name"] = name.ValueString()
 				}
@@ -143,7 +143,7 @@ func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]inte
 			if len(plugins) > 0 {
 				pluginAttrs := plugins[0].Attributes()
 				pluginMap := make(map[string]interface{})
-				
+
 				if ptype, ok := pluginAttrs["type"].(types.String); ok && !ptype.IsNull() {
 					pluginMap["type"] = ptype.ValueString()
 				}
@@ -152,7 +152,7 @@ func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]inte
 					diags.Append(config.ElementsAs(ctx, &configMap, false)...)
 					pluginMap["config"] = configMap
 				}
-				
+
 				cmdMap["plugin"] = pluginMap
 			}
 		}
@@ -164,7 +164,7 @@ func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]inte
 			if len(plugins) > 0 {
 				pluginAttrs := plugins[0].Attributes()
 				pluginMap := make(map[string]interface{})
-				
+
 				if ptype, ok := pluginAttrs["type"].(types.String); ok && !ptype.IsNull() {
 					pluginMap["type"] = ptype.ValueString()
 				}
@@ -173,7 +173,7 @@ func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]inte
 					diags.Append(config.ElementsAs(ctx, &configMap, false)...)
 					pluginMap["config"] = configMap
 				}
-				
+
 				cmdMap["nodeStep"] = pluginMap
 			}
 		}
@@ -185,7 +185,7 @@ func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]inte
 			if len(handlers) > 0 {
 				handlerAttrs := handlers[0].Attributes()
 				handlerMap := make(map[string]interface{})
-				
+
 				if desc, ok := handlerAttrs["description"].(types.String); ok && !desc.IsNull() {
 					handlerMap["description"] = desc.ValueString()
 				}
@@ -195,7 +195,7 @@ func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]inte
 				if script, ok := handlerAttrs["inline_script"].(types.String); ok && !script.IsNull() {
 					handlerMap["script"] = script.ValueString()
 				}
-				
+
 				cmdMap["errorhandler"] = handlerMap
 			}
 		}
@@ -209,7 +209,7 @@ func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]inte
 // convertOptionsToJSON converts Framework option list to JSON array
 func convertOptionsToJSON(ctx context.Context, optionsList types.List) ([]interface{}, diag.Diagnostics) {
 	var diags diag.Diagnostics
-	
+
 	if optionsList.IsNull() || optionsList.IsUnknown() {
 		return nil, diags
 	}
@@ -223,9 +223,9 @@ func convertOptionsToJSON(ctx context.Context, optionsList types.List) ([]interf
 	result := make([]interface{}, 0, len(options))
 	for _, optObj := range options {
 		attrs := optObj.Attributes()
-		
+
 		optMap := make(map[string]interface{})
-		
+
 		// Name is required
 		if name, ok := attrs["name"].(types.String); ok && !name.IsNull() {
 			optMap["name"] = name.ValueString()
@@ -307,7 +307,7 @@ func convertOptionsToJSON(ctx context.Context, optionsList types.List) ([]interf
 // convertNotificationsToJSON converts Framework notification list to JSON structure
 func convertNotificationsToJSON(ctx context.Context, notificationsList types.List) (map[string]interface{}, diag.Diagnostics) {
 	var diags diag.Diagnostics
-	
+
 	if notificationsList.IsNull() || notificationsList.IsUnknown() {
 		return nil, diags
 	}
@@ -319,10 +319,10 @@ func convertNotificationsToJSON(ctx context.Context, notificationsList types.Lis
 	}
 
 	result := make(map[string]interface{})
-	
+
 	for _, notifObj := range notifications {
 		attrs := notifObj.Attributes()
-		
+
 		var notifType string
 		if ntype, ok := attrs["type"].(types.String); ok && !ntype.IsNull() {
 			notifType = ntype.ValueString()
@@ -357,7 +357,7 @@ func convertNotificationsToJSON(ctx context.Context, notificationsList types.Lis
 			if len(emails) > 0 {
 				emailAttrs := emails[0].Attributes()
 				emailMap := make(map[string]interface{})
-				
+
 				if al, ok := emailAttrs["attach_log"].(types.Bool); ok && !al.IsNull() {
 					emailMap["attachLog"] = al.ValueBool()
 				}
@@ -370,7 +370,7 @@ func convertNotificationsToJSON(ctx context.Context, notificationsList types.Lis
 					// Rundeck expects a comma-separated string, not an array
 					emailMap["recipients"] = strings.Join(recipients, ",")
 				}
-				
+
 				notifMap["email"] = emailMap
 			}
 		}
@@ -382,7 +382,7 @@ func convertNotificationsToJSON(ctx context.Context, notificationsList types.Lis
 			if len(plugins) > 0 {
 				pluginAttrs := plugins[0].Attributes()
 				pluginMap := make(map[string]interface{})
-				
+
 				if ptype, ok := pluginAttrs["type"].(types.String); ok && !ptype.IsNull() {
 					pluginMap["type"] = ptype.ValueString()
 				}
@@ -391,7 +391,7 @@ func convertNotificationsToJSON(ctx context.Context, notificationsList types.Lis
 					diags.Append(config.ElementsAs(ctx, &configMap, false)...)
 					pluginMap["config"] = configMap
 				}
-				
+
 				notifMap["plugin"] = pluginMap
 			}
 		}
@@ -412,4 +412,3 @@ func createEmptyListValue(ctx context.Context, elemType attr.Type) types.List {
 func createObjectValue(ctx context.Context, attrTypes map[string]attr.Type, values map[string]attr.Value) (types.Object, diag.Diagnostics) {
 	return types.ObjectValue(attrTypes, values)
 }
-

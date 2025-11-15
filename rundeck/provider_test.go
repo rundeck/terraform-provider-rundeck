@@ -87,7 +87,7 @@ func testAccProtoV5ProviderFactories() map[string]func() (tfprotov5.ProviderServ
 	return map[string]func() (tfprotov5.ProviderServer, error){
 		"rundeck": func() (tfprotov5.ProviderServer, error) {
 			ctx := context.Background()
-			
+
 			// Convert SDK provider to protocol v5 server
 			sdkProviderFunc := func() tfprotov5.ProviderServer {
 				return schema.NewGRPCProviderServer(Provider())

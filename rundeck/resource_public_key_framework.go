@@ -264,8 +264,7 @@ func (r *publicKeyResource) Delete(ctx context.Context, req resource.DeleteReque
 func (r *publicKeyResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("path"), req.ID)...)
-	
+
 	// Set delete to false for imported resources (we didn't create them)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("delete"), false)...)
 }
-

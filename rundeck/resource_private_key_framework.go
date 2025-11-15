@@ -203,9 +203,8 @@ func (r *privateKeyResource) Delete(ctx context.Context, req resource.DeleteRequ
 func (r *privateKeyResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("path"), req.ID)...)
-	
+
 	// Set key_material to a placeholder hash during import since we can't retrieve it
 	hash := sha1.Sum([]byte("imported-key-unknown-content"))
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("key_material"), hex.EncodeToString(hash[:]))...)
 }
-

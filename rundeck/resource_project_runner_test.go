@@ -19,9 +19,9 @@ func TestAccRundeckProjectRunner_basic(t *testing.T) {
 	var runner openapi.RunnerInfo
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
+		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
-		CheckDestroy: testAccProjectRunnerCheckDestroy(&runner),
+		CheckDestroy:             testAccProjectRunnerCheckDestroy(&runner),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccRundeckProjectRunnerConfig_basic,
@@ -52,9 +52,9 @@ func TestAccRundeckProjectRunner_withNodeDispatch(t *testing.T) {
 	var runner openapi.RunnerInfo
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
+		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
-		CheckDestroy: testAccProjectRunnerCheckDestroy(&runner),
+		CheckDestroy:             testAccProjectRunnerCheckDestroy(&runner),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccRundeckProjectRunnerConfig_withNodeDispatch,
@@ -77,9 +77,9 @@ func TestAccRundeckProjectRunner_update(t *testing.T) {
 	var runner openapi.RunnerInfo
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
+		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
-		CheckDestroy: testAccProjectRunnerCheckDestroy(&runner),
+		CheckDestroy:             testAccProjectRunnerCheckDestroy(&runner),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccRundeckProjectRunnerConfig_basic,
@@ -189,7 +189,7 @@ func testAccProjectRunnerCheckExists(rn string, runner *openapi.RunnerInfo) reso
 		client := clients.V2
 		ctx := clients.ctx
 
-		// Use general RunnerInfo endpoint since ProjectRunnerInfo seems unreliable  
+		// Use general RunnerInfo endpoint since ProjectRunnerInfo seems unreliable
 		gotRunner, resp, err := client.RunnerAPI.RunnerInfo(ctx, runnerId).Execute()
 		if err != nil || (resp != nil && resp.StatusCode != 200) {
 			statusCode := 0

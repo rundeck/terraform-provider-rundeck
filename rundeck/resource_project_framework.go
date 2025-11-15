@@ -35,17 +35,17 @@ type projectResource struct {
 }
 
 type projectResourceModel struct {
-	ID                         types.String `tfsdk:"id"`
-	Name                       types.String `tfsdk:"name"`
-	Description                types.String `tfsdk:"description"`
-	UIURL                      types.String `tfsdk:"ui_url"`
-	ResourceModelSource        types.List   `tfsdk:"resource_model_source"`
+	ID                          types.String `tfsdk:"id"`
+	Name                        types.String `tfsdk:"name"`
+	Description                 types.String `tfsdk:"description"`
+	UIURL                       types.String `tfsdk:"ui_url"`
+	ResourceModelSource         types.List   `tfsdk:"resource_model_source"`
 	DefaultNodeFileCopierPlugin types.String `tfsdk:"default_node_file_copier_plugin"`
-	DefaultNodeExecutorPlugin  types.String `tfsdk:"default_node_executor_plugin"`
-	SSHAuthenticationType      types.String `tfsdk:"ssh_authentication_type"`
-	SSHKeyStoragePath          types.String `tfsdk:"ssh_key_storage_path"`
-	SSHKeyFilePath             types.String `tfsdk:"ssh_key_file_path"`
-	ExtraConfig                types.Map    `tfsdk:"extra_config"`
+	DefaultNodeExecutorPlugin   types.String `tfsdk:"default_node_executor_plugin"`
+	SSHAuthenticationType       types.String `tfsdk:"ssh_authentication_type"`
+	SSHKeyStoragePath           types.String `tfsdk:"ssh_key_storage_path"`
+	SSHKeyFilePath              types.String `tfsdk:"ssh_key_file_path"`
+	ExtraConfig                 types.Map    `tfsdk:"extra_config"`
 }
 
 type resourceModelSourceModel struct {
@@ -440,7 +440,7 @@ func (r *projectResource) readProject(ctx context.Context, apiCtx context.Contex
 	resourceModelSourceElements := []attr.Value{}
 	for _, index := range resourceSourceIndices {
 		source := resourceSourceMap[index].(map[string]interface{})
-		
+
 		configMap := make(map[string]attr.Value)
 		if configInterface, ok := source["config"]; ok {
 			for k, v := range configInterface.(map[string]interface{}) {
@@ -501,4 +501,3 @@ func (r *projectResource) readProject(ctx context.Context, apiCtx context.Contex
 	state.Name = types.StringValue(*project.Name)
 	state.UIURL = types.StringValue(*project.URL)
 }
-

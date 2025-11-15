@@ -16,9 +16,9 @@ func TestAccPublicKey_basic(t *testing.T) {
 	var key rundeck.StorageKeyListResponse
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
+		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
-		CheckDestroy: testAccPublicKeyCheckDestroy(&key),
+		CheckDestroy:             testAccPublicKeyCheckDestroy(&key),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccPublicKeyConfig_basic,

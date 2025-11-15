@@ -203,9 +203,8 @@ func (r *passwordResource) Delete(ctx context.Context, req resource.DeleteReques
 func (r *passwordResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("path"), req.ID)...)
-	
+
 	// Set password to a placeholder hash during import since we can't retrieve it
 	hash := sha1.Sum([]byte("imported-password-unknown-content"))
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("password"), hex.EncodeToString(hash[:]))...)
 }
-

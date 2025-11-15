@@ -15,9 +15,9 @@ func TestAccPassword_basic(t *testing.T) {
 	var key rundeck.StorageKeyListResponse
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
+		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
-		CheckDestroy: testAccBaseKeyCheckDestroy(&key),
+		CheckDestroy:             testAccBaseKeyCheckDestroy(&key),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccPasswordConfig_basic,

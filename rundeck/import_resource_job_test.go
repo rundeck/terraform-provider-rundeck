@@ -13,9 +13,9 @@ func TestAccRundeckJob_Import(t *testing.T) {
 	var job JobDetail
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
+		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
-		CheckDestroy: testAccJobCheckDestroy(&job),
+		CheckDestroy:             testAccJobCheckDestroy(&job),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccJobConfig_basic,

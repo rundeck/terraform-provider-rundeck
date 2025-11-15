@@ -35,19 +35,19 @@ type projectRunnerResource struct {
 }
 
 type projectRunnerResourceModel struct {
-	ID                   types.String `tfsdk:"id"`
-	ProjectName          types.String `tfsdk:"project_name"`
-	Name                 types.String `tfsdk:"name"`
-	Description          types.String `tfsdk:"description"`
-	TagNames             types.String `tfsdk:"tag_names"`
-	InstallationType     types.String `tfsdk:"installation_type"`
-	ReplicaType          types.String `tfsdk:"replica_type"`
-	RunnerAsNodeEnabled  types.Bool   `tfsdk:"runner_as_node_enabled"`
-	RemoteNodeDispatch   types.Bool   `tfsdk:"remote_node_dispatch"`
-	RunnerNodeFilter     types.String `tfsdk:"runner_node_filter"`
-	RunnerID             types.String `tfsdk:"runner_id"`
-	Token                types.String `tfsdk:"token"`
-	DownloadToken        types.String `tfsdk:"download_token"`
+	ID                  types.String `tfsdk:"id"`
+	ProjectName         types.String `tfsdk:"project_name"`
+	Name                types.String `tfsdk:"name"`
+	Description         types.String `tfsdk:"description"`
+	TagNames            types.String `tfsdk:"tag_names"`
+	InstallationType    types.String `tfsdk:"installation_type"`
+	ReplicaType         types.String `tfsdk:"replica_type"`
+	RunnerAsNodeEnabled types.Bool   `tfsdk:"runner_as_node_enabled"`
+	RemoteNodeDispatch  types.Bool   `tfsdk:"remote_node_dispatch"`
+	RunnerNodeFilter    types.String `tfsdk:"runner_node_filter"`
+	RunnerID            types.String `tfsdk:"runner_id"`
+	Token               types.String `tfsdk:"token"`
+	DownloadToken       types.String `tfsdk:"download_token"`
 }
 
 func (r *projectRunnerResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -210,7 +210,7 @@ func (r *projectRunnerResource) Create(ctx context.Context, req resource.CreateR
 		// Store composite ID as project:runner_id
 		plan.ID = types.StringValue(fmt.Sprintf("%s:%s", projectName, runnerId))
 		plan.RunnerID = types.StringValue(runnerId)
-		
+
 		// Debug: Log what we got
 		resp.Diagnostics.AddWarning("DEBUG: Runner Created", fmt.Sprintf("Project: %s, RunnerID: %s, Composite ID: %s", projectName, runnerId, plan.ID.ValueString()))
 	} else {
@@ -473,4 +473,3 @@ func (r *projectRunnerResource) ImportState(ctx context.Context, req resource.Im
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("project_name"), projectName)...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("runner_id"), runnerId)...)
 }
-

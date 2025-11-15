@@ -18,9 +18,9 @@ func TestAccRundeckSystemRunner_basic(t *testing.T) {
 	var runner openapi.RunnerInfo
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
+		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
-		CheckDestroy: testAccSystemRunnerCheckDestroy(&runner),
+		CheckDestroy:             testAccSystemRunnerCheckDestroy(&runner),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccRundeckSystemRunnerConfig_basic,
@@ -48,9 +48,9 @@ func TestAccRundeckSystemRunner_update(t *testing.T) {
 	var runner openapi.RunnerInfo
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
+		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
-		CheckDestroy: testAccSystemRunnerCheckDestroy(&runner),
+		CheckDestroy:             testAccSystemRunnerCheckDestroy(&runner),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccRundeckSystemRunnerConfig_basic,
