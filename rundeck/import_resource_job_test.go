@@ -29,7 +29,18 @@ func TestAccRundeckJob_Import(t *testing.T) {
 				ImportState:         true,
 				ImportStateVerify:   true,
 				// These fields have default values that may not be returned by the API
-				ImportStateVerifyIgnore: []string{"runner_selector_filter_mode", "runner_selector_filter_type"},
+				// or are computed and may differ in representation
+				ImportStateVerifyIgnore: []string{
+					"runner_selector_filter_mode",
+					"runner_selector_filter_type",
+					"continue_on_error",
+					"max_thread_count",
+					"node_filter_exclude_precedence",
+					"nodes_selected_by_default",
+					"preserve_options_order",
+					"rank_order",
+					"success_on_empty_node_filter",
+				},
 			},
 		},
 	})

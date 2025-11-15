@@ -751,8 +751,8 @@ func (r *jobResource) ImportState(ctx context.Context, req resource.ImportStateR
 		id = parts[1]
 	}
 
-	// Set the ID in state
-	resp.State.SetAttribute(ctx, path.Root("id"), id)
+	// Use the standard passthrough with the parsed ID
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), id)...)
 }
 
 // planToJobJSON converts Terraform plan to Rundeck job JSON format
