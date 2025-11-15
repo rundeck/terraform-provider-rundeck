@@ -521,10 +521,6 @@ func (r *jobResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 	}
 
 	jobData := jobs[0]
-	
-	// Debug: Check what we're getting from API
-	debugJSON, _ := json.MarshalIndent(jobData, "", "  ")
-	resp.Diagnostics.AddWarning("DEBUG: Job from API", string(debugJSON))
 
 	// Convert JSON to Terraform state
 	if err := r.jobJSONToState(&jobData, &state); err != nil {
@@ -816,14 +812,20 @@ func (r *jobResource) jobJSONToState(job *jobJSON, state *jobResourceModel) erro
 	state.ID = types.StringValue(job.ID)
 	state.Name = types.StringValue(job.Name)
 	state.GroupName = types.StringValue(job.Group)
-	state.ProjectName = types.StringValue(job.Project)
+	// Project name is not returned by JobGet API, preserve from current state
+	// state.ProjectName already has the value from state/plan
 	state.Description = types.StringValue(job.Description)
 	state.ExecutionEnabled = types.BoolValue(job.ExecutionEnabled)
 	state.DefaultTab = types.StringValue(job.DefaultTab)
 	state.LogLevel = types.StringValue(job.LogLevel)
 	state.AllowConcurrentExecutions = types.BoolValue(job.MultipleExecutions)
 	state.NodeFilterEditable = types.BoolValue(job.NodeFilterEditable)
-	state.NodesSelectedByDefault = types.BoolValue(job.NodesSelectedByDefault)
+	// NodesSelectedByDefault is not reliably returned by JSON API, preserve from state if not present
+	// Only update if explicitly returned as true
+	if job.NodesSelectedByDefault {
+		state.NodesSelectedByDefault = types.BoolValue(true)
+	}
+	// Otherwise keep the value from state/plan
 	state.ScheduleEnabled = types.BoolValue(job.ScheduleEnabled)
 
 	if job.Timeout != "" {

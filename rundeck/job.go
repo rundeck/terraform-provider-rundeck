@@ -25,6 +25,7 @@ package rundeck
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -53,38 +54,38 @@ type jobSummaryList struct {
 
 // JobDetail is a comprehensive description of a job, including its entire definition.
 type JobDetail struct {
-	XMLName                   xml.Name            `xml:"job"`
-	ID                        string              `xml:"uuid,omitempty"`
-	Name                      string              `xml:"name"`
-	GroupName                 string              `xml:"group,omitempty"`
-	ProjectName               string              `xml:"context>project,omitempty"`
-	OptionsConfig             *JobOptions         `xml:"context>options,omitempty"`
-	Description               string              `xml:"description"`
-	ExecutionEnabled          bool                `xml:"executionEnabled"`
-	DefaultTab                string              `xml:"defaultTab"`
-	LogLevel                  string              `xml:"loglevel,omitempty"`
-	LoggingLimit              *JobLoggingLimit    `xml:"logging,omitempty"`
-	AllowConcurrentExecutions bool                `xml:"multipleExecutions,omitempty"`
-	Dispatch                  *JobDispatch        `xml:"dispatch,omitempty"`
-	CommandSequence           *JobCommandSequence `xml:"sequence,omitempty"`
-	Notification              *JobNotification    `xml:"notification,omitempty"`
-	Timeout                   string              `xml:"timeout,omitempty"`
-	Retry                     *Retry              `xml:"retry,omitempty"`
-	NodeFilter                *JobNodeFilter      `xml:"nodefilters,omitempty"`
-	RunnerSelector            *RunnerSelector     `xml:"runnerSelector,omitempty"`
-	Orchestrator              *JobOrchestrator    `xml:"orchestrator,omitempty"`
+	XMLName                   xml.Name            `xml:"job" json:"-"`
+	ID                        string              `xml:"uuid,omitempty" json:"uuid,omitempty"`
+	Name                      string              `xml:"name" json:"name"`
+	GroupName                 string              `xml:"group,omitempty" json:"group,omitempty"`
+	ProjectName               string              `xml:"context>project,omitempty" json:"project,omitempty"`
+	OptionsConfig             *JobOptions         `xml:"context>options,omitempty" json:"-"` // XML only - JSON has different structure
+	Description               string              `xml:"description" json:"description"`
+	ExecutionEnabled          bool                `xml:"executionEnabled" json:"executionEnabled"`
+	DefaultTab                string              `xml:"defaultTab" json:"defaultTab"`
+	LogLevel                  string              `xml:"loglevel,omitempty" json:"loglevel,omitempty"`
+	LoggingLimit              *JobLoggingLimit    `xml:"logging,omitempty" json:"loglimit,omitempty"`
+	AllowConcurrentExecutions bool                `xml:"multipleExecutions,omitempty" json:"multipleExecutions,omitempty"`
+	Dispatch                  *JobDispatch        `xml:"dispatch,omitempty" json:"dispatch,omitempty"`
+	CommandSequence           *JobCommandSequence `xml:"sequence,omitempty" json:"sequence,omitempty"`
+	Notification              *JobNotification    `xml:"notification,omitempty" json:"notification,omitempty"`
+	Timeout                   string              `xml:"timeout,omitempty" json:"timeout,omitempty"`
+	Retry                     *Retry              `xml:"retry,omitempty" json:"retry,omitempty"`
+	NodeFilter                *JobNodeFilter      `xml:"nodefilters,omitempty" json:"nodefilters,omitempty"`
+	RunnerSelector            *RunnerSelector     `xml:"runnerSelector,omitempty" json:"runnerSelector,omitempty"`
+	Orchestrator              *JobOrchestrator    `xml:"orchestrator,omitempty" json:"orchestrator,omitempty"`
 
 	/* If Dispatch is enabled, nodesSelectedByDefault is always present with true/false.
 	 * by this reason omitempty cannot be present.
 	 * This has to be handle by the user.
 	 */
-	NodesSelectedByDefault bool                       `xml:"nodesSelectedByDefault"`
-	Schedule               *JobSchedule               `xml:"schedule,omitempty"`
-	ScheduleEnabled        bool                       `xml:"scheduleEnabled"`
-	TimeZone               string                     `xml:"timeZone,omitempty"`
-	NodeFilterEditable     bool                       `xml:"nodeFilterEditable"`
-	Schedules              []ProjectSchedule          `xml:"schedules>schedule,omitempty"`
-	ExecutionLifecycle     []ExecutionLifecyclePlugin `xml:"plugins>ExecutionLifecycle,omitempty"`
+	NodesSelectedByDefault bool                       `xml:"nodesSelectedByDefault" json:"nodesSelectedByDefault"`
+	Schedule               *JobSchedule               `xml:"schedule,omitempty" json:"schedule,omitempty"`
+	ScheduleEnabled        bool                       `xml:"scheduleEnabled" json:"scheduleEnabled"`
+	TimeZone               string                     `xml:"timeZone,omitempty" json:"timeZone,omitempty"`
+	NodeFilterEditable     bool                       `xml:"nodeFilterEditable" json:"nodeFilterEditable"`
+	Schedules              []ProjectSchedule          `xml:"schedules>schedule,omitempty" json:"schedules,omitempty"`
+	ExecutionLifecycle     []ExecutionLifecyclePlugin `xml:"plugins>ExecutionLifecycle,omitempty" json:"-"` // XML only - JSON has different structure
 }
 
 type ExecutionLifecyclePlugin struct {
@@ -108,9 +109,9 @@ type Boolean struct {
 
 // JobLoggingLimit represents the logging limit options for a job.
 type JobLoggingLimit struct {
-	Output string `xml:"limit,attr"`
-	Action string `xml:"limitAction,attr"`
-	Status string `xml:"status,attr"`
+	Output string `xml:"limit,attr" json:"loglimit,omitempty"`
+	Action string `xml:"limitAction,attr" json:"loglimitAction,omitempty"`
+	Status string `xml:"status,attr" json:"loglimitStatus,omitempty"`
 }
 
 type Retry struct {
@@ -119,26 +120,48 @@ type Retry struct {
 }
 
 type JobNotification struct {
-	OnFailure *Notification `xml:"onfailure,omitempty"`
-	OnStart   *Notification `xml:"onstart,omitempty"`
-	OnSuccess *Notification `xml:"onsuccess,omitempty"`
+	OnFailure *Notification `xml:"onfailure,omitempty" json:"onfailure,omitempty"`
+	OnStart   *Notification `xml:"onstart,omitempty" json:"onstart,omitempty"`
+	OnSuccess *Notification `xml:"onsuccess,omitempty" json:"onsuccess,omitempty"`
 }
 
 type Notification struct {
-	Email      *EmailNotification   `xml:"email,omitempty"`
-	WebHook    *WebHookNotification `xml:"webhook,omitempty"`
-	Plugin     *JobPlugin           `xml:"plugin"`
-	Format     string               `xml:"format,omitempty"`
-	HttpMethod string               `xml:"httpMethod,omitempty"`
+	Email      *EmailNotification   `xml:"email,omitempty" json:"email,omitempty"`
+	WebHook    *WebHookNotification `xml:"webhook,omitempty" json:"webhook,omitempty"`
+	Plugin     *JobPlugin           `xml:"plugin" json:"plugin,omitempty"`
+	Format     string               `xml:"format,omitempty" json:"format,omitempty"`
+	HttpMethod string               `xml:"httpMethod,omitempty" json:"httpMethod,omitempty"`
 }
 
 type EmailNotification struct {
-	AttachLog  bool               `xml:"attachLog,attr,omitempty"`
-	Recipients NotificationEmails `xml:"recipients,attr"`
-	Subject    string             `xml:"subject,attr"`
+	AttachLog  bool               `xml:"attachLog,attr,omitempty" json:"attachLog,omitempty"`
+	Recipients NotificationEmails `xml:"recipients,attr" json:"recipients"`
+	Subject    string             `xml:"subject,attr" json:"subject,omitempty"`
 }
 
 type NotificationEmails []string
+
+// UnmarshalJSON handles both JSON string (comma-separated) and array formats
+func (ne *NotificationEmails) UnmarshalJSON(data []byte) error {
+	// Try to unmarshal as string first (JSON format)
+	var str string
+	if err := json.Unmarshal(data, &str); err == nil {
+		if str != "" {
+			*ne = strings.Split(str, ",")
+		} else {
+			*ne = []string{}
+		}
+		return nil
+	}
+
+	// Fall back to array format
+	var arr []string
+	if err := json.Unmarshal(data, &arr); err != nil {
+		return err
+	}
+	*ne = arr
+	return nil
+}
 
 type WebHookNotification struct {
 	Urls NotificationUrls `xml:"urls,attr"`
@@ -261,20 +284,20 @@ type JobValueChoices []string
 
 // JobCommandSequence describes the sequence of operations that a job will perform.
 type JobCommandSequence struct {
-	XMLName xml.Name `xml:"sequence"`
+	XMLName xml.Name `xml:"sequence" json:"-"`
 
 	// If set, Rundeck will continue with subsequent commands after a command fails.
-	ContinueOnError bool `xml:"keepgoing,attr,omitempty"`
+	ContinueOnError bool `xml:"keepgoing,attr,omitempty" json:"keepgoing,omitempty"`
 
 	// Chooses the strategy by which Rundeck will execute commands. Can either be "node-first" or
 	// "step-first".
-	OrderingStrategy string `xml:"strategy,attr,omitempty"`
+	OrderingStrategy string `xml:"strategy,attr,omitempty" json:"strategy,omitempty"`
 
 	// Log outputs to be captured and used across command sequence
-	GlobalLogFilters *[]JobLogFilter `xml:"pluginConfig>LogFilter,omitempty"`
+	GlobalLogFilters *[]JobLogFilter `xml:"pluginConfig>LogFilter,omitempty" json:"pluginConfig,omitempty"`
 
 	// Sequence of commands to run in the sequence.
-	Commands []JobCommand `xml:"command"`
+	Commands []JobCommand `xml:"command" json:"commands"`
 
 	// Description
 	Description string `xml:"description,omitempty"`
@@ -284,19 +307,19 @@ type JobCommandSequence struct {
 // The members of this struct are mutually-exclusive except for the pair of ScriptFile and
 // ScriptFileArgs.
 type JobCommand struct {
-	XMLName xml.Name
+	XMLName xml.Name `json:"-"`
 
 	// Description
-	Description string `xml:"description,omitempty"`
+	Description string `xml:"description,omitempty" json:"description,omitempty"`
 
 	// If the Workflow keepgoing is false, this allows the Workflow to continue when the Error Handler is successful.
-	KeepGoingOnSuccess bool `xml:"keepgoingOnSuccess,attr,omitempty"`
+	KeepGoingOnSuccess bool `xml:"keepgoingOnSuccess,attr,omitempty" json:"keepgoingOnSuccess,omitempty"`
 
 	// On error:
-	ErrorHandler *JobCommand `xml:"errorhandler,omitempty"`
+	ErrorHandler *JobCommand `xml:"errorhandler,omitempty" json:"errorhandler,omitempty"`
 
 	// A literal shell command to run.
-	ShellCommand string `xml:"exec,omitempty"`
+	ShellCommand string `xml:"exec,omitempty" json:"exec,omitempty"`
 
 	// Add extension to the temporary filename.
 	FileExtension string `xml:"fileExtension,omitempty"`
@@ -466,16 +489,17 @@ type JobDispatch struct {
 // GetJob returns the full job details of the job with the given id.
 func GetJob(c *rundeck.BaseClient, id string) (*JobDetail, error) {
 	ctx := context.Background()
-	jobList := &jobDetailList{}
-	resp, err := c.JobGet(ctx, id, "xml") // Explicitly request XML format
+	resp, err := c.JobGet(ctx, id, "json") // Use JSON format
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
+
 	if resp.StatusCode == 404 {
 		return nil, &NotFoundError{}
 	}
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("error getting job: (%v)", err)
+		return nil, fmt.Errorf("error getting job: status %d", resp.StatusCode)
 	}
 
 	respBytes, err := io.ReadAll(resp.Body)
@@ -483,11 +507,17 @@ func GetJob(c *rundeck.BaseClient, id string) (*JobDetail, error) {
 		return nil, err
 	}
 
-	if err := xml.Unmarshal(respBytes, jobList); err != nil {
-		return nil, err
+	// JobGet returns an array of jobs
+	var jobs []JobDetail
+	if err := json.Unmarshal(respBytes, &jobs); err != nil {
+		return nil, fmt.Errorf("failed to parse job JSON: %w", err)
 	}
 
-	return &jobList.Jobs[0], nil
+	if len(jobs) == 0 {
+		return nil, &NotFoundError{}
+	}
+
+	return &jobs[0], nil
 }
 
 // CreateJob creates a new job based on the provided structure.
