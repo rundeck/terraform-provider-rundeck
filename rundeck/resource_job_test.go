@@ -56,6 +56,9 @@ func TestAccJob_withLogLimit(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccJobCheckExists("rundeck_job.testWithAllLimitsSpecified", &job),
 					func(s *terraform.State) error {
+						if job.LoggingLimit == nil {
+							return fmt.Errorf("LoggingLimit should not be nil")
+						}
 						if expected := "100MB"; job.LoggingLimit.Output != expected {
 							return fmt.Errorf("wrong value for log limit output; expected %v, got %v", expected, job.LoggingLimit.Output)
 						}
