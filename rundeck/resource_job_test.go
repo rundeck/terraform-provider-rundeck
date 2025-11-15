@@ -98,7 +98,7 @@ func TestOchestrator_high_low(t *testing.T) {
 				Config: testOchestration_high_low,
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("rundeck_job.test", "name", "orchestrator-High-Low"),
-					resource.TestCheckResourceAttr("rundeck_job.test", "orchestrator.0.type", "orchestrator-high-low"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "orchestrator.0.type", "orchestrator-highest-lowest-attribute"),
 				),
 			},
 		},
@@ -115,7 +115,7 @@ func TestOchestrator_max_percent(t *testing.T) {
 				Config: testOchestration_maxperecent,
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("rundeck_job.test", "name", "orchestrator-MaxPercent"),
-					resource.TestCheckResourceAttr("rundeck_job.test", "orchestrator.0.type", "orchestrator-max-percent"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "orchestrator.0.type", "maxPercentage"),
 				),
 			},
 		},
@@ -132,7 +132,7 @@ func TestOchestrator_rankTiered(t *testing.T) {
 				Config: testOchestration_rank_tiered,
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("rundeck_job.test", "name", "basic-job-with-node-filter"),
-					resource.TestCheckResourceAttr("rundeck_job.test", "orchestrator.0.type", "orchestrator-rank-tiered"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "orchestrator.0.type", "rankTiered"),
 				),
 			},
 		},
