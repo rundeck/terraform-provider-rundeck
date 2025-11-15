@@ -145,6 +145,15 @@ func (r *projectRunnerResource) Configure(_ context.Context, req resource.Config
 		return
 	}
 
+	// Project runner requires API v56+ (Enterprise feature)
+	if clients.APIVersion < "56" {
+		resp.Diagnostics.AddError(
+			"Insufficient API Version",
+			fmt.Sprintf("Project runner resources require API version 56 or higher (currently configured: %s). Please update your provider configuration with api_version = \"56\" or higher.", clients.APIVersion),
+		)
+		return
+	}
+
 	r.clients = clients
 }
 

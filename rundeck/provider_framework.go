@@ -102,7 +102,7 @@ func (p *frameworkProvider) Configure(ctx context.Context, req provider.Configur
 		apiVersion = os.Getenv("RUNDECK_API_VERSION")
 	}
 	if apiVersion == "" {
-		apiVersion = "14" // Default API version
+		apiVersion = "46" // Default API version - Rundeck 5.0.0+
 	}
 
 	authToken := config.AuthToken.ValueString()

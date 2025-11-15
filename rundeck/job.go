@@ -489,7 +489,8 @@ type JobDispatch struct {
 // GetJob returns the full job details of the job with the given id.
 func GetJob(c *rundeck.BaseClient, id string) (*JobDetail, error) {
 	ctx := context.Background()
-	resp, err := c.JobGet(ctx, id, "json") // Use JSON format
+	// Use empty format parameter to get JSON default (v44+)
+	resp, err := c.JobGet(ctx, id, "")
 	if err != nil {
 		return nil, err
 	}
@@ -507,7 +508,7 @@ func GetJob(c *rundeck.BaseClient, id string) (*JobDetail, error) {
 		return nil, err
 	}
 
-	// JobGet returns an array of jobs
+	// API returns JSON by default at v44+ (provider minimum is v46)
 	var jobs []JobDetail
 	if err := json.Unmarshal(respBytes, &jobs); err != nil {
 		return nil, fmt.Errorf("failed to parse job JSON: %w", err)

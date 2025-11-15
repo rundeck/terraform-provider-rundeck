@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -368,10 +369,10 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 	}
 
 	// Import the job using custom HTTP request to ensure JSON response
-	// JSON job import requires API v44+, use the configured version if >= 44, otherwise use 44
+	// JSON job import requires API v46+ (Rundeck 5.0.0+)
 	apiVersion := r.client.APIVersion
-	if apiVersion < "44" {
-		apiVersion = "44"
+	if apiVersion < "46" {
+		apiVersion = "46"
 	}
 	apiURL := fmt.Sprintf("%s/api/%s/project/%s/jobs/import",
 		r.client.BaseURL,
@@ -499,11 +500,15 @@ func (r *jobResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 	}
 
 	client := r.client.V1
-	apiCtx := context.Background()
 
-	// Get job in JSON format
-	jobResp, err := client.JobGet(apiCtx, state.ID.ValueString(), "json")
+	// Use GetJob helper which handles API v56+ format parameter issues
+	job, err := GetJob(client, state.ID.ValueString())
 	if err != nil {
+		var notFound *NotFoundError
+		if errors.As(err, &notFound) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError(
 			"Error reading job",
 			fmt.Sprintf("Could not read job %s: %s", state.ID.ValueString(), err.Error()),
@@ -511,51 +516,21 @@ func (r *jobResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 		return
 	}
 
-	if jobResp.StatusCode == 404 {
-		resp.State.RemoveResource(ctx)
-		return
-	}
-
-	if jobResp.StatusCode != 200 {
-		resp.Diagnostics.AddError(
-			"Error reading job",
-			fmt.Sprintf("API returned status %d", jobResp.StatusCode),
-		)
-		return
-	}
-
-	// Read and parse JSON response
-	body, err := io.ReadAll(jobResp.Body)
+	// Convert JobDetail to jobJSON structure for processing
+	jobData, err := r.jobDetailToJobJSON(job)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading job",
-			fmt.Sprintf("Could not read response body: %s", err.Error()),
+			fmt.Sprintf("Could not convert job to JSON structure: %s", err.Error()),
 		)
 		return
 	}
 
-	// JobGet returns an array of jobs
-	var jobs []jobJSON
-	if err := json.Unmarshal(body, &jobs); err != nil {
+	// Convert to Terraform state
+	if err := r.jobJSONToState(jobData, &state); err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading job",
-			fmt.Sprintf("Could not parse job JSON: %s\nResponse: %s", err.Error(), string(body)),
-		)
-		return
-	}
-
-	if len(jobs) == 0 {
-		resp.State.RemoveResource(ctx)
-		return
-	}
-
-	jobData := jobs[0]
-
-	// Convert JSON to Terraform state
-	if err := r.jobJSONToState(&jobData, &state); err != nil {
-		resp.Diagnostics.AddError(
-			"Error reading job",
-			fmt.Sprintf("Could not convert job JSON to state: %s", err.Error()),
+			fmt.Sprintf("Could not convert job to state: %s", err.Error()),
 		)
 		return
 	}
@@ -595,10 +570,10 @@ func (r *jobResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	}
 
 	// Import/update the job using custom HTTP request to ensure JSON response
-	// JSON job import requires API v44+, use the configured version if >= 44, otherwise use 44
+	// JSON job import requires API v46+ (Rundeck 5.0.0+)
 	apiVersion := r.client.APIVersion
-	if apiVersion < "44" {
-		apiVersion = "44"
+	if apiVersion < "46" {
+		apiVersion = "46"
 	}
 	apiURL := fmt.Sprintf("%s/api/%s/project/%s/jobs/import",
 		r.client.BaseURL,
@@ -964,4 +939,21 @@ func (r *jobResource) jobJSONToState(job *jobJSON, state *jobResourceModel) erro
 	// This is a known limitation until we implement JSON->List converters
 
 	return nil
+}
+
+// jobDetailToJobJSON converts a JobDetail (from XML/SDK) to jobJSON (for our state processing)
+func (r *jobResource) jobDetailToJobJSON(detail *JobDetail) (*jobJSON, error) {
+	// Use JSON marshaling/unmarshaling to convert between the two structs
+	// Both have JSON tags, so this handles the conversion automatically
+	jsonBytes, err := json.Marshal(detail)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal JobDetail: %w", err)
+	}
+
+	var result jobJSON
+	if err := json.Unmarshal(jsonBytes, &result); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal to jobJSON: %w", err)
+	}
+
+	return &result, nil
 }

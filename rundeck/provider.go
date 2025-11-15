@@ -24,8 +24,8 @@ func Provider() *schema.Provider {
 			"api_version": {
 				Type:        schema.TypeString,
 				Required:    true,
-				DefaultFunc: schema.EnvDefaultFunc("RUNDECK_API_VERSION", "14"),
-				Description: "API Version of the target Rundeck server.",
+				DefaultFunc: schema.EnvDefaultFunc("RUNDECK_API_VERSION", "46"),
+				Description: "API Version of the target Rundeck server (minimum: 46 for Rundeck 5.0.0+).",
 			},
 			"auth_token": {
 				Type:        schema.TypeString,
