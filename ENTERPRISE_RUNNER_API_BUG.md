@@ -1,21 +1,69 @@
-# Enterprise Runner API Bug Report
+# Enterprise Runner API - OpenAPI Spec Mismatch
 
 ## Summary
 
-When creating runners via the Enterprise API (v56), the creation succeeds and returns a valid runner ID. However, subsequent attempts to read the runner information via the `RunnerInfo` endpoint consistently return **500 Server Error**.
+**RESOLVED: The issue was a missing feature flag, not an API bug.**
 
-## Environment
+With the new Enterprise feature flags enabled, the Runner API now returns **lowercase** enum values for `installationType` and `replicaType`. However, the OpenAPI specification (`rundeck-api.yml`) defines these enums with **UPPERCASE** values, causing the generated Go SDK to fail when unmarshaling API responses.
 
-- **Rundeck Version**: Enterprise (with API v56)
-- **API Version**: 56
-- **Endpoint Base**: `http://127.0.0.1:4440`
-- **Authentication**: Token-based (`X-Rundeck-Auth-Token` header)
+## Root Cause: OpenAPI Spec vs. Actual API Mismatch
+
+### OpenAPI Specification (rundeck-api.yml)
+
+**Lines 13365-13371:**
+```yaml
+RunnerInstallationType:
+  type: string
+  enum:
+    - LINUX      # UPPERCASE
+    - WINDOWS
+    - KUBERNETES
+    - DOCKER
+```
+
+**Lines 13448-13452:**
+```yaml
+RunnerReplicaType:
+  type: string
+  enum:
+    - ephemeral  # lowercase
+    - manual
+```
+
+### Actual API Behavior (with new feature flags)
+
+**Runner creation succeeds**, but API returns:
+```json
+{
+  "installationType": "linux",     // lowercase (doesn't match spec)
+  "replicaType": "manual"          // lowercase (matches spec)
+}
+```
+
+### Go SDK Behavior
+
+The generated Go SDK (`github.com/rundeck/go-rundeck/rundeck-v2`) uses strict enum types based on the OpenAPI spec:
+- Expects `installationType` to be one of: `LINUX`, `WINDOWS`, `KUBERNETES`, `DOCKER`
+- Receives: `linux` (lowercase)
+- **Error:** `linux is not a valid RunnerInstallationType`
 
 ---
 
-## Issue 1: System Runner Creation + Read Failure
+## Environment
 
-### Step 1: Create System Runner (✅ SUCCESS)
+- **Rundeck Version**: Enterprise 5.17.0 (with new feature flags **ENABLED**)
+- **API Version**: 56
+- **Endpoint Base**: `http://127.0.0.1:4440`
+- **Authentication**: Token-based (`X-Rundeck-Auth-Token` header)
+- **Go SDK**: `github.com/rundeck/go-rundeck/rundeck-v2` (needs update)
+
+---
+
+## Current Test Results (with new feature flags enabled)
+
+### System Runner Tests
+
+#### Step 1: Create System Runner (✅ SUCCESS)
 
 **Endpoint:**
 ```
@@ -28,51 +76,66 @@ Content-Type: application/json
 X-Rundeck-Auth-Token: ZqIzfkgqDl8FJgyVYXlxQW8VF9MUPAB1
 ```
 
-**Request Body:**
+**Request Body (corrected for new feature flags):**
 ```json
 {
   "name": "test-system-runner",
   "description": "Test system runner",
   "tagNames": "test,terraform",
-  "installationType": "LINUX",
-  "replicaType": "MANUAL"
+  "installationType": "linux",    // lowercase now required
+  "replicaType": "manual"         // lowercase now required
 }
 ```
 
 **Response:** `200 OK`
 ```json
 {
-  "runnerId": "8122aa3e-57f5-4aa7-9e62-b287a925ec0d",
+  "runnerId": "6c1cd1bc-091a-4d1e-ac90-c0be174c9140",
   "token": "...",
   "downloadTk": "..."
 }
 ```
 
-✅ **Runner Created Successfully** - ID: `8122aa3e-57f5-4aa7-9e62-b287a925ec0d`
+✅ **Runner Created Successfully**
 
 ---
 
-### Step 2: Read System Runner (❌ FAILS)
+#### Step 2: Read System Runner (❌ FAILS with Go SDK)
 
 **Endpoint:**
 ```
-GET /api/56/runnerManagement/runner/8122aa3e-57f5-4aa7-9e62-b287a925ec0d
+GET /api/56/runnerManagement/runner/6c1cd1bc-091a-4d1e-ac90-c0be174c9140
 ```
 
 **Request Headers:**
 ```
-X-Rundeck-Auth-Token: ZqIzfkgqDl8FJgyVYXlxQW8VF9MUPAB1
+X-Rundeck-Auth-Token: mOW1ybfOkGqgoko3A0ABFJyCe0WJDBce
 ```
 
-**Response:** `500 Server Error`
+**Raw API Response:** `200 OK` ✅
+```json
+{
+  "id": "6c1cd1bc-091a-4d1e-ac90-c0be174c9140",
+  "name": "test-system-runner",
+  "description": "Test system runner",
+  "tagNames": ["test", "terraform"],
+  "installationType": "linux",     // ❌ lowercase, SDK expects UPPERCASE
+  "replicaType": "manual"
+}
+```
 
-❌ **Error:** Cannot read back the runner that was just created
+**Go SDK Error:** ❌
+```
+Error reading system runner: linux is not a valid RunnerInstallationType
+```
+
+**Root Cause:** The Go SDK's `RunnerInfo` struct has a typed enum field that only accepts uppercase values (`LINUX`, `WINDOWS`, etc.), but the API now returns lowercase.
 
 ---
 
-## Issue 2: Project Runner Creation + Read Failure
+### Project Runner Tests
 
-### Step 1: Create Project (✅ SUCCESS)
+#### Step 1: Create Project (✅ SUCCESS)
 
 **Endpoint:**
 ```
@@ -96,7 +159,7 @@ POST /api/56/projects
 
 ---
 
-### Step 2: Create Project Runner (✅ SUCCESS)
+#### Step 2: Create Project Runner (✅ SUCCESS)
 
 **Endpoint:**
 ```
@@ -109,7 +172,7 @@ Content-Type: application/json
 X-Rundeck-Auth-Token: ZqIzfkgqDl8FJgyVYXlxQW8VF9MUPAB1
 ```
 
-**Request Body:**
+**Request Body (corrected for new feature flags):**
 ```json
 {
   "name": "test-project-runner",
@@ -118,8 +181,8 @@ X-Rundeck-Auth-Token: ZqIzfkgqDl8FJgyVYXlxQW8VF9MUPAB1
     "name": "test-project-runner",
     "description": "Test project runner",
     "tagNames": "test,terraform",
-    "installationType": "LINUX",
-    "replicaType": "MANUAL"
+    "installationType": "linux",    // lowercase now required
+    "replicaType": "manual"         // lowercase now required
   }
 }
 ```
@@ -127,54 +190,69 @@ X-Rundeck-Auth-Token: ZqIzfkgqDl8FJgyVYXlxQW8VF9MUPAB1
 **Response:** `200 OK`
 ```json
 {
-  "runnerId": "95324ab5-1186-41af-82ff-d52f1a9dfbb9",
+  "runnerId": "ff85f15b-f479-4362-93b1-040ace15e2d1",
   "token": "...",
   "downloadTk": "..."
 }
 ```
 
-✅ **Project Runner Created Successfully** - ID: `95324ab5-1186-41af-82ff-d52f1a9dfbb9`
+✅ **Project Runner Created Successfully**
 
 ---
 
-### Step 3: Read Project Runner (❌ FAILS)
+#### Step 3: Read Project Runner (❌ FAILS with Go SDK)
 
-**Attempt 1 - Project-specific endpoint:**
+**Endpoint (general RunnerInfo works, project-specific returns 404):**
 ```
-GET /api/56/project/terraform-acc-test-project-runner/runnerManagement/runner/95324ab5-1186-41af-82ff-d52f1a9dfbb9
+GET /api/56/runnerManagement/runner/ff85f15b-f479-4362-93b1-040ace15e2d1
 ```
 
-**Response:** `404 Not Found`
+**Raw API Response:** `200 OK` ✅
+```json
+{
+  "id": "ff85f15b-f479-4362-93b1-040ace15e2d1",
+  "name": "test-project-runner",
+  "description": "Test project runner",
+  "tagNames": ["test", "terraform"],
+  "installationType": "linux",     // ❌ lowercase, SDK expects UPPERCASE
+  "replicaType": "manual"
+}
+```
 
-❌ **Error:** Runner not found via project-specific endpoint
+**Go SDK Error:** ❌
+```
+failed to get runner info: linux is not a valid RunnerInstallationType
+```
+
+**Root Cause:** Same OpenAPI spec mismatch as system runners.
 
 ---
 
-**Attempt 2 - General RunnerInfo endpoint:**
+## Solution
+
+### Required Action: Update Go SDK
+
+The `github.com/rundeck/go-rundeck/rundeck-v2` SDK needs to be regenerated from an updated OpenAPI specification that reflects the new API behavior:
+
+**OpenAPI Spec Changes Needed:**
+```yaml
+RunnerInstallationType:
+  type: string
+  enum:
+    - linux        # Change from LINUX to linux
+    - windows      # Change from WINDOWS to windows
+    - kubernetes   # Change from KUBERNETES to kubernetes  
+    - docker       # Change from DOCKER to docker
 ```
-GET /api/56/runnerManagement/runner/95324ab5-1186-41af-82ff-d52f1a9dfbb9
-```
 
-**Response:** `500 Server Error`
+### Temporary Workaround
 
-❌ **Error:** Same 500 error as system runners
+Until the Go SDK is updated, the Terraform Provider could:
+1. Parse these fields as plain strings instead of using the typed SDK structs
+2. Make raw HTTP calls for Runner operations instead of using the SDK
+3. Wait for the updated SDK release
 
----
-
-## Additional Test Cases
-
-Multiple test runs with different configurations all show the same pattern:
-
-### Example Runner IDs Created Successfully:
-- `8122aa3e-57f5-4aa7-9e62-b287a925ec0d` (System Runner)
-- `95324ab5-1186-41af-82ff-d52f1a9dfbb9` (Project Runner)
-- `92b2a68a-6253-4157-b217-360c477f3913` (Project Runner with Node Dispatch)
-- `d14d13e6-774e-4447-a9e5-02a7404265a9` (Project Runner Update Test)
-
-**All return 500 Server Error when attempting to read back via:**
-```
-GET /api/56/runnerManagement/runner/{runnerId}
-```
+**Recommendation:** Wait for the updated Go SDK from the pending PR mentioned by the user.
 
 ---
 
@@ -274,14 +352,15 @@ runnerInfo, apiResp, err := client.RunnerAPI.RunnerInfo(apiCtx, runnerId).
 
 ---
 
-## Questions for Engineering Team
+## Test Results Summary
 
-1. **Is there a different endpoint we should use to read runner information?**
-2. **Are there any prerequisites or waiting periods after runner creation?**
-3. **Is the `RunnerInfo` endpoint supported in Enterprise API v56?**
-4. **Should project runners be read via `ProjectRunnerInfo` or general `RunnerInfo`?**
-5. **Are there any known issues with the Runner API in this version?**
-6. **What logs can we check on the Rundeck server to diagnose the 500 error?**
+| Test | Create | Read (API) | Read (SDK) | Status |
+|------|--------|------------|------------|--------|
+| System Runner | ✅ 200 OK | ✅ 200 OK | ❌ Enum error | Blocked on SDK |
+| Project Runner | ✅ 200 OK | ✅ 200 OK | ❌ Enum error | Blocked on SDK |
+| Project Runner + Node Dispatch | ✅ 200 OK | ✅ 200 OK | ❌ Enum error | Blocked on SDK |
+
+**Conclusion:** Runner API works correctly. The issue is the Go SDK enum validation, which will be resolved when the SDK is regenerated from the updated OpenAPI specification.
 
 ---
 
