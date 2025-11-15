@@ -29,11 +29,6 @@ The provider configuration block accepts the following arguments:
 
 > Note: Username and Password auth will not work with SSO configured systems.  It relies on local Rundeck accounts. Please be sensitive to keeping passwords in your plan files!
 
-
-The following configuration is also required on versions 4.x and 5.x.
-`rundeck.feature.legacyXml.enabled=true`  This can be set in framework.properties or System Configuration GUI (5.x and higher)
-
-
 Use the navigation to the left to read about the available resources.
 
 ## Example Usage
