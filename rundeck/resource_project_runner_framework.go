@@ -174,15 +174,15 @@ func (r *projectRunnerResource) Create(ctx context.Context, req resource.CreateR
 	if installationType == "" {
 		installationType = "linux"
 	}
-	// Convert to uppercase for API (enum values are LINUX, WINDOWS, DOCKER, KUBERNETES)
-	runnerRequest.SetInstallationType(strings.ToUpper(installationType))
+	// API expects lowercase with new feature flags
+	runnerRequest.SetInstallationType(installationType)
 
 	replicaType := plan.ReplicaType.ValueString()
 	if replicaType == "" {
 		replicaType = "manual"
 	}
-	// Convert to uppercase for API (enum values are MANUAL, EPHEMERAL)
-	runnerRequest.SetReplicaType(strings.ToUpper(replicaType))
+	// API expects lowercase with new feature flags
+	runnerRequest.SetReplicaType(replicaType)
 
 	// Create project runner request
 	projectRunnerRequest := openapi.NewCreateProjectRunnerRequest(name, description)
@@ -321,13 +321,13 @@ func (r *projectRunnerResource) Read(ctx context.Context, req resource.ReadReque
 		state.RunnerID = types.StringValue(*runnerInfo.Id)
 	}
 
-	// Convert installation_type and replica_type from uppercase enum to lowercase for Terraform state
+	// With new feature flags, API returns lowercase values directly
 	if runnerInfo.InstallationType != nil {
-		state.InstallationType = types.StringValue(strings.ToLower(string(*runnerInfo.InstallationType)))
+		state.InstallationType = types.StringValue(string(*runnerInfo.InstallationType))
 	}
 
 	if runnerInfo.ReplicaType != nil {
-		state.ReplicaType = types.StringValue(strings.ToLower(string(*runnerInfo.ReplicaType)))
+		state.ReplicaType = types.StringValue(string(*runnerInfo.ReplicaType))
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)

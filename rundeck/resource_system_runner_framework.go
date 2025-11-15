@@ -3,6 +3,7 @@ package rundeck
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -181,15 +182,15 @@ func (r *systemRunnerResource) Create(ctx context.Context, req resource.CreateRe
 	if installationType == "" {
 		installationType = "linux"
 	}
-	// Convert to uppercase for API (enum values are LINUX, WINDOWS, DOCKER, KUBERNETES)
-	runnerRequest.SetInstallationType(strings.ToUpper(installationType))
+	// API expects lowercase with new feature flags
+	runnerRequest.SetInstallationType(installationType)
 
 	replicaType := plan.ReplicaType.ValueString()
 	if replicaType == "" {
 		replicaType = "manual"
 	}
-	// Convert to uppercase for API (enum values are MANUAL, EPHEMERAL)
-	runnerRequest.SetReplicaType(strings.ToUpper(replicaType))
+	// API expects lowercase with new feature flags
+	runnerRequest.SetReplicaType(replicaType)
 
 	// Create the system runner
 	response, _, err := client.RunnerAPI.CreateRunner(apiCtx).CreateProjectRunnerRequest(*runnerRequest).Execute()
@@ -239,9 +240,15 @@ func (r *systemRunnerResource) Read(ctx context.Context, req resource.ReadReques
 	}
 
 	if err != nil {
+		// Debug: Print raw response body if available
+		var bodyStr string
+		if apiResp != nil && apiResp.Body != nil {
+			bodyBytes, _ := io.ReadAll(apiResp.Body)
+			bodyStr = string(bodyBytes)
+		}
 		resp.Diagnostics.AddError(
 			"Error reading system runner",
-			fmt.Sprintf("Could not read system runner %s: %s", runnerId, err.Error()),
+			fmt.Sprintf("Could not read system runner %s: %s\nRaw response: %s", runnerId, err.Error(), bodyStr),
 		)
 		return
 	}
@@ -270,14 +277,14 @@ func (r *systemRunnerResource) Read(ctx context.Context, req resource.ReadReques
 		state.RunnerID = types.StringValue(*runnerInfo.Id)
 	}
 
-	// Note: InstallationType and ReplicaType ARE returned by the RunnerInfo API as enums
-	// Convert from uppercase enum to lowercase for Terraform state
+	// InstallationType and ReplicaType are returned by the RunnerInfo API
+	// With new feature flags, API returns lowercase values directly
 	if runnerInfo.InstallationType != nil {
-		state.InstallationType = types.StringValue(strings.ToLower(string(*runnerInfo.InstallationType)))
+		state.InstallationType = types.StringValue(string(*runnerInfo.InstallationType))
 	}
 
 	if runnerInfo.ReplicaType != nil {
-		state.ReplicaType = types.StringValue(strings.ToLower(string(*runnerInfo.ReplicaType)))
+		state.ReplicaType = types.StringValue(string(*runnerInfo.ReplicaType))
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
