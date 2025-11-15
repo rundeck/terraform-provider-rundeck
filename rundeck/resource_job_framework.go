@@ -521,6 +521,10 @@ func (r *jobResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 	}
 
 	jobData := jobs[0]
+	
+	// Debug: Check what we're getting from API
+	debugJSON, _ := json.MarshalIndent(jobData, "", "  ")
+	resp.Diagnostics.AddWarning("DEBUG: Job from API", string(debugJSON))
 
 	// Convert JSON to Terraform state
 	if err := r.jobJSONToState(&jobData, &state); err != nil {
