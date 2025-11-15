@@ -222,6 +222,8 @@ func (r *jobResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 			},
 			"allow_concurrent_executions": schema.BoolAttribute{
 				Optional: true,
+				Computed: true,
+				Default:  booldefault.StaticBool(false),
 			},
 			"node_filter_editable": schema.BoolAttribute{
 				Optional: true,
@@ -241,6 +243,8 @@ func (r *jobResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 			},
 			"continue_on_error": schema.BoolAttribute{
 				Optional: true,
+				Computed: true,
+				Default:  booldefault.StaticBool(false),
 			},
 			"continue_next_node_on_error": schema.BoolAttribute{
 				Optional: true,
@@ -257,6 +261,8 @@ func (r *jobResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 			},
 			"success_on_empty_node_filter": schema.BoolAttribute{
 				Optional: true,
+				Computed: true,
+				Default:  booldefault.StaticBool(false),
 			},
 			"preserve_options_order": schema.BoolAttribute{
 				Optional: true,
@@ -276,6 +282,8 @@ func (r *jobResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 			},
 			"node_filter_exclude_precedence": schema.BoolAttribute{
 				Optional: true,
+				Computed: true,
+				Default:  booldefault.StaticBool(true),
 			},
 			"runner_selector_filter": schema.StringAttribute{
 				Optional: true,
@@ -474,7 +482,7 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 		return
 	}
 
-	// Set the job ID
+	// Set the job ID from import result
 	plan.ID = types.StringValue(importResult.Succeeded[0].ID)
 
 	// Set computed fields that may not have been set in the plan
@@ -486,6 +494,26 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 	}
 	if plan.RunnerSelectorFilterType.IsUnknown() {
 		plan.RunnerSelectorFilterType = types.StringNull()
+	}
+
+	// Read back from API to ensure state matches reality (eliminates drift)
+	// This is critical for avoiding plan drift on subsequent refreshes
+	apiJobData, err := GetJobJSON(r.client.V1, plan.ID.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error reading job after creation",
+			fmt.Sprintf("Job was created but could not be read back: %s", err.Error()),
+		)
+		return
+	}
+
+	// Update plan with values from API
+	if err = r.jobJSONAPIToState(apiJobData, &plan); err != nil {
+		resp.Diagnostics.AddError(
+			"Error reading job after creation",
+			fmt.Sprintf("Could not convert job JSON to state: %s", err.Error()),
+		)
+		return
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
@@ -502,10 +530,7 @@ func (r *jobResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 	client := r.client.V1
 
 	// Use GetJobJSON - direct JSON, no XML conversion!
-	jobID := state.ID.ValueString()
-	fmt.Printf("DEBUG Read: Reading job ID=%s\n", jobID)
-
-	jobData, err := GetJobJSON(client, jobID)
+	jobData, err := GetJobJSON(client, state.ID.ValueString())
 	if err != nil {
 		var notFound *NotFoundError
 		if errors.As(err, &notFound) {
@@ -514,12 +539,10 @@ func (r *jobResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 		}
 		resp.Diagnostics.AddError(
 			"Error reading job",
-			fmt.Sprintf("Could not read job %s: %s", jobID, err.Error()),
+			fmt.Sprintf("Could not read job %s: %s", state.ID.ValueString(), err.Error()),
 		)
 		return
 	}
-
-	fmt.Printf("DEBUG Read: Got job JSON ID=%s, Name=%s\n", jobData.ID, jobData.Name)
 
 	// Convert JSON API response directly to Terraform state (NO XML!)
 	if err := r.jobJSONAPIToState(jobData, &state); err != nil {
@@ -530,11 +553,7 @@ func (r *jobResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 		return
 	}
 
-	fmt.Printf("DEBUG Read: After jobJSONAPIToState, state.ID=%s\n", state.ID.ValueString())
-
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
-
-	fmt.Printf("DEBUG Read: After State.Set, diagnostics has errors=%v\n", resp.Diagnostics.HasError())
 }
 
 func (r *jobResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -945,16 +964,32 @@ func (r *jobResource) jobJSONAPIToState(job *JobJSON, state *jobResourceModel) e
 	// Direct mapping from JSON API to state
 	state.ID = types.StringValue(job.ID)
 	state.Name = types.StringValue(job.Name)
-	state.GroupName = types.StringValue(job.Group)
+
+	// Only set group_name if API returns a non-empty value
+	if job.Group != "" {
+		state.GroupName = types.StringValue(job.Group)
+	}
+
 	// Project name is preserved from current state as API doesn't always return it
 	if job.Project != "" {
 		state.ProjectName = types.StringValue(job.Project)
 	}
-	state.Description = types.StringValue(job.Description)
+
+	// Only set description if non-empty, otherwise preserve from state
+	if job.Description != "" {
+		state.Description = types.StringValue(job.Description)
+	}
 	state.ExecutionEnabled = types.BoolValue(job.ExecutionEnabled)
 	state.ScheduleEnabled = types.BoolValue(job.ScheduleEnabled)
-	state.DefaultTab = types.StringValue(job.DefaultTab)
-	state.LogLevel = types.StringValue(job.LogLevel)
+
+	// Only set optional string fields if non-empty
+	if job.DefaultTab != "" {
+		state.DefaultTab = types.StringValue(job.DefaultTab)
+	}
+	if job.LogLevel != "" {
+		state.LogLevel = types.StringValue(job.LogLevel)
+	}
+
 	state.AllowConcurrentExecutions = types.BoolValue(job.AllowConcurrentExec)
 	state.NodeFilterEditable = types.BoolValue(job.NodeFilterEditable)
 
@@ -1015,10 +1050,31 @@ func (r *jobResource) jobJSONAPIToState(job *JobJSON, state *jobResourceModel) e
 		}
 	}
 
-	// For complex nested structures (commands, options, notifications),
-	// we preserve what's in state since the API returns them in a complex format
-	// that would require extensive parsing. This is acceptable as long as
-	// Create/Update work correctly (which they do via JSON import)
+	// Parse commands from sequence
+	if job.Sequence != nil {
+		if cmds, ok := job.Sequence["commands"].([]interface{}); ok && len(cmds) > 0 {
+			// TODO: Implement full command parsing
+			// For now, preserve from state to avoid drift
+			// Will be implemented along with plugins
+		}
+	}
+
+	// Parse options
+	if len(job.Options) > 0 {
+		// TODO: Implement full options parsing
+		// For now, preserve from state to avoid drift
+	}
+
+	// Parse notifications
+	if job.Notification != nil && len(job.Notification) > 0 {
+		// TODO: Implement full notification parsing
+		// For now, preserve from state to avoid drift
+	}
+
+	// IMPORTANT: The nested structures (commands, options, notifications) are currently
+	// preserved from state rather than re-parsed from JSON. This is causing plan drift.
+	// These need to be fully implemented to eliminate drift.
+	// The pattern established here will also apply to plugins implementation.
 
 	return nil
 }
