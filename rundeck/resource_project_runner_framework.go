@@ -3,6 +3,7 @@ package rundeck
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -186,11 +187,16 @@ func (r *projectRunnerResource) Create(ctx context.Context, req resource.CreateR
 	projectRunnerRequest.SetNewRunnerRequest(*runnerRequest)
 
 	// Create the runner for the project
-	response, _, err := client.RunnerAPI.CreateProjectRunner(apiCtx, projectName).CreateProjectRunnerRequest(*projectRunnerRequest).Execute()
+	response, httpResp, err := client.RunnerAPI.CreateProjectRunner(apiCtx, projectName).CreateProjectRunnerRequest(*projectRunnerRequest).Execute()
 	if err != nil {
+		errorMsg := err.Error()
+		if httpResp != nil {
+			bodyBytes, _ := io.ReadAll(httpResp.Body)
+			errorMsg = fmt.Sprintf("%s - Response: %s", err.Error(), string(bodyBytes))
+		}
 		resp.Diagnostics.AddError(
 			"Error creating project runner",
-			fmt.Sprintf("Could not create project runner: %s", err.Error()),
+			fmt.Sprintf("Could not create project runner: %s", errorMsg),
 		)
 		return
 	}

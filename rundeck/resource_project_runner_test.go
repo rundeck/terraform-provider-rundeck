@@ -143,7 +143,7 @@ func testAccProjectRunnerCheckDestroy(runner *openapi.RunnerInfo) resource.TestC
 		}
 
 		// Try to get the project runner
-		runnerInfo, resp, err := client.RunnerAPI.ProjectRunnerInfo(ctx, runnerId, projectName).Execute()
+		runnerInfo, resp, err := client.RunnerAPI.ProjectRunnerInfo(ctx, projectName, runnerId).Execute()
 
 		// If we get a 404, the runner is properly destroyed
 		if resp != nil && resp.StatusCode == 404 {
@@ -189,8 +189,8 @@ func testAccProjectRunnerCheckExists(rn string, runner *openapi.RunnerInfo) reso
 		client := clients.V2
 		ctx := clients.ctx
 
-		gotRunner, resp, err := client.RunnerAPI.ProjectRunnerInfo(ctx, runnerId, projectName).Execute()
-		if resp.StatusCode != 200 {
+		gotRunner, resp, err := client.RunnerAPI.ProjectRunnerInfo(ctx, projectName, runnerId).Execute()
+		if err != nil || resp.StatusCode != 200 {
 			return fmt.Errorf("failed to get runner info: %v", err)
 		}
 
