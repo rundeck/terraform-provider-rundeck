@@ -33,15 +33,13 @@ import (
 )
 
 // =============================================================================
-// JOB API - JSON-ONLY
+// JOB API - JSON
 // =============================================================================
 //
-// This file contains JSON-only structs and functions for interacting with
-// the Rundeck Job API.
+// This file contains structs and functions for interacting with the Rundeck
+// Job API using JSON format.
 //
-// ALL XML code has been removed as part of the migration to the modern
-// Terraform Plugin Framework. The provider now uses JSON exclusively for
-// all API interactions with Rundeck v5.0.0+ (API v46+).
+// The provider uses JSON for all API interactions with Rundeck v5.0.0+ (API v46+).
 //
 // For job import/export operations, see resource_job_framework.go
 // =============================================================================
@@ -53,10 +51,10 @@ import (
 // - Framework resource (resource_job_framework.go): Read operations
 //
 // Key features:
-// - JSON-only (no XML tags)
+// - Pure JSON format (no legacy XML tags)
 // - Maps complex nested structures as map[string]interface{} or []map[string]interface{}
 // - Used with custom HTTP client that explicitly requests application/json
-// - Matches actual Rundeck API v46+ JSON response format
+// - Matches Rundeck API v46+ JSON response format
 type JobJSON struct {
 	ID                     string                   `json:"id"`
 	Name                   string                   `json:"name"`
@@ -85,10 +83,10 @@ type JobJSON struct {
 	LogLimitStatus         *string                  `json:"loglimitStatus,omitempty"`
 }
 
-// GetJobJSON returns the job details as JSON.
+// GetJobJSON returns the job details from the Rundeck API.
 //
 // This function uses a custom HTTP client to explicitly request JSON format
-// (application/json) to ensure the API returns JSON, not XML.
+// (application/json header) to ensure consistent API responses.
 //
 // Returns:
 // - *JobJSON: The job details

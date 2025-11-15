@@ -103,8 +103,8 @@ resource "rundeck_project" "main" {
   resource_model_source {
     type = "file"
     config = {
-        format = "resourcexml"
-        file = "/tmp/terraform-acc-tests.xml"
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
     }
   }
 

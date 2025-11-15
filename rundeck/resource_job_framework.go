@@ -529,7 +529,7 @@ func (r *jobResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 
 	client := r.client.V1
 
-	// Use GetJobJSON - direct JSON, no XML conversion!
+	// Use GetJobJSON to get job details
 	jobData, err := GetJobJSON(client, state.ID.ValueString())
 	if err != nil {
 		var notFound *NotFoundError
@@ -544,7 +544,7 @@ func (r *jobResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 		return
 	}
 
-	// Convert JSON API response directly to Terraform state (NO XML!)
+	// Convert JSON API response to Terraform state
 	if err := r.jobJSONAPIToState(jobData, &state); err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading job",
@@ -970,9 +970,9 @@ func (r *jobResource) jobJSONToState(job *jobJSON, state *jobResourceModel) erro
 	return nil
 }
 
-// jobJSONAPIToState converts API JSON response directly to Terraform state (NO XML!)
+// jobJSONAPIToState converts API JSON response to Terraform state
 func (r *jobResource) jobJSONAPIToState(job *JobJSON, state *jobResourceModel) error {
-	// Direct mapping from JSON API to state
+	// Map JSON fields directly to Terraform state
 	state.ID = types.StringValue(job.ID)
 	state.Name = types.StringValue(job.Name)
 

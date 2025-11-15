@@ -335,8 +335,8 @@ resource "rundeck_project" "test" {
   resource_model_source {
     type = "file"
     config = {
-        format = "resourcexml"
-        file = "/tmp/terraform-acc-tests.xml"
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
     }
   }
 }
@@ -381,8 +381,8 @@ resource "rundeck_project" "test" {
   resource_model_source {
     type = "file"
     config = {
-        format = "resourcexml"
-        file = "/tmp/terraform-acc-tests.xml"
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
     }
   }
 }
@@ -428,8 +428,8 @@ resource "rundeck_project" "test" {
   resource_model_source {
     type = "file"
     config = {
-        format = "resourcexml"
-        file = "/tmp/terraform-acc-tests.xml"
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
     }
   }
 }
@@ -446,8 +446,8 @@ resource "rundeck_job" "test" {
 
   command {
     description = "runs a script from a URL"
-    script_url = "https://raw.githubusercontent.com/fleschutz/PowerShell/refs/heads/main/scripts/check-xml-file.ps1"
-    script_file_args = "/tmp/terraform-acc-tests.xml"
+    script_url = "https://raw.githubusercontent.com/fleschutz/PowerShell/refs/heads/main/scripts/check-file.ps1"
+    script_file_args = "/tmp/terraform-acc-tests.yaml"
     file_extension = ".ps1"
     expand_token_in_script_file = true
     script_interpreter {
@@ -466,8 +466,8 @@ resource "rundeck_project" "test" {
   resource_model_source {
     type = "file"
     config = {
-        format = "resourcexml"
-        file = "/tmp/terraform-acc-tests.xml"
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
     }
   }
 }
@@ -497,8 +497,8 @@ resource "rundeck_project" "source_test" {
   resource_model_source {
     type = "file"
     config = {
-        format = "resourcexml"
-        file = "/tmp/terraform-acc-tests.xml"
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
     }
   }
 }
@@ -554,8 +554,8 @@ resource "rundeck_project" "source_test" {
   resource_model_source {
     type = "file"
     config = {
-        format = "resourcexml"
-        file = "/tmp/terraform-acc-tests.xml"
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
     }
   }
 }
@@ -566,8 +566,8 @@ resource "rundeck_project" "target_test" {
   resource_model_source {
     type = "file"
     config = {
-        format = "resourcexml"
-        file = "/tmp/terraform-acc-tests.xml"
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
     }
   }
 }
@@ -616,8 +616,8 @@ resource "rundeck_project" "test" {
   resource_model_source {
     type = "file"
     config = {
-        format = "resourcexml"
-        file = "/tmp/terraform-acc-tests.xml"
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
     }
   }
 }
@@ -658,8 +658,8 @@ resource "rundeck_project" "test" {
   resource_model_source {
     type = "file"
     config = {
-        format = "resourcexml"
-        file = "/tmp/terraform-acc-tests.xml"
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
     }
   }
 }
@@ -698,8 +698,8 @@ resource "rundeck_project" "test" {
   resource_model_source {
     type = "file"
     config = {
-        format = "resourcexml"
-        file = "/tmp/terraform-acc-tests.xml"
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
     }
   }
 }
@@ -744,8 +744,8 @@ resource "rundeck_project" "test" {
   resource_model_source {
     type = "file"
     config = {
-        format = "resourcexml"
-        file = "/tmp/terraform-acc-tests.xml"
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
     }
   }
 }
@@ -775,8 +775,8 @@ resource "rundeck_project" "test" {
   resource_model_source {
     type = "file"
     config = {
-        format = "resourcexml"
-        file = "/tmp/terraform-acc-tests.xml"
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
     }
   }
 }
@@ -806,8 +806,8 @@ resource "rundeck_project" "test" {
   resource_model_source {
     type = "file"
     config = {
-        format = "resourcexml"
-        file = "/tmp/terraform-acc-tests.xml"
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
     }
   }
 }
@@ -847,8 +847,8 @@ resource "rundeck_project" "test" {
 	resource_model_source {
 	  type = "file"
 	  config = {
-		  format = "resourcexml"
-		  file = "/tmp/terraform-acc-tests.xml"
+		  format = "resourceyaml"
+		  file = "/tmp/terraform-acc-tests.yaml"
 	  }
 	}
   }
@@ -899,8 +899,8 @@ resource "rundeck_project" "test" {
 	resource_model_source {
 	  type = "file"
 	  config = {
-		  format = "resourcexml"
-		  file = "/tmp/terraform-acc-tests.xml"
+		  format = "resourceyaml"
+		  file = "/tmp/terraform-acc-tests.yaml"
 	  }
 	}
   }
@@ -952,8 +952,8 @@ resource "rundeck_project" "test" {
 	resource_model_source {
 	  type = "file"
 	  config = {
-		  format = "resourcexml"
-		  file = "/tmp/terraform-acc-tests.xml"
+		  format = "resourceyaml"
+		  file = "/tmp/terraform-acc-tests.yaml"
 	  }
 	}
   }
@@ -1263,8 +1263,8 @@ resource "rundeck_project" "test" {
   resource_model_source {
     type = "file"
     config = {
-        format = "resourcexml"
-        file = "/tmp/terraform-acc-tests.xml"
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
     }
   }
 }
@@ -1296,8 +1296,8 @@ resource "rundeck_project" "test" {
   resource_model_source {
     type = "file"
     config = {
-        format = "resourcexml"
-        file = "/tmp/terraform-acc-tests.xml"
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
     }
   }
 }
@@ -1336,8 +1336,8 @@ resource "rundeck_project" "test" {
   resource_model_source {
     type = "file"
     config = {
-        format = "resourcexml"
-        file = "/tmp/terraform-acc-tests.xml"
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
     }
   }
 }
@@ -1367,8 +1367,8 @@ resource "rundeck_project" "test" {
   resource_model_source {
     type = "file"
     config = {
-        format = "resourcexml"
-        file = "/tmp/terraform-acc-tests.xml"
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
     }
   }
 }
