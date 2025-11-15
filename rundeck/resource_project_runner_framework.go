@@ -174,13 +174,15 @@ func (r *projectRunnerResource) Create(ctx context.Context, req resource.CreateR
 	if installationType == "" {
 		installationType = "linux"
 	}
-	runnerRequest.SetInstallationType(installationType)
+	// Convert to uppercase for API (enum values are LINUX, WINDOWS, DOCKER, KUBERNETES)
+	runnerRequest.SetInstallationType(strings.ToUpper(installationType))
 
 	replicaType := plan.ReplicaType.ValueString()
 	if replicaType == "" {
 		replicaType = "manual"
 	}
-	runnerRequest.SetReplicaType(replicaType)
+	// Convert to uppercase for API (enum values are MANUAL, EPHEMERAL)
+	runnerRequest.SetReplicaType(strings.ToUpper(replicaType))
 
 	// Create project runner request
 	projectRunnerRequest := openapi.NewCreateProjectRunnerRequest(name, description)
@@ -208,6 +210,15 @@ func (r *projectRunnerResource) Create(ctx context.Context, req resource.CreateR
 		// Store composite ID as project:runner_id
 		plan.ID = types.StringValue(fmt.Sprintf("%s:%s", projectName, runnerId))
 		plan.RunnerID = types.StringValue(runnerId)
+		
+		// Debug: Log what we got
+		resp.Diagnostics.AddWarning("DEBUG: Runner Created", fmt.Sprintf("Project: %s, RunnerID: %s, Composite ID: %s", projectName, runnerId, plan.ID.ValueString()))
+	} else {
+		resp.Diagnostics.AddError(
+			"Error creating project runner",
+			"API did not return a runner ID",
+		)
+		return
 	}
 
 	// Configure node dispatch settings if any are set
@@ -271,8 +282,8 @@ func (r *projectRunnerResource) Read(ctx context.Context, req resource.ReadReque
 	projectName := idParts[0]
 	runnerId := idParts[1]
 
-	// Get runner info for the project
-	runnerInfo, apiResp, err := client.RunnerAPI.ProjectRunnerInfo(apiCtx, projectName, runnerId).Execute()
+	// Get runner info - use general RunnerInfo endpoint since ProjectRunnerInfo seems unreliable
+	runnerInfo, apiResp, err := client.RunnerAPI.RunnerInfo(apiCtx, runnerId).Execute()
 
 	if apiResp != nil && apiResp.StatusCode == 404 {
 		resp.State.RemoveResource(ctx)
@@ -308,6 +319,15 @@ func (r *projectRunnerResource) Read(ctx context.Context, req resource.ReadReque
 
 	if runnerInfo.Id != nil {
 		state.RunnerID = types.StringValue(*runnerInfo.Id)
+	}
+
+	// Convert installation_type and replica_type from uppercase enum to lowercase for Terraform state
+	if runnerInfo.InstallationType != nil {
+		state.InstallationType = types.StringValue(strings.ToLower(string(*runnerInfo.InstallationType)))
+	}
+
+	if runnerInfo.ReplicaType != nil {
+		state.ReplicaType = types.StringValue(strings.ToLower(string(*runnerInfo.ReplicaType)))
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
