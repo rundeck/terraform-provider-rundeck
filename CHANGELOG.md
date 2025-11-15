@@ -22,10 +22,10 @@ This release modernizes the Terraform Provider to use the Terraform Plugin Frame
 - If you experience issues with existing plans, please open an issue on the repository
 
 **Testing:**
-- All acceptance tests passing (18 passed, 2 validation enhancements deferred to future version)
+- All acceptance tests passing (23 passed, 2 validation enhancements deferred to future version)
+- Job tests: 18 passed
+- Runner tests: 5 passed (system_runner, project_runner)
 - Enterprise features fully tested and working
-
-**Note:** Runner resources (system_runner, project_runner) remain on SDK pending OpenAPI spec updates.
 
 ---
 
