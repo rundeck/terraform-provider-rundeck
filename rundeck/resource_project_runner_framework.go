@@ -176,22 +176,25 @@ func (r *projectRunnerResource) Create(ctx context.Context, req resource.CreateR
 	runnerRequest := openapi.NewCreateRunnerRequest(name, description)
 
 	if !plan.TagNames.IsNull() && !plan.TagNames.IsUnknown() {
-		runnerRequest.SetTagNames(plan.TagNames.ValueString())
+		// Normalize tags before sending to API and update plan
+		normalizedTags := normalizeRunnerTags(plan.TagNames.ValueString())
+		plan.TagNames = types.StringValue(normalizedTags)
+		runnerRequest.SetTagNames(normalizedTags)
 	}
 
 	installationType := plan.InstallationType.ValueString()
 	if installationType == "" {
 		installationType = "linux"
 	}
-	// API expects lowercase with new feature flags
-	runnerRequest.SetInstallationType(installationType)
+	// Enum values are lowercase (linux, windows, docker, kubernetes) with new SDK
+	runnerRequest.SetInstallationType(strings.ToLower(installationType))
 
 	replicaType := plan.ReplicaType.ValueString()
 	if replicaType == "" {
 		replicaType = "manual"
 	}
-	// API expects lowercase with new feature flags
-	runnerRequest.SetReplicaType(replicaType)
+	// Enum values are lowercase (manual, ephemeral) with new SDK
+	runnerRequest.SetReplicaType(strings.ToLower(replicaType))
 
 	// Create project runner request
 	projectRunnerRequest := openapi.NewCreateProjectRunnerRequest(name, description)
@@ -264,6 +267,7 @@ func (r *projectRunnerResource) Create(ctx context.Context, req resource.CreateR
 		plan.DownloadToken = types.StringValue(*response.DownloadTk)
 	}
 
+	// Set state with normalized values
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -322,13 +326,20 @@ func (r *projectRunnerResource) Read(ctx context.Context, req resource.ReadReque
 	}
 
 	if runnerInfo.TagNames != nil {
-		tagNames := strings.Join(runnerInfo.TagNames, ",")
+		// Normalize tags to prevent plan drift from API case/order changes
+		tagNames := normalizeRunnerTags(strings.Join(runnerInfo.TagNames, ","))
 		state.TagNames = types.StringValue(tagNames)
 	}
 
 	if runnerInfo.Id != nil {
 		state.RunnerID = types.StringValue(*runnerInfo.Id)
+		// Reconstruct composite ID for project runner (project:runner_id)
+		state.ID = types.StringValue(fmt.Sprintf("%s:%s", projectName, *runnerInfo.Id))
 	}
+
+	// Token and DownloadToken are only returned on Create, not on Read
+	// Preserve the existing values from state to prevent drift
+	// (state.Token and state.DownloadToken are already set from req.State.Get())
 
 	// With new feature flags, API returns lowercase values directly
 	if runnerInfo.InstallationType != nil {
@@ -344,8 +355,14 @@ func (r *projectRunnerResource) Read(ctx context.Context, req resource.ReadReque
 
 func (r *projectRunnerResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan projectRunnerResourceModel
+	var state projectRunnerResourceModel
 
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -353,8 +370,14 @@ func (r *projectRunnerResource) Update(ctx context.Context, req resource.UpdateR
 	client := r.clients.V2
 	apiCtx := r.clients.ctx
 
+	// Preserve ID and computed fields from state
+	plan.ID = state.ID
+	plan.RunnerID = state.RunnerID
+	plan.Token = state.Token
+	plan.DownloadToken = state.DownloadToken
+
 	// Parse composite ID (project:runner_id)
-	idParts := strings.SplitN(plan.ID.ValueString(), ":", 2)
+	idParts := strings.SplitN(state.ID.ValueString(), ":", 2)
 	if len(idParts) != 2 {
 		resp.Diagnostics.AddError(
 			"Invalid ID format",
@@ -374,20 +397,25 @@ func (r *projectRunnerResource) Update(ctx context.Context, req resource.UpdateR
 	saveRequest.SetDescription(plan.Description.ValueString())
 
 	if !plan.TagNames.IsNull() && !plan.TagNames.IsUnknown() {
-		saveRequest.SetTagNames(plan.TagNames.ValueString())
+		// Normalize tags before sending to API and update plan
+		normalizedTags := normalizeRunnerTags(plan.TagNames.ValueString())
+		plan.TagNames = types.StringValue(normalizedTags)
+		saveRequest.SetTagNames(normalizedTags)
 	}
 
 	installationType := plan.InstallationType.ValueString()
 	if installationType == "" {
 		installationType = "linux"
 	}
-	saveRequest.SetInstallationType(installationType)
+	// Enum values are lowercase (linux, windows, docker, kubernetes) with new SDK
+	saveRequest.SetInstallationType(strings.ToLower(installationType))
 
 	replicaType := plan.ReplicaType.ValueString()
 	if replicaType == "" {
 		replicaType = "manual"
 	}
-	saveRequest.SetReplicaType(replicaType)
+	// Enum values are lowercase (manual, ephemeral) with new SDK
+	saveRequest.SetReplicaType(strings.ToLower(replicaType))
 
 	// Execute the save request
 	_, apiResp, err := client.RunnerAPI.SaveProjectRunner(apiCtx, projectName, runnerId).SaveProjectRunnerRequest(*saveRequest).Execute()
@@ -428,6 +456,7 @@ func (r *projectRunnerResource) Update(ctx context.Context, req resource.UpdateR
 		)
 	}
 
+	// Set state with normalized values
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 

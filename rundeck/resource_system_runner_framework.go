@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -25,6 +26,21 @@ var (
 
 func NewSystemRunnerResource() resource.Resource {
 	return &systemRunnerResource{}
+}
+
+// normalizeRunnerTags normalizes tag names by converting to lowercase and sorting alphabetically
+// to prevent plan drift from API case/order changes
+func normalizeRunnerTags(tagString string) string {
+	if tagString == "" {
+		return ""
+	}
+	tags := strings.Split(tagString, ",")
+	normalizedTags := make([]string, len(tags))
+	for i, tag := range tags {
+		normalizedTags[i] = strings.ToLower(strings.TrimSpace(tag))
+	}
+	sort.Strings(normalizedTags)
+	return strings.Join(normalizedTags, ",")
 }
 
 type systemRunnerResource struct {
@@ -158,7 +174,10 @@ func (r *systemRunnerResource) Create(ctx context.Context, req resource.CreateRe
 	runnerRequest := openapi.NewCreateProjectRunnerRequest(name, description)
 
 	if !plan.TagNames.IsNull() && !plan.TagNames.IsUnknown() {
-		runnerRequest.SetTagNames(plan.TagNames.ValueString())
+		// Normalize tags before sending to API and update plan
+		normalizedTags := normalizeRunnerTags(plan.TagNames.ValueString())
+		plan.TagNames = types.StringValue(normalizedTags)
+		runnerRequest.SetTagNames(normalizedTags)
 	}
 
 	if !plan.AssignedProjects.IsNull() && !plan.AssignedProjects.IsUnknown() {
@@ -191,15 +210,15 @@ func (r *systemRunnerResource) Create(ctx context.Context, req resource.CreateRe
 	if installationType == "" {
 		installationType = "linux"
 	}
-	// API expects lowercase with new feature flags
-	runnerRequest.SetInstallationType(installationType)
+	// Enum values are lowercase (linux, windows, docker, kubernetes) with new SDK
+	runnerRequest.SetInstallationType(strings.ToLower(installationType))
 
 	replicaType := plan.ReplicaType.ValueString()
 	if replicaType == "" {
 		replicaType = "manual"
 	}
-	// API expects lowercase with new feature flags
-	runnerRequest.SetReplicaType(replicaType)
+	// Enum values are lowercase (manual, ephemeral) with new SDK
+	runnerRequest.SetReplicaType(strings.ToLower(replicaType))
 
 	// Create the system runner
 	response, _, err := client.RunnerAPI.CreateRunner(apiCtx).CreateProjectRunnerRequest(*runnerRequest).Execute()
@@ -225,6 +244,7 @@ func (r *systemRunnerResource) Create(ctx context.Context, req resource.CreateRe
 		plan.DownloadToken = types.StringValue(*response.DownloadTk)
 	}
 
+	// Set state with normalized values
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -277,14 +297,20 @@ func (r *systemRunnerResource) Read(ctx context.Context, req resource.ReadReques
 	}
 
 	if runnerInfo.TagNames != nil {
-		// Convert slice to comma-separated string
-		tagNames := strings.Join(runnerInfo.TagNames, ",")
+		// Normalize tags to prevent plan drift from API case/order changes
+		tagNames := normalizeRunnerTags(strings.Join(runnerInfo.TagNames, ","))
 		state.TagNames = types.StringValue(tagNames)
 	}
 
 	if runnerInfo.Id != nil {
+		// Set both ID and RunnerID to the same value
+		state.ID = types.StringValue(*runnerInfo.Id)
 		state.RunnerID = types.StringValue(*runnerInfo.Id)
 	}
+
+	// Token and DownloadToken are only returned on Create, not on Read
+	// Preserve the existing values from state to prevent drift
+	// (state.Token and state.DownloadToken are already set from req.State.Get())
 
 	// InstallationType and ReplicaType are returned by the RunnerInfo API
 	// With new feature flags, API returns lowercase values directly
@@ -301,15 +327,27 @@ func (r *systemRunnerResource) Read(ctx context.Context, req resource.ReadReques
 
 func (r *systemRunnerResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan systemRunnerResourceModel
+	var state systemRunnerResourceModel
 
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	client := r.clients.V2
 	apiCtx := r.clients.ctx
-	runnerId := plan.ID.ValueString()
+	runnerId := state.ID.ValueString()
+
+	// Preserve ID and computed fields from state
+	plan.ID = state.ID
+	plan.RunnerID = state.RunnerID
+	plan.Token = state.Token
+	plan.DownloadToken = state.DownloadToken
 
 	// Create save runner request
 	saveRequest := openapi.NewSaveProjectRunnerRequest(runnerId)
@@ -319,22 +357,25 @@ func (r *systemRunnerResource) Update(ctx context.Context, req resource.UpdateRe
 	saveRequest.SetDescription(plan.Description.ValueString())
 
 	if !plan.TagNames.IsNull() && !plan.TagNames.IsUnknown() {
-		saveRequest.SetTagNames(plan.TagNames.ValueString())
+		// Normalize tags before sending to API and update plan
+		normalizedTags := normalizeRunnerTags(plan.TagNames.ValueString())
+		plan.TagNames = types.StringValue(normalizedTags)
+		saveRequest.SetTagNames(normalizedTags)
 	}
 
 	installationType := plan.InstallationType.ValueString()
 	if installationType == "" {
 		installationType = "linux"
 	}
-	// Convert to uppercase for API (enum values are LINUX, WINDOWS, DOCKER, KUBERNETES)
-	saveRequest.SetInstallationType(strings.ToUpper(installationType))
+	// Enum values are lowercase (linux, windows, docker, kubernetes) with new SDK
+	saveRequest.SetInstallationType(strings.ToLower(installationType))
 
 	replicaType := plan.ReplicaType.ValueString()
 	if replicaType == "" {
 		replicaType = "manual"
 	}
-	// Convert to uppercase for API (enum values are MANUAL, EPHEMERAL)
-	saveRequest.SetReplicaType(strings.ToUpper(replicaType))
+	// Enum values are lowercase (manual, ephemeral) with new SDK
+	saveRequest.SetReplicaType(strings.ToLower(replicaType))
 
 	if !plan.AssignedProjects.IsNull() && !plan.AssignedProjects.IsUnknown() {
 		projects := make(map[string]types.String)
@@ -365,6 +406,7 @@ func (r *systemRunnerResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
+	// Set state with normalized values
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 

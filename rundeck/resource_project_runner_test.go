@@ -30,7 +30,7 @@ func TestAccRundeckProjectRunner_basic(t *testing.T) {
 					resource.TestCheckResourceAttr("rundeck_project_runner.test", "project_name", "terraform-acc-test-project-runner"),
 					resource.TestCheckResourceAttr("rundeck_project_runner.test", "name", "test-project-runner"),
 					resource.TestCheckResourceAttr("rundeck_project_runner.test", "description", "Test project runner"),
-					resource.TestCheckResourceAttr("rundeck_project_runner.test", "tag_names", "test,terraform"),
+					resource.TestCheckResourceAttr("rundeck_project_runner.test", "tag_names", "terraform,test"),
 					resource.TestCheckResourceAttr("rundeck_project_runner.test", "installation_type", "linux"),
 					resource.TestCheckResourceAttr("rundeck_project_runner.test", "replica_type", "manual"),
 					resource.TestCheckResourceAttr("rundeck_project_runner.test", "runner_as_node_enabled", "false"),
@@ -95,7 +95,7 @@ func TestAccRundeckProjectRunner_update(t *testing.T) {
 					testAccProjectRunnerCheckExists("rundeck_project_runner.test", &runner),
 					resource.TestCheckResourceAttr("rundeck_project_runner.test", "name", "updated-project-runner"),
 					resource.TestCheckResourceAttr("rundeck_project_runner.test", "description", "Updated test project runner"),
-					resource.TestCheckResourceAttr("rundeck_project_runner.test", "tag_names", "updated,terraform"),
+					resource.TestCheckResourceAttr("rundeck_project_runner.test", "tag_names", "terraform,updated"),
 					resource.TestCheckResourceAttr("rundeck_project_runner.test", "installation_type", "docker"),
 					resource.TestCheckResourceAttr("rundeck_project_runner.test", "replica_type", "ephemeral"),
 					resource.TestCheckResourceAttr("rundeck_project_runner.test", "runner_as_node_enabled", "true"),
@@ -220,7 +220,7 @@ resource "rundeck_project_runner" "test" {
   project_name     = rundeck_project.test.name
   name             = "test-project-runner"
   description      = "Test project runner"
-  tag_names        = "test,terraform"
+  tag_names        = "terraform,test"
   installation_type = "linux"
   replica_type     = "manual"
 }
@@ -241,7 +241,7 @@ resource "rundeck_project_runner" "test" {
   project_name          = rundeck_project.test.name
   name                  = "test-project-runner"
   description           = "Test project runner with node dispatch"
-  tag_names             = "test,terraform"
+  tag_names             = "terraform,test"
   installation_type     = "linux"
   replica_type          = "manual"
   runner_as_node_enabled = true
@@ -265,7 +265,7 @@ resource "rundeck_project_runner" "test" {
   project_name          = rundeck_project.test.name
   name                  = "updated-project-runner"
   description           = "Updated test project runner"
-  tag_names             = "updated,terraform"
+  tag_names             = "terraform,updated"
   installation_type     = "docker"
   replica_type          = "ephemeral"
   runner_as_node_enabled = true

@@ -28,7 +28,7 @@ func TestAccRundeckSystemRunner_basic(t *testing.T) {
 					testAccSystemRunnerCheckExists("rundeck_system_runner.test", &runner),
 					resource.TestCheckResourceAttr("rundeck_system_runner.test", "name", "test-system-runner"),
 					resource.TestCheckResourceAttr("rundeck_system_runner.test", "description", "Test system runner"),
-					resource.TestCheckResourceAttr("rundeck_system_runner.test", "tag_names", "test,terraform"),
+					resource.TestCheckResourceAttr("rundeck_system_runner.test", "tag_names", "terraform,test"),
 					resource.TestCheckResourceAttr("rundeck_system_runner.test", "installation_type", "linux"),
 					resource.TestCheckResourceAttr("rundeck_system_runner.test", "replica_type", "manual"),
 					resource.TestCheckResourceAttrSet("rundeck_system_runner.test", "runner_id"),
@@ -66,7 +66,7 @@ func TestAccRundeckSystemRunner_update(t *testing.T) {
 					testAccSystemRunnerCheckExists("rundeck_system_runner.test", &runner),
 					resource.TestCheckResourceAttr("rundeck_system_runner.test", "name", "updated-system-runner"),
 					resource.TestCheckResourceAttr("rundeck_system_runner.test", "description", "Updated test system runner"),
-					resource.TestCheckResourceAttr("rundeck_system_runner.test", "tag_names", "updated,terraform"),
+					resource.TestCheckResourceAttr("rundeck_system_runner.test", "tag_names", "terraform,updated"),
 					resource.TestCheckResourceAttr("rundeck_system_runner.test", "installation_type", "docker"),
 					resource.TestCheckResourceAttr("rundeck_system_runner.test", "replica_type", "ephemeral"),
 				),
@@ -149,7 +149,7 @@ const testAccRundeckSystemRunnerConfig_basic = `
 resource "rundeck_system_runner" "test" {
   name             = "test-system-runner"
   description      = "Test system runner"
-  tag_names        = "test,terraform"
+  tag_names        = "terraform,test"
   installation_type = "linux"
   replica_type     = "manual"
 }
@@ -159,7 +159,7 @@ const testAccRundeckSystemRunnerConfig_updated = `
 resource "rundeck_system_runner" "test" {
   name             = "updated-system-runner"
   description      = "Updated test system runner"
-  tag_names        = "updated,terraform"
+  tag_names        = "terraform,updated"
   installation_type = "docker"
   replica_type     = "ephemeral"
   
