@@ -502,7 +502,10 @@ func (r *jobResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 	client := r.client.V1
 
 	// Use GetJobJSON - direct JSON, no XML conversion!
-	jobData, err := GetJobJSON(client, state.ID.ValueString())
+	jobID := state.ID.ValueString()
+	fmt.Printf("DEBUG Read: Reading job ID=%s\n", jobID)
+
+	jobData, err := GetJobJSON(client, jobID)
 	if err != nil {
 		var notFound *NotFoundError
 		if errors.As(err, &notFound) {
@@ -511,10 +514,12 @@ func (r *jobResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 		}
 		resp.Diagnostics.AddError(
 			"Error reading job",
-			fmt.Sprintf("Could not read job %s: %s", state.ID.ValueString(), err.Error()),
+			fmt.Sprintf("Could not read job %s: %s", jobID, err.Error()),
 		)
 		return
 	}
+
+	fmt.Printf("DEBUG Read: Got job JSON ID=%s, Name=%s\n", jobData.ID, jobData.Name)
 
 	// Convert JSON API response directly to Terraform state (NO XML!)
 	if err := r.jobJSONAPIToState(jobData, &state); err != nil {
@@ -525,7 +530,11 @@ func (r *jobResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 		return
 	}
 
+	fmt.Printf("DEBUG Read: After jobJSONAPIToState, state.ID=%s\n", state.ID.ValueString())
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+
+	fmt.Printf("DEBUG Read: After State.Set, diagnostics has errors=%v\n", resp.Diagnostics.HasError())
 }
 
 func (r *jobResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
