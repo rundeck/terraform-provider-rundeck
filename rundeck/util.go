@@ -24,6 +24,18 @@ import (
 // 	}
 // }
 
+// =============================================================================
+// LEGACY XML UTILITY FUNCTIONS - DEPRECATED
+// =============================================================================
+//
+// The functions below are used only by legacy XML structs in job.go
+// (JobPluginConfig, etc.) which are part of the deprecated SDKv2 resource.
+//
+// **DO NOT USE IN NEW CODE** - Framework resources use JSON-only.
+//
+// These are kept only for backward compatibility with the disabled SDK resource.
+// =============================================================================
+
 func marshalMapToXML(c *map[string]string, e *xml.Encoder, start xml.StartElement, entryName string, keyName string, valueName string) error {
 	if len(*c) == 0 {
 		return nil

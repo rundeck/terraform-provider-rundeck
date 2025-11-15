@@ -36,8 +36,46 @@ import (
 	"github.com/rundeck/go-rundeck/rundeck/auth"
 )
 
+// =============================================================================
+// IMPORTANT: XML vs JSON Structs
+// =============================================================================
+//
+// This file contains TWO sets of structs for Rundeck Jobs:
+//
+// 1. **MODERN (JSON-ONLY)**: Use these for NEW code:
+//    - JobJSON: For reading job details from API (see GetJobJSON function)
+//    - jobJSON (lowercase): For importing jobs via POST /jobs/import
+//    These are defined below and use ONLY json tags.
+//
+// 2. **LEGACY (XML)**: DEPRECATED - DO NOT USE in new code:
+//    - JobDetail, JobSummary, and all nested structs
+//    - These have xml: tags and were used by the old SDKv2 resource
+//    - The old SDK resource (resource_job.go) is now DISABLED
+//    - Kept only for:
+//      a) Backward compatibility if old SDK resource is re-enabled
+//      b) Test helpers (testAccJobCheckExists) not yet modernized
+//
+// **FOR CONTRIBUTORS**: If you're working on:
+//  - Framework resources (resource_*_framework.go): Use JobJSON structs
+//  - New features: Use JobJSON structs
+//  - Test fixes: Prefer Terraform state checks over JobDetail assertions
+//
+// **GOAL**: Eliminate all JobDetail usage from tests and mark as fully deprecated
+// =============================================================================
+
+// =============================================================================
+// LEGACY XML STRUCTS - DEPRECATED
+// =============================================================================
+//
+// The structs below use xml: tags and are LEGACY CODE.
+// **DO NOT USE IN NEW CODE** - Use JobJSON instead (defined later in this file)
+//
+
 // JobSummary is an abbreviated description of a job that includes only its basic
 // descriptive information and identifiers.
+//
+// DEPRECATED: This struct uses XML tags. For JSON-only code, query jobs via
+// GetJobJSON and use the JobJSON struct instead.
 type JobSummary struct {
 	XMLName     xml.Name `xml:"job"`
 	ID          string   `xml:"id,attr"`
@@ -55,6 +93,17 @@ type jobSummaryList struct {
 */
 
 // JobDetail is a comprehensive description of a job, including its entire definition.
+//
+// DEPRECATED: This struct uses XML tags and is LEGACY CODE.
+// - The Framework resource (resource_job_framework.go) does NOT use this
+// - Use JobJSON instead for reading job details via GetJobJSON
+// - Use jobJSON (lowercase) for importing jobs
+//
+// This struct is kept only for:
+// 1. Backward compatibility if old SDK resource is re-enabled
+// 2. Legacy test helpers (testAccJobCheckExists) - being phased out
+//
+// DO NOT USE IN NEW CODE!
 type JobDetail struct {
 	XMLName                   xml.Name            `xml:"job" json:"-"`
 	ID                        string              `xml:"uuid,omitempty" json:"uuid,omitempty"`
@@ -488,7 +537,25 @@ type JobDispatch struct {
 // 	return jobList.Jobs, nil
 // }
 
-// JobJSON represents the Rundeck Job JSON format returned by the API
+// =============================================================================
+// MODERN JSON STRUCTS - Use these for new code!
+// =============================================================================
+
+// JobJSON represents the Rundeck Job JSON format returned by the API.
+//
+// **USE THIS FOR NEW CODE** - This is the modern, JSON-only approach.
+//
+// This struct is used by:
+// - GetJobJSON(): Read job details from API (GET /job/{id})
+// - Framework resource (resource_job_framework.go): Read operations
+//
+// Key differences from legacy JobDetail:
+// - NO xml: tags (JSON-only!)
+// - Maps complex nested structures as map[string]interface{} or []map[string]interface{}
+// - Used with custom HTTP client that explicitly requests application/json
+// - Matches actual Rundeck API v46+ JSON response format
+//
+// For importing jobs (POST /jobs/import), see the jobJSON struct (lowercase) below.
 type JobJSON struct {
 	ID                     string                   `json:"id"`
 	Name                   string                   `json:"name"`

@@ -224,6 +224,16 @@ func testAccJobCheckDestroy(job *JobDetail) resource.TestCheckFunc {
 	}
 }
 
+// testAccJobCheckExists checks if a job exists and populates a JobDetail struct
+//
+// DEPRECATED: This function uses the legacy JobDetail struct (XML-tagged).
+// While it retrieves data via GetJobJSON (JSON-only), it populates the old
+// JobDetail struct for backward compatibility with existing test assertions.
+//
+// For new tests, prefer using resource.TestCheckResourceAttr() to check values
+// directly from Terraform state instead of inspecting JobDetail fields.
+//
+// TODO: Phase out this helper and migrate remaining tests to state-based assertions
 func testAccJobCheckExists(rn string, job *JobDetail) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[rn]
