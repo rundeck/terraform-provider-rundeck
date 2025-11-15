@@ -8,10 +8,32 @@ description: |-
 
 # Rundeck Provider
 
-The Rundeck provider allows Terraform to create and configure Projects, Jobs, ACLs and Keys in [Rundeck](http://www.rundeck.com/). Rundeck is a tool for Runbook Automation and execution of arbitrary management tasks, allowing operators to avoid logging in to individual machines directly.
+Manage your Rundeck runbook automation infrastructure as code. The Rundeck provider enables teams to version control, peer review, and consistently deploy Rundeck projects, jobs, access controls, and credentials across environments using Terraform.
 
-**Requirements:**
+## Key Benefits
+
+**Infrastructure as Code:** Define your entire Rundeck configuration in version-controlled Terraform files. Track changes, roll back mistakes, and maintain consistency across development, staging, and production.
+
+**Repeatable Deployments:** Eliminate manual configuration and human error. Deploy identical Rundeck environments programmatically, ensuring your runbook automation is consistent and reliable.
+
+**Team Collaboration:** Review Rundeck changes through pull requests before deployment. Your runbook automation becomes part of your standard infrastructure workflow.
+
+**Disaster Recovery:** Rebuild your complete Rundeck configuration from code in minutes, not hours. Your automation setup is documented, versioned, and instantly recoverable.
+
+## What You Can Manage
+
+- **Projects:** Create and configure Rundeck projects with resource models and settings
+- **Jobs:** Define job workflows, commands, schedules, and notifications
+- **ACL Policies:** Control access and permissions across your Rundeck instance
+- **Credentials:** Manage SSH keys and passwords in Rundeck's key storage
+- **Runners:** Configure Enterprise runners for distributed job execution (Enterprise only)
+
+## Requirements
+
 - Rundeck 5.0.0 or later (API v46+)
+- Rundeck Enterprise 5.17.0+ required for runner resources (API v56)
+
+## Configuration
 
 The provider configuration block accepts the following arguments:
 
@@ -28,7 +50,7 @@ The provider configuration block accepts the following arguments:
 **OR**
 
 * ``auth_username`` - Local Login User Name.  
-* ``auth_password`` - Local Login Passwrod.
+* ``auth_password`` - Local Login Password.
 
 > Note: Username and Password auth will not work with SSO configured systems.  It relies on local Rundeck accounts. Please be sensitive to keeping passwords in your plan files!
 
@@ -63,9 +85,9 @@ resource "rundeck_project" "terraform" {
   resource_model_source {
     type = "file"
     config = {
-      format = "resourcexml"
+      format = "resourceyaml"
       # This path is interpreted on the Rundeck server.
-      file = "/home/rundeck/resources.xml"
+      file = "/home/rundeck/resources.yaml"
       writable = "true"
       generateFileAutomatically = "true"
     }

@@ -8,11 +8,9 @@ description: |-
 
 # rundeck\_job
 
-The job resource allows Rundeck jobs to be managed by Terraform. In Rundeck a job is a particular
-named set of steps that can be executed against one or more of the nodes configured for its
-associated project.
+Define your runbook automation workflows as code. Jobs represent executable automation tasks with defined steps, scheduling, notifications, and node targeting. By managing jobs through Terraform, you can version control your runbooks, peer review changes, and deploy consistent automation across environments.
 
-Each job belongs to a project. A project can be created with the `rundeck_project` resource.
+**Key capabilities:** Multi-step workflows, parallel execution, retry logic, webhooks, log filtering, project schedules (Enterprise), and execution lifecycle plugins.
 
 ## Example Usage
 

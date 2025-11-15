@@ -8,7 +8,7 @@ description: |-
 
 # rundeck\_acl_policy
 
-The acl policy resource allows Rundeck projects to be managed by Terraform.
+Control access to your automation infrastructure. ACL policies define fine-grained permissions for users and groups across projects, jobs, nodes, and key storage. Managing policies as code ensures security is reviewed, versioned, and consistently applied.
 
 ## Example Usage
 
