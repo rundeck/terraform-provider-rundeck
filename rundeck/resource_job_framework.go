@@ -416,27 +416,45 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 	// Parse JSON import result
 	var importResult struct {
 		Succeeded []struct {
-			ID      string `json:"id"`
-			Name    string `json:"name"`
-			Project string `json:"project"`
+			Index     int    `json:"index"`
+			ID        string `json:"id"`
+			Name      string `json:"name"`
+			Project   string `json:"project"`
+			Href      string `json:"href"`
+			Permalink string `json:"permalink"`
 		} `json:"succeeded"`
 		Failed []struct {
-			Error string `json:"error"`
+			Index   int    `json:"index"`
+			Error   string `json:"error"`
+			Message string `json:"message"`
 		} `json:"failed"`
+		Skipped []interface{} `json:"skipped"`
 	}
 
 	if err := json.Unmarshal(responseBody, &importResult); err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating job",
-			fmt.Sprintf("Could not parse import response: %s\nResponse body: %s", err.Error(), string(responseBody)),
+			fmt.Sprintf("Could not parse import response: %s\nHTTP Status: %d\nResponse body: %s", err.Error(), httpResp.StatusCode, string(responseBody)),
+		)
+		return
+	}
+
+	if httpResp.StatusCode != 200 {
+		resp.Diagnostics.AddError(
+			"Error creating job",
+			fmt.Sprintf("API returned status %d\nResponse body: %s", httpResp.StatusCode, string(responseBody)),
 		)
 		return
 	}
 
 	if len(importResult.Failed) > 0 {
+		errorMsg := importResult.Failed[0].Error
+		if errorMsg == "" {
+			errorMsg = importResult.Failed[0].Message
+		}
 		resp.Diagnostics.AddError(
 			"Error creating job",
-			fmt.Sprintf("Job import failed: %s", importResult.Failed[0].Error),
+			fmt.Sprintf("Job import failed: %s\nFull response: %s", errorMsg, string(responseBody)),
 		)
 		return
 	}
@@ -444,7 +462,8 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 	if len(importResult.Succeeded) == 0 {
 		resp.Diagnostics.AddError(
 			"Error creating job",
-			"Job import succeeded but no job ID was returned",
+			fmt.Sprintf("Job import succeeded but no job ID was returned\nHTTP Status: %d\nResponse body: %s\nParsed result: succeeded=%d, failed=%d, skipped=%d", 
+				httpResp.StatusCode, string(responseBody), len(importResult.Succeeded), len(importResult.Failed), len(importResult.Skipped)),
 		)
 		return
 	}
@@ -619,27 +638,54 @@ func (r *jobResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	// Parse JSON import result
 	var importResult struct {
 		Succeeded []struct {
-			ID      string `json:"id"`
-			Name    string `json:"name"`
-			Project string `json:"project"`
+			Index     int    `json:"index"`
+			ID        string `json:"id"`
+			Name      string `json:"name"`
+			Project   string `json:"project"`
+			Href      string `json:"href"`
+			Permalink string `json:"permalink"`
 		} `json:"succeeded"`
 		Failed []struct {
-			Error string `json:"error"`
+			Index   int    `json:"index"`
+			Error   string `json:"error"`
+			Message string `json:"message"`
 		} `json:"failed"`
+		Skipped []interface{} `json:"skipped"`
 	}
 
 	if err := json.Unmarshal(responseBody, &importResult); err != nil {
 		resp.Diagnostics.AddError(
 			"Error updating job",
-			fmt.Sprintf("Could not parse import response: %s\nResponse body: %s", err.Error(), string(responseBody)),
+			fmt.Sprintf("Could not parse import response: %s\nHTTP Status: %d\nResponse body: %s", err.Error(), httpResp.StatusCode, string(responseBody)),
+		)
+		return
+	}
+
+	if httpResp.StatusCode != 200 {
+		resp.Diagnostics.AddError(
+			"Error updating job",
+			fmt.Sprintf("API returned status %d\nResponse body: %s", httpResp.StatusCode, string(responseBody)),
 		)
 		return
 	}
 
 	if len(importResult.Failed) > 0 {
+		errorMsg := importResult.Failed[0].Error
+		if errorMsg == "" {
+			errorMsg = importResult.Failed[0].Message
+		}
 		resp.Diagnostics.AddError(
 			"Error updating job",
-			fmt.Sprintf("Job import failed: %s", importResult.Failed[0].Error),
+			fmt.Sprintf("Job import failed: %s\nFull response: %s", errorMsg, string(responseBody)),
+		)
+		return
+	}
+
+	if len(importResult.Succeeded) == 0 {
+		resp.Diagnostics.AddError(
+			"Error updating job",
+			fmt.Sprintf("Job import succeeded but no job ID was returned\nHTTP Status: %d\nResponse body: %s\nParsed result: succeeded=%d, failed=%d, skipped=%d",
+				httpResp.StatusCode, string(responseBody), len(importResult.Succeeded), len(importResult.Failed), len(importResult.Skipped)),
 		)
 		return
 	}
