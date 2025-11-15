@@ -505,14 +505,22 @@ func (r *jobResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 		return
 	}
 
-	var jobData jobJSON
-	if err := json.Unmarshal(body, &jobData); err != nil {
+	// JobGet returns an array of jobs
+	var jobs []jobJSON
+	if err := json.Unmarshal(body, &jobs); err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading job",
-			fmt.Sprintf("Could not parse job JSON: %s", err.Error()),
+			fmt.Sprintf("Could not parse job JSON: %s\nResponse: %s", err.Error(), string(body)),
 		)
 		return
 	}
+
+	if len(jobs) == 0 {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	jobData := jobs[0]
 
 	// Convert JSON to Terraform state
 	if err := r.jobJSONToState(&jobData, &state); err != nil {
@@ -558,11 +566,11 @@ func (r *jobResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	}
 
 	// Import/update the job using custom HTTP request to ensure JSON response
-	apiURL := fmt.Sprintf("%s/api/%s/project/%s/jobs/import", 
+	apiURL := fmt.Sprintf("%s/api/%s/project/%s/jobs/import",
 		r.client.BaseURL,
 		r.client.APIVersion,
 		plan.ProjectName.ValueString())
-	
+
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewReader(jobJSON))
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -575,7 +583,7 @@ func (r *jobResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Accept", "application/json")
 	httpReq.Header.Set("X-Rundeck-Auth-Token", r.client.Token)
-	
+
 	// Add query parameters
 	q := httpReq.URL.Query()
 	q.Add("fileformat", "json")
