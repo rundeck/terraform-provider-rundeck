@@ -10,13 +10,16 @@ description: |-
 
 The Rundeck provider allows Terraform to create and configure Projects, Jobs, ACLs and Keys in [Rundeck](http://www.rundeck.com/). Rundeck is a tool for Runbook Automation and execution of arbitrary management tasks, allowing operators to avoid logging in to individual machines directly.
 
+**Requirements:**
+- Rundeck 5.0.0 or later (API v46+)
+
 The provider configuration block accepts the following arguments:
 
 * ``url`` - (Required) The root URL of a Rundeck server. May alternatively be set via the
   ``RUNDECK_URL`` environment variable.
 
-* ``api_version`` - (Optional) The API version of the server. Defaults to `14`, the
-  minium supported version. May alternatively be set via the ``RUNDECK_API_VERSION``
+* ``api_version`` - (Optional) The API version of the server. Defaults to `46`, the
+  minimum supported version. May alternatively be set via the ``RUNDECK_API_VERSION``
   environment variable.
 
 * ``auth_token`` - The API auth token to use when making requests. May alternatively
@@ -42,14 +45,14 @@ terraform {
   required_providers {
     rundeck = {
       source  = "rundeck/rundeck"
-      version = "0.4.9"
+      version = "~> 1.0"
     }
   }
 }
 
 provider "rundeck" {
   url         = "http://rundeck.example.com:4440/"
-  api_version = "38"
+  api_version = "46"
   auth_token  = "abcd1234"
 }
 

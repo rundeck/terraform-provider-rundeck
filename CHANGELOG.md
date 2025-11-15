@@ -1,3 +1,34 @@
+## 1.0.0
+
+**Major Release - Provider Modernization**
+
+This release modernizes the Terraform Provider to use the Terraform Plugin Framework and establishes JSON-only API interactions with Rundeck.
+
+**Breaking Changes:**
+- **Minimum Rundeck version:** 5.0.0 (API v46+)
+- **Minimum Go version:** 1.24+
+- XML API interactions fully removed - all operations use JSON
+
+**Enhancements:**
+- Migrated Job resource from Plugin SDK to modern Plugin Framework
+- Implemented native HCL nested blocks for all job configurations
+- Added full support for execution lifecycle plugins
+- Implemented project schedule functionality with validation
+- Eliminated all plan drift issues for Job resource
+- All API calls now use JSON format exclusively
+
+**Compatibility:**
+- Existing Terraform plan files from previous versions should work without modification
+- If you experience issues with existing plans, please open an issue on the repository
+
+**Testing:**
+- All acceptance tests passing (18 passed, 2 validation enhancements deferred to future version)
+- Enterprise features fully tested and working
+
+**Note:** Runner resources (system_runner, project_runner) remain on SDK pending OpenAPI spec updates.
+
+---
+
 ## 0.5.4
 - Support for Enterprise Runners (system_runner and project_runner resources)
 - Introduces rundeck-v2 Go Client Library for runner management
