@@ -57,7 +57,7 @@ func (p *frameworkProvider) Schema(ctx context.Context, req provider.SchemaReque
 				Optional:    true,
 			},
 			"api_version": schema.StringAttribute{
-				Description: "API Version of the target Rundeck server.",
+				Description: "API Version of the target Rundeck server (minimum: 46 for Rundeck 5.0.0+).",
 				Optional:    true,
 			},
 			"auth_token": schema.StringAttribute{
