@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
@@ -750,24 +751,13 @@ func (r *jobResource) ImportState(ctx context.Context, req resource.ImportStateR
 		id = parts[1]
 	}
 
-	// Create a minimal state with just the ID
-	var state jobResourceModel
-	state.ID = types.StringValue(id)
+	// Set the ID - the Framework will automatically call Read() to populate the rest
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 
-	// Set the initial state
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
-	if resp.Diagnostics.HasError() {
-		return
+	// Override the ID if we parsed it from project/job-id format
+	if id != req.ID {
+		resp.State.SetAttribute(ctx, path.Root("id"), id)
 	}
-
-	// Call Read to populate all fields from the API
-	readReq := resource.ReadRequest{State: resp.State}
-	readResp := resource.ReadResponse{State: resp.State}
-	r.Read(ctx, readReq, &readResp)
-
-	// Copy diagnostics and state from Read
-	resp.Diagnostics.Append(readResp.Diagnostics...)
-	resp.State = readResp.State
 }
 
 // planToJobJSON converts Terraform plan to Rundeck job JSON format
