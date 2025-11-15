@@ -48,7 +48,7 @@ func Provider() *schema.Provider {
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
-			"rundeck_job": resourceRundeckJob(),
+			// "rundeck_job": resourceRundeckJob(), // Migrated to Framework with JSON support
 			// "rundeck_project":        resourceRundeckProject(), // Migrated to Framework
 			// "rundeck_private_key":    resourceRundeckPrivateKey(), // Migrated to Framework
 			// "rundeck_password":       resourceRundeckPassword(), // Migrated to Framework
