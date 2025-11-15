@@ -8,9 +8,9 @@ description: |-
 
 # rundeck\_project
 
-The project resource allows Rundeck projects to be managed by Terraform. In Rundeck a project
-is the container object for a set of jobs and the configuration for which servers those jobs
-can be run on.
+Organize your automation environment. Projects are containers for jobs, node resources, and execution settings. Managing projects as code ensures consistent configuration, simplifies multi-environment deployments, and provides a clear audit trail of infrastructure changes.
+
+**Use projects to:** Group related automation tasks, define node inventories, configure SSH settings, and control job execution permissions.
 
 ## Example Usage
 
@@ -22,9 +22,9 @@ resource "rundeck_project" "terraform" {
   resource_model_source {
     type = "file"
     config = {
-      format = "resourcexml"
+      format = "resourceyaml"
       # This path is interpreted on the Rundeck server.
-      file = "/home/rundeck/resources.xml"
+      file = "/home/rundeck/resources.yaml"
       writable = "true"
       generateFileAutomatically = "true"
     }
@@ -35,7 +35,7 @@ resource "rundeck_project" "terraform" {
 }
 ```
 
-Note that the above configuration assumes the existence of a ``resources.xml`` file in the
+Note that the above configuration assumes the existence of a ``resources.yaml`` file in the
 filesystem on the Rundeck server. The Rundeck provider does not itself support creating such a file,
 but one way to place it would be to use the ``file`` provisioner to copy a configuration file
 from the module directory.

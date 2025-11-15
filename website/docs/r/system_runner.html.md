@@ -10,9 +10,17 @@ description: |-
 
 The system runner resource allows system level Enterprise Runners (Runbook Automation commercial feature) to be managed by Terraform. System runners are created at the system level and can be assigned to multiple projects.
 
+**Requirements:** Requires Rundeck Enterprise 5.17.0+ (API v56). Configure the provider with `api_version = "56"` or higher.
+
 ## Example Usage
 
 ```hcl
+provider "rundeck" {
+  url         = "http://localhost:4440"
+  auth_token  = "your-token"
+  api_version = "56"  # Required for runner resources
+}
+
 # Create a system runner
 resource "rundeck_system_runner" "example" {
   name        = "example-system-runner"

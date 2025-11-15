@@ -8,9 +8,7 @@ description: |-
 
 # rundeck\_private\_key
 
-The private key resource allows SSH private keys to be stored into Rundeck's key store.
-The key store is where Rundeck keeps credentials that are needed to access the nodes on which
-it runs commands.
+Securely manage SSH credentials for node access. Private keys stored in Rundeck's key store enable secure, automated authentication to target nodes without embedding credentials in job definitions. Managing keys as code ensures credential lifecycle is tracked and auditable.
 
 ## Example Usage
 

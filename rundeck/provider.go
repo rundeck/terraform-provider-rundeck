@@ -5,15 +5,14 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/rundeck/go-rundeck/rundeck"
 	openapi "github.com/rundeck/go-rundeck/rundeck-v2"
 	"github.com/rundeck/go-rundeck/rundeck/auth"
 )
 
-func Provider() terraform.ResourceProvider {
+func Provider() *schema.Provider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
 			"url": {
@@ -25,8 +24,8 @@ func Provider() terraform.ResourceProvider {
 			"api_version": {
 				Type:        schema.TypeString,
 				Required:    true,
-				DefaultFunc: schema.EnvDefaultFunc("RUNDECK_API_VERSION", "14"),
-				Description: "API Version of the target Rundeck server.",
+				DefaultFunc: schema.EnvDefaultFunc("RUNDECK_API_VERSION", "46"),
+				Description: "API Version of the target Rundeck server (minimum: 46 for Rundeck 5.0.0+).",
 			},
 			"auth_token": {
 				Type:        schema.TypeString,
@@ -49,14 +48,14 @@ func Provider() terraform.ResourceProvider {
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
-			"rundeck_project":        resourceRundeckProject(),
-			"rundeck_job":            resourceRundeckJob(),
-			"rundeck_private_key":    resourceRundeckPrivateKey(),
-			"rundeck_password":       resourceRundeckPassword(),
-			"rundeck_public_key":     resourceRundeckPublicKey(),
-			"rundeck_acl_policy":     resourceRundeckAclPolicy(),
-			"rundeck_system_runner":  resourceRundeckSystemRunner(),
-			"rundeck_project_runner": resourceRundeckProjectRunner(),
+			// "rundeck_job": resourceRundeckJob(), // Migrated to Framework with JSON support
+			// "rundeck_project":        resourceRundeckProject(), // Migrated to Framework
+			// "rundeck_private_key":    resourceRundeckPrivateKey(), // Migrated to Framework
+			// "rundeck_password":       resourceRundeckPassword(), // Migrated to Framework
+			// "rundeck_public_key":     resourceRundeckPublicKey(), // Migrated to Framework
+			// "rundeck_acl_policy":     resourceRundeckAclPolicy(), // Migrated to Framework
+			// "rundeck_system_runner":  resourceRundeckSystemRunner(), // Migrated to Framework
+			// "rundeck_project_runner": resourceRundeckProjectRunner(), // Migrated to Framework
 		},
 
 		ConfigureFunc: providerConfigure,
@@ -121,8 +120,10 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 
 // RundeckClients wraps both v1 and v2 clients
 type RundeckClients struct {
-	V1    *rundeck.BaseClient
-	V2    *openapi.APIClient
-	Token string
-	ctx   context.Context
+	V1         *rundeck.BaseClient
+	V2         *openapi.APIClient
+	Token      string
+	BaseURL    string // Base Rundeck URL without /api/version
+	APIVersion string
+	ctx        context.Context
 }

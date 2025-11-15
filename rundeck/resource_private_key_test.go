@@ -7,17 +7,17 @@ import (
 
 	"github.com/rundeck/go-rundeck/rundeck"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 func TestAccPrivateKey_basic(t *testing.T) {
 	var key rundeck.StorageKeyListResponse
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccBaseKeyCheckDestroy(&key),
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		CheckDestroy:             testAccBaseKeyCheckDestroy(&key),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccPrivateKeyConfig_basic,

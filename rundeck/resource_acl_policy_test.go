@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 func TestAccAclPolicy_basic(t *testing.T) {
@@ -15,9 +15,9 @@ func TestAccAclPolicy_basic(t *testing.T) {
 	basicAclResourceConfig := fmt.Sprintf(testAccAclPolicyConfig_basic, basicAclPolicy)
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccAclPolicyCheckDestroy("TerraformBasicAcl.aclpolicy"),
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		CheckDestroy:             testAccAclPolicyCheckDestroy("TerraformBasicAcl.aclpolicy"),
 		Steps: []resource.TestStep{
 			{
 				Config: basicAclResourceConfig,
@@ -37,7 +37,12 @@ func TestAccAclPolicy_basic(t *testing.T) {
 
 func testAccAclPolicyCheckDestroy(policyName string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		clients := testAccProvider.Meta().(*RundeckClients)
+		// Create client from environment variables for test verification
+		clients, err := getTestClients()
+		if err != nil {
+			return fmt.Errorf("failed to create test client: %s", err)
+		}
+
 		client := clients.V1
 		ctx := context.Background()
 		resp, err := client.SystemACLPolicyGet(ctx, policyName)
@@ -60,7 +65,12 @@ func testAccAclPolicyCheckExists(rn string, aclPolicy *string) resource.TestChec
 			return fmt.Errorf("job id not set")
 		}
 
-		clients := testAccProvider.Meta().(*RundeckClients)
+		// Create client from environment variables for test verification
+		clients, err := getTestClients()
+		if err != nil {
+			return fmt.Errorf("failed to create test client: %s", err)
+		}
+
 		client := clients.V1
 		ctx := context.Background()
 		resp, err := client.SystemACLPolicyGet(ctx, rs.Primary.ID)
