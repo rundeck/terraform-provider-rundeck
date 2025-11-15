@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -24,83 +26,83 @@ type jobResource struct {
 
 // jobResourceModel represents the Terraform resource model
 type jobResourceModel struct {
-	ID                            types.String `tfsdk:"id"`
-	Name                          types.String `tfsdk:"name"`
-	GroupName                     types.String `tfsdk:"group_name"`
-	ProjectName                   types.String `tfsdk:"project_name"`
-	Description                   types.String `tfsdk:"description"`
-	ExecutionEnabled              types.Bool   `tfsdk:"execution_enabled"`
-	DefaultTab                    types.String `tfsdk:"default_tab"`
-	LogLevel                      types.String `tfsdk:"log_level"`
-	AllowConcurrentExecutions     types.Bool   `tfsdk:"allow_concurrent_executions"`
-	NodeFilterEditable            types.Bool   `tfsdk:"node_filter_editable"`
-	Retry                         types.String `tfsdk:"retry"`
-	RetryDelay                    types.String `tfsdk:"retry_delay"`
-	MaxThreadCount                types.Int64  `tfsdk:"max_thread_count"`
-	ContinueOnError               types.Bool   `tfsdk:"continue_on_error"`
-	ContinueNextNodeOnError       types.Bool   `tfsdk:"continue_next_node_on_error"`
-	RankOrder                     types.String `tfsdk:"rank_order"`
-	RankAttribute                 types.String `tfsdk:"rank_attribute"`
-	SuccessOnEmptyNodeFilter      types.Bool   `tfsdk:"success_on_empty_node_filter"`
-	PreserveOptionsOrder          types.Bool   `tfsdk:"preserve_options_order"`
-	CommandOrderingStrategy       types.String `tfsdk:"command_ordering_strategy"`
-	NodeFilterQuery               types.String `tfsdk:"node_filter_query"`
-	NodeFilterExcludeQuery        types.String `tfsdk:"node_filter_exclude_query"`
-	NodeFilterExcludePrecedence   types.Bool   `tfsdk:"node_filter_exclude_precedence"`
-	RunnerSelectorFilter          types.String `tfsdk:"runner_selector_filter"`
-	RunnerSelectorFilterMode      types.String `tfsdk:"runner_selector_filter_mode"`
-	RunnerSelectorFilterType      types.String `tfsdk:"runner_selector_filter_type"`
-	Timeout                       types.String `tfsdk:"timeout"`
-	Schedule                      types.String `tfsdk:"schedule"`
-	ScheduleEnabled               types.Bool   `tfsdk:"schedule_enabled"`
-	NodesSelectedByDefault        types.Bool   `tfsdk:"nodes_selected_by_default"`
-	TimeZone                      types.String `tfsdk:"time_zone"`
-	
+	ID                          types.String `tfsdk:"id"`
+	Name                        types.String `tfsdk:"name"`
+	GroupName                   types.String `tfsdk:"group_name"`
+	ProjectName                 types.String `tfsdk:"project_name"`
+	Description                 types.String `tfsdk:"description"`
+	ExecutionEnabled            types.Bool   `tfsdk:"execution_enabled"`
+	DefaultTab                  types.String `tfsdk:"default_tab"`
+	LogLevel                    types.String `tfsdk:"log_level"`
+	AllowConcurrentExecutions   types.Bool   `tfsdk:"allow_concurrent_executions"`
+	NodeFilterEditable          types.Bool   `tfsdk:"node_filter_editable"`
+	Retry                       types.String `tfsdk:"retry"`
+	RetryDelay                  types.String `tfsdk:"retry_delay"`
+	MaxThreadCount              types.Int64  `tfsdk:"max_thread_count"`
+	ContinueOnError             types.Bool   `tfsdk:"continue_on_error"`
+	ContinueNextNodeOnError     types.Bool   `tfsdk:"continue_next_node_on_error"`
+	RankOrder                   types.String `tfsdk:"rank_order"`
+	RankAttribute               types.String `tfsdk:"rank_attribute"`
+	SuccessOnEmptyNodeFilter    types.Bool   `tfsdk:"success_on_empty_node_filter"`
+	PreserveOptionsOrder        types.Bool   `tfsdk:"preserve_options_order"`
+	CommandOrderingStrategy     types.String `tfsdk:"command_ordering_strategy"`
+	NodeFilterQuery             types.String `tfsdk:"node_filter_query"`
+	NodeFilterExcludeQuery      types.String `tfsdk:"node_filter_exclude_query"`
+	NodeFilterExcludePrecedence types.Bool   `tfsdk:"node_filter_exclude_precedence"`
+	RunnerSelectorFilter        types.String `tfsdk:"runner_selector_filter"`
+	RunnerSelectorFilterMode    types.String `tfsdk:"runner_selector_filter_mode"`
+	RunnerSelectorFilterType    types.String `tfsdk:"runner_selector_filter_type"`
+	Timeout                     types.String `tfsdk:"timeout"`
+	Schedule                    types.String `tfsdk:"schedule"`
+	ScheduleEnabled             types.Bool   `tfsdk:"schedule_enabled"`
+	NodesSelectedByDefault      types.Bool   `tfsdk:"nodes_selected_by_default"`
+	TimeZone                    types.String `tfsdk:"time_zone"`
+
 	// Complex nested structures as lists
-	Command                    types.List `tfsdk:"command"`
-	Option                     types.List `tfsdk:"option"`
-	Notification               types.List `tfsdk:"notification"`
-	LogLimit                   types.List `tfsdk:"log_limit"`
-	Orchestrator               types.List `tfsdk:"orchestrator"`
-	GlobalLogFilter            types.List `tfsdk:"global_log_filter"`
-	ProjectSchedule            types.List `tfsdk:"project_schedule"`
-	ExecutionLifecyclePlugin   types.List `tfsdk:"execution_lifecycle_plugin"`
+	Command                  types.List `tfsdk:"command"`
+	Option                   types.List `tfsdk:"option"`
+	Notification             types.List `tfsdk:"notification"`
+	LogLimit                 types.List `tfsdk:"log_limit"`
+	Orchestrator             types.List `tfsdk:"orchestrator"`
+	GlobalLogFilter          types.List `tfsdk:"global_log_filter"`
+	ProjectSchedule          types.List `tfsdk:"project_schedule"`
+	ExecutionLifecyclePlugin types.List `tfsdk:"execution_lifecycle_plugin"`
 }
 
 // jobJSON represents the Rundeck Job JSON format (v44+)
 type jobJSON struct {
-	ID                        string                   `json:"id,omitempty"`
-	Name                      string                   `json:"name"`
-	Group                     string                   `json:"group,omitempty"`
-	Project                   string                   `json:"project"`
-	Description               string                   `json:"description"`
-	ExecutionEnabled          bool                     `json:"executionEnabled"`
-	DefaultTab                string                   `json:"defaultTab,omitempty"`
-	LogLevel                  string                   `json:"loglevel,omitempty"`
-	Loglimit                  *string                  `json:"loglimit,omitempty"`
-	LogLimitAction            *string                  `json:"loglimitAction,omitempty"`
-	LogLimitStatus            *string                  `json:"loglimitStatus,omitempty"`
-	MultipleExecutions        bool                     `json:"multipleExecutions,omitempty"`
-	Dispatch                  *jobDispatch             `json:"dispatch,omitempty"`
-	Sequence                  *jobSequence             `json:"sequence,omitempty"`
-	Notification              interface{}              `json:"notification,omitempty"`
-	Timeout                   string                   `json:"timeout,omitempty"`
-	Retry                     *jobRetry                `json:"retry,omitempty"`
-	NodeFilterEditable        bool                     `json:"nodeFilterEditable"`
-	NodeFilters               *jobNodeFilters          `json:"nodeFilters,omitempty"`
-	Options                   map[string]interface{}   `json:"options,omitempty"`
-	Plugins                   interface{}              `json:"plugins,omitempty"`
-	NodesSelectedByDefault    bool                     `json:"nodesSelectedByDefault"`
-	Schedule                  *jobSchedule             `json:"schedule,omitempty"`
-	ScheduleEnabled           bool                     `json:"scheduleEnabled"`
-	TimeZone                  string                   `json:"timeZone,omitempty"`
-	Orchestrator              interface{}              `json:"orchestrator,omitempty"`
-	PluginConfig              interface{}              `json:"pluginConfig,omitempty"`
-	RunnerSelector            *jobRunnerSelector       `json:"runnerSelector,omitempty"`
+	ID                     string                 `json:"id,omitempty"`
+	Name                   string                 `json:"name"`
+	Group                  string                 `json:"group,omitempty"`
+	Project                string                 `json:"project"`
+	Description            string                 `json:"description"`
+	ExecutionEnabled       bool                   `json:"executionEnabled"`
+	DefaultTab             string                 `json:"defaultTab,omitempty"`
+	LogLevel               string                 `json:"loglevel,omitempty"`
+	Loglimit               *string                `json:"loglimit,omitempty"`
+	LogLimitAction         *string                `json:"loglimitAction,omitempty"`
+	LogLimitStatus         *string                `json:"loglimitStatus,omitempty"`
+	MultipleExecutions     bool                   `json:"multipleExecutions,omitempty"`
+	Dispatch               *jobDispatch           `json:"dispatch,omitempty"`
+	Sequence               *jobSequence           `json:"sequence,omitempty"`
+	Notification           interface{}            `json:"notification,omitempty"`
+	Timeout                string                 `json:"timeout,omitempty"`
+	Retry                  *jobRetry              `json:"retry,omitempty"`
+	NodeFilterEditable     bool                   `json:"nodeFilterEditable"`
+	NodeFilters            *jobNodeFilters        `json:"nodeFilters,omitempty"`
+	Options                []interface{}          `json:"options,omitempty"`
+	Plugins                interface{}            `json:"plugins,omitempty"`
+	NodesSelectedByDefault bool                   `json:"nodesSelectedByDefault"`
+	Schedule               *jobSchedule           `json:"schedule,omitempty"`
+	ScheduleEnabled        bool                   `json:"scheduleEnabled"`
+	TimeZone               string                 `json:"timeZone,omitempty"`
+	Orchestrator           interface{}            `json:"orchestrator,omitempty"`
+	PluginConfig           interface{}            `json:"pluginConfig,omitempty"`
+	RunnerSelector         *jobRunnerSelector     `json:"runnerSelector,omitempty"`
 }
 
 type jobDispatch struct {
-	ThreadCount              int    `json:"threadcount,omitempty"`
+	ThreadCount              string `json:"threadcount,omitempty"`
 	KeepGoing                bool   `json:"keepgoing,omitempty"`
 	ExcludePrecedence        bool   `json:"excludePrecedence,omitempty"`
 	RankOrder                string `json:"rankOrder,omitempty"`
@@ -109,9 +111,9 @@ type jobDispatch struct {
 }
 
 type jobSequence struct {
-	KeepGoing bool            `json:"keepgoing,omitempty"`
-	Strategy  string          `json:"strategy,omitempty"`
-	Commands  []interface{}   `json:"commands"`
+	KeepGoing bool          `json:"keepgoing,omitempty"`
+	Strategy  string        `json:"strategy,omitempty"`
+	Commands  []interface{} `json:"commands"`
 }
 
 type jobRetry struct {
@@ -125,18 +127,18 @@ type jobNodeFilters struct {
 }
 
 type jobSchedule struct {
-	Time      *jobScheduleTime      `json:"time,omitempty"`
-	Month     *jobScheduleMonth     `json:"month,omitempty"`
-	Year      *jobScheduleYear      `json:"year,omitempty"`
-	Weekday   *jobScheduleWeekday   `json:"weekday,omitempty"`
+	Time       *jobScheduleTime       `json:"time,omitempty"`
+	Month      *jobScheduleMonth      `json:"month,omitempty"`
+	Year       *jobScheduleYear       `json:"year,omitempty"`
+	Weekday    *jobScheduleWeekday    `json:"weekday,omitempty"`
 	DayOfMonth *jobScheduleDayOfMonth `json:"dayofmonth,omitempty"`
-	Crontab   string                 `json:"crontab,omitempty"`
+	Crontab    string                 `json:"crontab,omitempty"`
 }
 
 type jobScheduleTime struct {
-	Hour     string `json:"hour,omitempty"`
-	Minute   string `json:"minute,omitempty"`
-	Seconds  string `json:"seconds,omitempty"`
+	Hour    string `json:"hour,omitempty"`
+	Minute  string `json:"minute,omitempty"`
+	Seconds string `json:"seconds,omitempty"`
 }
 
 type jobScheduleMonth struct {
@@ -303,14 +305,14 @@ func (r *jobResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 			},
 		},
 		Blocks: map[string]schema.Block{
-			"command":                     jobCommandNestedBlock(),
-			"option":                      jobOptionNestedBlock(),
-			"notification":                jobNotificationNestedBlock(),
-			"log_limit":                   jobLogLimitNestedBlock(),
-			"orchestrator":                jobOrchestratorNestedBlock(),
-			"global_log_filter":           jobGlobalLogFilterNestedBlock(),
-			"project_schedule":            jobProjectScheduleNestedBlock(),
-			"execution_lifecycle_plugin":  jobExecutionLifecyclePluginNestedBlock(),
+			"command":                    jobCommandNestedBlock(),
+			"option":                     jobOptionNestedBlock(),
+			"notification":               jobNotificationNestedBlock(),
+			"log_limit":                  jobLogLimitNestedBlock(),
+			"orchestrator":               jobOrchestratorNestedBlock(),
+			"global_log_filter":          jobGlobalLogFilterNestedBlock(),
+			"project_schedule":           jobProjectScheduleNestedBlock(),
+			"execution_lifecycle_plugin": jobExecutionLifecyclePluginNestedBlock(),
 		},
 	}
 }
@@ -359,6 +361,9 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 		)
 		return
 	}
+
+	// Debug: write the JSON being sent to a file
+	os.WriteFile("/tmp/job_debug.json", jobJSON, 0644)
 
 	// Import the job
 	client := r.client.V1
@@ -675,7 +680,7 @@ func (r *jobResource) planToJobJSON(ctx context.Context, plan *jobResourceModel)
 	if !plan.MaxThreadCount.IsNull() || !plan.ContinueOnError.IsNull() || !plan.RankOrder.IsNull() {
 		job.Dispatch = &jobDispatch{}
 		if !plan.MaxThreadCount.IsNull() {
-			job.Dispatch.ThreadCount = int(plan.MaxThreadCount.ValueInt64())
+			job.Dispatch.ThreadCount = fmt.Sprintf("%d", plan.MaxThreadCount.ValueInt64())
 		}
 		if !plan.ContinueOnError.IsNull() {
 			job.Dispatch.KeepGoing = plan.ContinueOnError.ValueBool()
@@ -723,7 +728,7 @@ func (r *jobResource) planToJobJSON(ctx context.Context, plan *jobResourceModel)
 		}
 	}
 
-	// Convert options
+	// Convert options (Rundeck expects an array, not a map)
 	if !plan.Option.IsNull() && !plan.Option.IsUnknown() {
 		options, diags := convertOptionsToJSON(ctx, plan.Option)
 		if diags.HasError() {
@@ -795,7 +800,11 @@ func (r *jobResource) jobJSONToState(job *jobJSON, state *jobResourceModel) erro
 
 	// Handle dispatch configuration
 	if job.Dispatch != nil {
-		state.MaxThreadCount = types.Int64Value(int64(job.Dispatch.ThreadCount))
+		// Parse threadcount string to int64
+		if job.Dispatch.ThreadCount != "" {
+			threadCount, _ := strconv.ParseInt(job.Dispatch.ThreadCount, 10, 64)
+			state.MaxThreadCount = types.Int64Value(threadCount)
+		}
 		state.ContinueOnError = types.BoolValue(job.Dispatch.KeepGoing)
 		state.NodeFilterExcludePrecedence = types.BoolValue(job.Dispatch.ExcludePrecedence)
 		if job.Dispatch.RankOrder != "" {
@@ -823,7 +832,7 @@ func (r *jobResource) jobJSONToState(job *jobJSON, state *jobResourceModel) erro
 	// TODO: Convert JSON structures back to Framework nested lists
 	// For now, we preserve input from config and don't update these from reads
 	// This allows basic job CRUD to work while we implement full bidirectional conversion
-	
+
 	// Set sequence metadata
 	if job.Sequence != nil {
 		if job.Sequence.Strategy != "" {
@@ -835,6 +844,6 @@ func (r *jobResource) jobJSONToState(job *jobJSON, state *jobResourceModel) erro
 	// For complex nested structures, preserve null if not set
 	// The create/update will send them, but read won't overwrite them
 	// This is a known limitation until we implement JSON->List converters
-	
+
 	return nil
 }

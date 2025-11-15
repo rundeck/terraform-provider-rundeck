@@ -205,8 +205,8 @@ func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]inte
 	return result, diags
 }
 
-// convertOptionsToJSON converts Framework option list to JSON map
-func convertOptionsToJSON(ctx context.Context, optionsList types.List) (map[string]interface{}, diag.Diagnostics) {
+// convertOptionsToJSON converts Framework option list to JSON array
+func convertOptionsToJSON(ctx context.Context, optionsList types.List) ([]interface{}, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	
 	if optionsList.IsNull() || optionsList.IsUnknown() {
@@ -219,25 +219,26 @@ func convertOptionsToJSON(ctx context.Context, optionsList types.List) (map[stri
 		return nil, diags
 	}
 
-	result := make(map[string]interface{})
+	result := make([]interface{}, 0, len(options))
 	for _, optObj := range options {
 		attrs := optObj.Attributes()
 		
-		var optName string
+		optMap := make(map[string]interface{})
+		
+		// Name is required
 		if name, ok := attrs["name"].(types.String); ok && !name.IsNull() {
-			optName = name.ValueString()
+			optMap["name"] = name.ValueString()
 		} else {
 			continue // Skip if no name
 		}
 
-		optMap := make(map[string]interface{})
-		optMap["name"] = optName
-
+		// Map Terraform field names to Rundeck JSON field names
 		if v, ok := attrs["label"].(types.String); ok && !v.IsNull() {
 			optMap["label"] = v.ValueString()
 		}
+		// Rundeck uses "value" for the default value, not "defaultValue"
 		if v, ok := attrs["default_value"].(types.String); ok && !v.IsNull() {
-			optMap["defaultValue"] = v.ValueString()
+			optMap["value"] = v.ValueString()
 		}
 		if v, ok := attrs["description"].(types.String); ok && !v.IsNull() {
 			optMap["description"] = v.ValueString()
@@ -296,7 +297,7 @@ func convertOptionsToJSON(ctx context.Context, optionsList types.List) (map[stri
 			}
 		}
 
-		result[optName] = optMap
+		result = append(result, optMap)
 	}
 
 	return result, diags
