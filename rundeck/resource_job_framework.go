@@ -94,7 +94,7 @@ type jobJSON struct {
 	Options                []interface{}      `json:"options,omitempty"`
 	Plugins                interface{}        `json:"plugins,omitempty"`
 	NodesSelectedByDefault bool               `json:"nodesSelectedByDefault"`
-	Schedule               *jobSchedule       `json:"schedule,omitempty"`
+	Schedule               interface{}        `json:"schedule,omitempty"`
 	ScheduleEnabled        bool               `json:"scheduleEnabled"`
 	TimeZone               string             `json:"timeZone,omitempty"`
 	Orchestrator           interface{}        `json:"orchestrator,omitempty"`
