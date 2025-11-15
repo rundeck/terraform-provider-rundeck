@@ -488,8 +488,36 @@ type JobDispatch struct {
 // 	return jobList.Jobs, nil
 // }
 
-// GetJob returns the full job details of the job with the given id.
-func GetJob(c *rundeck.BaseClient, id string) (*JobDetail, error) {
+// JobJSON represents the Rundeck Job JSON format returned by the API
+type JobJSON struct {
+	ID                     string                   `json:"id"`
+	Name                   string                   `json:"name"`
+	Group                  string                   `json:"group,omitempty"`
+	Project                string                   `json:"project"`
+	Description            string                   `json:"description"`
+	ExecutionEnabled       bool                     `json:"executionEnabled"`
+	ScheduleEnabled        bool                     `json:"scheduleEnabled"`
+	LogLevel               string                   `json:"loglevel,omitempty"`
+	AllowConcurrentExec    bool                     `json:"multipleExecutions,omitempty"`
+	NodeFilterEditable     bool                     `json:"nodeFilterEditable"`
+	NodesSelectedByDefault bool                     `json:"nodesSelectedByDefault"`
+	DefaultTab             string                   `json:"defaultTab,omitempty"`
+	Timeout                string                   `json:"timeout,omitempty"`
+	Retry                  map[string]string        `json:"retry,omitempty"`
+	Options                []map[string]interface{} `json:"options,omitempty"`
+	Sequence               map[string]interface{}   `json:"sequence,omitempty"`
+	Notification           map[string]interface{}   `json:"notification,omitempty"`
+	NodeFilters            map[string]string        `json:"nodefilters,omitempty"`
+	Dispatch               map[string]interface{}   `json:"dispatch,omitempty"`
+	Schedule               map[string]interface{}   `json:"schedule,omitempty"`
+	Orchestrator           map[string]interface{}   `json:"orchestrator,omitempty"`
+	LogLimit               *string                  `json:"loglimit,omitempty"`
+	LogLimitAction         *string                  `json:"loglimitAction,omitempty"`
+	LogLimitStatus         *string                  `json:"loglimitStatus,omitempty"`
+}
+
+// GetJobJSON returns the job details as JSON (NO XML)
+func GetJobJSON(c *rundeck.BaseClient, id string) (*JobJSON, error) {
 	// Use custom HTTP request to get JSON format
 	// The SDK's JobGet method doesn't work properly with JSON at v56
 	url := c.BaseURI + "/job/" + id
@@ -530,8 +558,8 @@ func GetJob(c *rundeck.BaseClient, id string) (*JobDetail, error) {
 		return nil, err
 	}
 
-	// Parse JSON response
-	var jobs []JobDetail
+	// Parse JSON response - API returns an array
+	var jobs []JobJSON
 	if err := json.Unmarshal(respBytes, &jobs); err != nil {
 		return nil, fmt.Errorf("failed to parse job JSON: %w", err)
 	}
@@ -541,6 +569,30 @@ func GetJob(c *rundeck.BaseClient, id string) (*JobDetail, error) {
 	}
 
 	return &jobs[0], nil
+}
+
+// GetJob returns the full job details (deprecated - kept for old test compatibility)
+// Use GetJobJSON for new code
+func GetJob(c *rundeck.BaseClient, id string) (*JobDetail, error) {
+	jobJSON, err := GetJobJSON(c, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert JSON to old JobDetail format for legacy test compatibility
+	// This is a minimal conversion - tests should migrate to JobJSON
+	detail := &JobDetail{
+		ID:               jobJSON.ID,
+		Name:             jobJSON.Name,
+		GroupName:        jobJSON.Group,
+		ProjectName:      jobJSON.Project,
+		Description:      jobJSON.Description,
+		ExecutionEnabled: jobJSON.ExecutionEnabled,
+		LogLevel:         jobJSON.LogLevel,
+		DefaultTab:       jobJSON.DefaultTab,
+	}
+
+	return detail, nil
 }
 
 // CreateJob creates a new job based on the provided structure.

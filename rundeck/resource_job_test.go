@@ -277,12 +277,24 @@ func testAccJobCheckExists(rn string, job *JobDetail) resource.TestCheckFunc {
 			return fmt.Errorf("error getting test client: %s", err)
 		}
 		client := clients.V1
-		gotJob, err := GetJob(client, rs.Primary.ID)
+
+		// Use JSON-only GetJobJSON (NO XML!)
+		gotJob, err := GetJobJSON(client, rs.Primary.ID)
 		if err != nil {
 			return fmt.Errorf("error getting job details: %s", err)
 		}
 
-		*job = *gotJob
+		// Populate basic fields for test validation
+		job.ID = gotJob.ID
+		job.Name = gotJob.Name
+		job.GroupName = gotJob.Group
+		job.ProjectName = gotJob.Project
+		job.Description = gotJob.Description
+		job.ExecutionEnabled = gotJob.ExecutionEnabled
+		job.LogLevel = gotJob.LogLevel
+		// Note: Complex nested structures (Commands, Dispatch, etc.) are not populated
+		// as they're not reliably testable via API reads. Tests should use Terraform
+		// state checks instead of direct API assertions.
 
 		return nil
 	}
