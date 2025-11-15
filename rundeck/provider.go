@@ -55,7 +55,7 @@ func Provider() *schema.Provider {
 			// "rundeck_public_key":     resourceRundeckPublicKey(), // Migrated to Framework
 			// "rundeck_acl_policy":     resourceRundeckAclPolicy(), // Migrated to Framework
 			// "rundeck_system_runner":  resourceRundeckSystemRunner(), // Migrated to Framework
-			"rundeck_project_runner": resourceRundeckProjectRunner(),
+			// "rundeck_project_runner": resourceRundeckProjectRunner(), // Migrated to Framework
 		},
 
 		ConfigureFunc: providerConfigure,
