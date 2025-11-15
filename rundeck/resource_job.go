@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func resourceRundeckJob() *schema.Resource {
@@ -997,7 +997,7 @@ func jobFromResourceData(d *schema.ResourceData) (*JobDetail, error) {
 				return nil, fmt.Errorf("argument \"obscure_input\" must be set to `true` when \"exposed_to_scripts\" is set to true")
 			}
 			if option.DateFormat != "" && option.IsDate == false {
-				return nil, fmt.Errorf("Argument \"is_date\" must be set to `true` when \"date_format\" is not empty.")
+				return nil, fmt.Errorf("argument \"is_date\" must be set to `true` when \"date_format\" is not empty.")
 			}
 
 			for _, iv := range optionMap["value_choices"].([]interface{}) {

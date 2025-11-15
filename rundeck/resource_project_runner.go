@@ -5,7 +5,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	openapi "github.com/rundeck/go-rundeck/rundeck-v2"
 )
 

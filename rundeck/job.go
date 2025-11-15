@@ -541,7 +541,7 @@ func importJob(c *rundeck.BaseClient, job *JobDetail, dupeOption string) (*JobSu
 
 	if result.Failed.Count > 0 {
 		errMsg := result.Failed.Results[0].Error
-		return nil, fmt.Errorf(errMsg)
+		return nil, fmt.Errorf("%s", errMsg)
 	}
 
 	if result.Succeeded.Count != 1 {

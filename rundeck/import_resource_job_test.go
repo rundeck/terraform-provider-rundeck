@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 )
 
 func TestAccRundeckJob_Import(t *testing.T) {
@@ -14,7 +14,7 @@ func TestAccRundeckJob_Import(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		CheckDestroy: testAccJobCheckDestroy(&job),
 		Steps: []resource.TestStep{
 			{

@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	openapi "github.com/rundeck/go-rundeck/rundeck-v2"
 )
 
@@ -19,7 +19,7 @@ func TestAccRundeckSystemRunner_basic(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		CheckDestroy: testAccSystemRunnerCheckDestroy(&runner),
 		Steps: []resource.TestStep{
 			{
@@ -49,7 +49,7 @@ func TestAccRundeckSystemRunner_update(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		CheckDestroy: testAccSystemRunnerCheckDestroy(&runner),
 		Steps: []resource.TestStep{
 			{

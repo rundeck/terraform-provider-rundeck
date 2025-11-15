@@ -5,15 +5,14 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/rundeck/go-rundeck/rundeck"
 	openapi "github.com/rundeck/go-rundeck/rundeck-v2"
 	"github.com/rundeck/go-rundeck/rundeck/auth"
 )
 
-func Provider() terraform.ResourceProvider {
+func Provider() *schema.Provider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
 			"url": {
@@ -49,12 +48,12 @@ func Provider() terraform.ResourceProvider {
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
-			"rundeck_project":        resourceRundeckProject(),
-			"rundeck_job":            resourceRundeckJob(),
-			"rundeck_private_key":    resourceRundeckPrivateKey(),
-			"rundeck_password":       resourceRundeckPassword(),
-			"rundeck_public_key":     resourceRundeckPublicKey(),
-			"rundeck_acl_policy":     resourceRundeckAclPolicy(),
+			"rundeck_project": resourceRundeckProject(),
+			"rundeck_job":     resourceRundeckJob(),
+			// "rundeck_private_key": resourceRundeckPrivateKey(), // Migrated to Framework
+			// "rundeck_password":    resourceRundeckPassword(), // Migrated to Framework
+			// "rundeck_public_key":  resourceRundeckPublicKey(), // Migrated to Framework
+			// "rundeck_acl_policy":     resourceRundeckAclPolicy(), // Migrated to Framework
 			"rundeck_system_runner":  resourceRundeckSystemRunner(),
 			"rundeck_project_runner": resourceRundeckProjectRunner(),
 		},

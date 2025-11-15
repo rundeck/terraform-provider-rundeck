@@ -6,8 +6,8 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 func TestAccJob_basic(t *testing.T) {
@@ -15,7 +15,7 @@ func TestAccJob_basic(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		CheckDestroy: testAccJobCheckDestroy(&job),
 		Steps: []resource.TestStep{
 			{
@@ -48,7 +48,7 @@ func TestAccJob_withLogLimit(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		CheckDestroy: testAccJobCheckDestroy(&job),
 		Steps: []resource.TestStep{
 			{
@@ -78,7 +78,7 @@ func TestAccJob_cmd_nodefilter(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		CheckDestroy: testAccJobCheckDestroy(&job),
 		Steps: []resource.TestStep{
 			{
@@ -117,7 +117,7 @@ func TestAccJob_cmd_referred_job(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		CheckDestroy: testAccJobCheckDestroy(&job),
 		Steps: []resource.TestStep{
 			{
@@ -141,7 +141,7 @@ func TestOchestrator_high_low(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		CheckDestroy: testAccJobCheckDestroy(&job),
 		Steps: []resource.TestStep{
 			{
@@ -168,7 +168,7 @@ func TestOchestrator_max_percent(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		CheckDestroy: testAccJobCheckDestroy(&job),
 		Steps: []resource.TestStep{
 			{
@@ -195,7 +195,7 @@ func TestOchestrator_rankTiered(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		CheckDestroy: testAccJobCheckDestroy(&job),
 		Steps: []resource.TestStep{
 			{
@@ -222,7 +222,7 @@ func TestAccJob_Idempotency(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		CheckDestroy: testAccJobCheckDestroy(&job),
 		Steps: []resource.TestStep{
 			{
@@ -277,7 +277,7 @@ func TestAccJobNotification_wrongType(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		CheckDestroy: testAccJobCheckDestroy(&job),
 		Steps: []resource.TestStep{
 			{
@@ -293,7 +293,7 @@ func TestAccJobNotification_multiple(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		CheckDestroy: testAccJobCheckDestroy(&job),
 		Steps: []resource.TestStep{
 			{
@@ -309,7 +309,7 @@ func TestAccJobOptions_empty_choice(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		CheckDestroy: testAccJobCheckDestroy(&job),
 		Steps: []resource.TestStep{
 			{
@@ -325,7 +325,7 @@ func TestAccJobOptions_secure_choice(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		CheckDestroy: testAccJobCheckDestroy(&job),
 		Steps: []resource.TestStep{
 			{
@@ -356,7 +356,7 @@ func TestAccJobOptions_option_type(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		CheckDestroy: testAccJobCheckDestroy(&job),
 		Steps: []resource.TestStep{
 			{
@@ -389,7 +389,7 @@ func TestAccJob_plugins(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		CheckDestroy: testAccJobCheckDestroy(&job),
 		Steps: []resource.TestStep{
 			{
@@ -427,7 +427,7 @@ func TestAccJobWebhookNotification(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		CheckDestroy: testAccJobCheckDestroy(&job),
 		Steps: []resource.TestStep{
 			{
@@ -1153,7 +1153,7 @@ func TestAccJob_executionLifecyclePlugin(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		CheckDestroy: testAccJobCheckDestroy(&job),
 		Steps: []resource.TestStep{
 			{
@@ -1206,7 +1206,7 @@ func TestAccJob_executionLifecyclePlugin_multiple(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		CheckDestroy: testAccJobCheckDestroy(&job),
 		Steps: []resource.TestStep{
 			{
@@ -1244,7 +1244,7 @@ func TestAccJob_executionLifecyclePlugin_noConfig(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		CheckDestroy: testAccJobCheckDestroy(&job),
 		Steps: []resource.TestStep{
 			{
@@ -1298,7 +1298,7 @@ func TestAccJob_projectSchedule(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		CheckDestroy: testAccJobCheckDestroy(&job),
 		Steps: []resource.TestStep{
 			{
@@ -1354,7 +1354,7 @@ func TestAccJob_projectSchedule_multiple(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		CheckDestroy: testAccJobCheckDestroy(&job),
 		Steps: []resource.TestStep{
 			{
@@ -1415,7 +1415,7 @@ func TestAccJob_projectSchedule_noOptions(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		CheckDestroy: testAccJobCheckDestroy(&job),
 		Steps: []resource.TestStep{
 			{

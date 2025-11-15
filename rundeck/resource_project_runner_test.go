@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	openapi "github.com/rundeck/go-rundeck/rundeck-v2"
 )
 
@@ -20,7 +20,7 @@ func TestAccRundeckProjectRunner_basic(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		CheckDestroy: testAccProjectRunnerCheckDestroy(&runner),
 		Steps: []resource.TestStep{
 			{
@@ -53,7 +53,7 @@ func TestAccRundeckProjectRunner_withNodeDispatch(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		CheckDestroy: testAccProjectRunnerCheckDestroy(&runner),
 		Steps: []resource.TestStep{
 			{
@@ -78,7 +78,7 @@ func TestAccRundeckProjectRunner_update(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		CheckDestroy: testAccProjectRunnerCheckDestroy(&runner),
 		Steps: []resource.TestStep{
 			{
