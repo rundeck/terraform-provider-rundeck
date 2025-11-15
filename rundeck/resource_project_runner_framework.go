@@ -173,15 +173,13 @@ func (r *projectRunnerResource) Create(ctx context.Context, req resource.CreateR
 	if installationType == "" {
 		installationType = "linux"
 	}
-	// Convert to uppercase for API (enum values are LINUX, WINDOWS, DOCKER, KUBERNETES)
-	runnerRequest.SetInstallationType(strings.ToUpper(installationType))
+	runnerRequest.SetInstallationType(installationType)
 
 	replicaType := plan.ReplicaType.ValueString()
 	if replicaType == "" {
 		replicaType = "manual"
 	}
-	// Convert to uppercase for API (enum values are MANUAL, EPHEMERAL)
-	runnerRequest.SetReplicaType(strings.ToUpper(replicaType))
+	runnerRequest.SetReplicaType(replicaType)
 
 	// Create project runner request
 	projectRunnerRequest := openapi.NewCreateProjectRunnerRequest(name, description)

@@ -143,8 +143,9 @@ func (r *systemRunnerResource) Create(ctx context.Context, req resource.CreateRe
 	name := plan.Name.ValueString()
 	description := plan.Description.ValueString()
 
-	// Create the runner request
-	runnerRequest := openapi.NewCreateRunnerRequest(name, description)
+	// For system runners, use CreateProjectRunnerRequest but set fields directly (not via newRunnerRequest)
+	// The SDK uses a hybrid request type for both system and project runners
+	runnerRequest := openapi.NewCreateProjectRunnerRequest(name, description)
 
 	if !plan.TagNames.IsNull() && !plan.TagNames.IsUnknown() {
 		runnerRequest.SetTagNames(plan.TagNames.ValueString())
@@ -190,12 +191,8 @@ func (r *systemRunnerResource) Create(ctx context.Context, req resource.CreateRe
 	// Convert to uppercase for API (enum values are MANUAL, EPHEMERAL)
 	runnerRequest.SetReplicaType(strings.ToUpper(replicaType))
 
-	// Although this is a system runner, the API requires wrapping the runner request
-	projectRunnerRequest := openapi.NewCreateProjectRunnerRequest(name, description)
-	projectRunnerRequest.SetNewRunnerRequest(*runnerRequest)
-
-	// Create the runner
-	response, _, err := client.RunnerAPI.CreateRunner(apiCtx).CreateProjectRunnerRequest(*projectRunnerRequest).Execute()
+	// Create the system runner
+	response, _, err := client.RunnerAPI.CreateRunner(apiCtx).CreateProjectRunnerRequest(*runnerRequest).Execute()
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating system runner",
