@@ -234,9 +234,12 @@ func TestAccJob_Idempotency(t *testing.T) {
 
 func testAccJobCheckDestroy(job *JobDetail) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		clients := testAccProvider.Meta().(*RundeckClients)
+		clients, err := getTestClients()
+		if err != nil {
+			return fmt.Errorf("error getting test client: %s", err)
+		}
 		client := clients.V1
-		_, err := GetJob(client, job.ID)
+		_, err = GetJob(client, job.ID)
 		if err == nil {
 			return fmt.Errorf("job still exists")
 		}
@@ -259,7 +262,10 @@ func testAccJobCheckExists(rn string, job *JobDetail) resource.TestCheckFunc {
 			return fmt.Errorf("job id not set")
 		}
 
-		clients := testAccProvider.Meta().(*RundeckClients)
+		clients, err := getTestClients()
+		if err != nil {
+			return fmt.Errorf("error getting test client: %s", err)
+		}
 		client := clients.V1
 		gotJob, err := GetJob(client, rs.Primary.ID)
 		if err != nil {

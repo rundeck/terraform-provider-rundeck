@@ -341,7 +341,7 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 	}
 
 	// Convert Terraform model to Rundeck JSON format
-	jobData, err := r.planToJobJSON(&plan)
+	jobData, err := r.planToJobJSON(ctx, &plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating job",
@@ -409,7 +409,7 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 	if err := json.Unmarshal(responseBody, &importResult); err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating job",
-			fmt.Sprintf("Could not parse import response: %s", err.Error()),
+			fmt.Sprintf("Could not parse import response: %s\nResponse body: %s", err.Error(), string(responseBody)),
 		)
 		return
 	}
@@ -510,7 +510,7 @@ func (r *jobResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	}
 
 	// Convert Terraform model to Rundeck JSON format
-	jobData, err := r.planToJobJSON(&plan)
+	jobData, err := r.planToJobJSON(ctx, &plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error updating job",
@@ -623,7 +623,7 @@ func (r *jobResource) ImportState(ctx context.Context, req resource.ImportStateR
 }
 
 // planToJobJSON converts Terraform plan to Rundeck job JSON format
-func (r *jobResource) planToJobJSON(plan *jobResourceModel) (*jobJSON, error) {
+func (r *jobResource) planToJobJSON(ctx context.Context, plan *jobResourceModel) (*jobJSON, error) {
 	job := &jobJSON{
 		Name:                   plan.Name.ValueString(),
 		Group:                  plan.GroupName.ValueString(),
@@ -708,12 +708,12 @@ func (r *jobResource) planToJobJSON(plan *jobResourceModel) (*jobJSON, error) {
 		}
 	}
 
-	// Parse command sequence (required)
-	if !plan.Command.IsNull() && !plan.Command.IsUnknown() {
-		var commands []interface{}
-		if err := json.Unmarshal([]byte(plan.Command.ValueString()), &commands); err != nil {
-			return nil, fmt.Errorf("invalid command JSON: %w", err)
-		}
+	// Convert commands (required)
+	commands, diags := convertCommandsToJSON(ctx, plan.Command)
+	if diags.HasError() {
+		return nil, fmt.Errorf("error converting commands: %v", diags.Errors())
+	}
+	if len(commands) > 0 {
 		job.Sequence = &jobSequence{
 			Commands: commands,
 			Strategy: plan.CommandOrderingStrategy.ValueString(),
@@ -723,38 +723,30 @@ func (r *jobResource) planToJobJSON(plan *jobResourceModel) (*jobJSON, error) {
 		}
 	}
 
-	// Parse optional JSON fields
-	if !plan.Notification.IsNull() && !plan.Notification.IsUnknown() {
-		var notification interface{}
-		if err := json.Unmarshal([]byte(plan.Notification.ValueString()), &notification); err != nil {
-			return nil, fmt.Errorf("invalid notification JSON: %w", err)
-		}
-		job.Notification = notification
-	}
-
+	// Convert options
 	if !plan.Option.IsNull() && !plan.Option.IsUnknown() {
-		var options map[string]interface{}
-		if err := json.Unmarshal([]byte(plan.Option.ValueString()), &options); err != nil {
-			return nil, fmt.Errorf("invalid option JSON: %w", err)
+		options, diags := convertOptionsToJSON(ctx, plan.Option)
+		if diags.HasError() {
+			return nil, fmt.Errorf("error converting options: %v", diags.Errors())
 		}
-		job.Options = options
+		if len(options) > 0 {
+			job.Options = options
+		}
 	}
 
-	if !plan.Orchestrator.IsNull() && !plan.Orchestrator.IsUnknown() {
-		var orchestrator interface{}
-		if err := json.Unmarshal([]byte(plan.Orchestrator.ValueString()), &orchestrator); err != nil {
-			return nil, fmt.Errorf("invalid orchestrator JSON: %w", err)
+	// Convert notifications
+	if !plan.Notification.IsNull() && !plan.Notification.IsUnknown() {
+		notifications, diags := convertNotificationsToJSON(ctx, plan.Notification)
+		if diags.HasError() {
+			return nil, fmt.Errorf("error converting notifications: %v", diags.Errors())
 		}
-		job.Orchestrator = orchestrator
+		if len(notifications) > 0 {
+			job.Notification = notifications
+		}
 	}
 
-	if !plan.GlobalLogFilter.IsNull() && !plan.GlobalLogFilter.IsUnknown() {
-		var plugins interface{}
-		if err := json.Unmarshal([]byte(plan.GlobalLogFilter.ValueString()), &plugins); err != nil {
-			return nil, fmt.Errorf("invalid global_log_filter JSON: %w", err)
-		}
-		job.Plugins = plugins
-	}
+	// TODO: Convert remaining complex structures (orchestrator, log_limit, global_log_filter, etc.)
+	// For now, these can be left nil and will be added incrementally
 
 	return job, nil
 }
@@ -828,52 +820,21 @@ func (r *jobResource) jobJSONToState(job *jobJSON, state *jobResourceModel) erro
 		}
 	}
 
-	// Convert sequence to JSON string
-	if job.Sequence != nil && len(job.Sequence.Commands) > 0 {
-		commandsJSON, err := json.Marshal(job.Sequence.Commands)
-		if err != nil {
-			return fmt.Errorf("could not marshal commands to JSON: %w", err)
-		}
-		state.Command = types.StringValue(string(commandsJSON))
-		
+	// TODO: Convert JSON structures back to Framework nested lists
+	// For now, we preserve input from config and don't update these from reads
+	// This allows basic job CRUD to work while we implement full bidirectional conversion
+	
+	// Set sequence metadata
+	if job.Sequence != nil {
 		if job.Sequence.Strategy != "" {
 			state.CommandOrderingStrategy = types.StringValue(job.Sequence.Strategy)
 		}
 		state.ContinueNextNodeOnError = types.BoolValue(job.Sequence.KeepGoing)
 	}
 
-	// Convert optional complex fields to JSON strings
-	if job.Notification != nil {
-		notificationJSON, err := json.Marshal(job.Notification)
-		if err != nil {
-			return fmt.Errorf("could not marshal notification to JSON: %w", err)
-		}
-		state.Notification = types.StringValue(string(notificationJSON))
-	}
-
-	if job.Options != nil && len(job.Options) > 0 {
-		optionsJSON, err := json.Marshal(job.Options)
-		if err != nil {
-			return fmt.Errorf("could not marshal options to JSON: %w", err)
-		}
-		state.Option = types.StringValue(string(optionsJSON))
-	}
-
-	if job.Orchestrator != nil {
-		orchestratorJSON, err := json.Marshal(job.Orchestrator)
-		if err != nil {
-			return fmt.Errorf("could not marshal orchestrator to JSON: %w", err)
-		}
-		state.Orchestrator = types.StringValue(string(orchestratorJSON))
-	}
-
-	if job.Plugins != nil {
-		pluginsJSON, err := json.Marshal(job.Plugins)
-		if err != nil {
-			return fmt.Errorf("could not marshal plugins to JSON: %w", err)
-		}
-		state.GlobalLogFilter = types.StringValue(string(pluginsJSON))
-	}
-
+	// For complex nested structures, preserve null if not set
+	// The create/update will send them, but read won't overwrite them
+	// This is a known limitation until we implement JSON->List converters
+	
 	return nil
 }
