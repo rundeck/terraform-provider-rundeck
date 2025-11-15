@@ -1,7 +1,6 @@
 package rundeck
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"regexp"
@@ -1094,10 +1093,6 @@ func testAccJobCheckScheduleExists(expectedScheduleCount int, expectedScheduleNa
 		if job.Schedules == nil || len(job.Schedules) == 0 {
 			return fmt.Errorf("job schedules array is nil or empty - project schedules not applied in Rundeck")
 		}
-
-		// Debug: print what we actually got from Rundeck
-		schedJSON, _ := json.Marshal(job.Schedules)
-		fmt.Printf("\n🔍 DEBUG: Project schedules from Rundeck API:\n%s\n\n", string(schedJSON))
 
 		schedules := job.Schedules
 
