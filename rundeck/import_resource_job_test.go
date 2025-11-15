@@ -18,7 +18,10 @@ func TestAccRundeckJob_Import(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccJobConfig_basic,
-				Check:  resource.TestCheckResourceAttr(name, "name", "basic-job"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(name, "name", "basic-job"),
+					resource.TestCheckResourceAttrSet(name, "id"),
+				),
 			},
 			{
 				ResourceName:        name,

@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -730,7 +731,28 @@ func (r *jobResource) Delete(ctx context.Context, req resource.DeleteRequest, re
 }
 
 func (r *jobResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	// Support both formats:
+	// 1. Just job ID: "job-uuid"
+	// 2. Project and job ID: "project-name/job-uuid"
+	id := req.ID
+
+	// Check if the ID contains a slash (project/job format)
+	if strings.Contains(id, "/") {
+		// Parse the project/job format (legacy import format)
+		parts := strings.SplitN(id, "/", 2)
+		if len(parts) != 2 {
+			resp.Diagnostics.AddError(
+				"Invalid Import ID",
+				fmt.Sprintf("Expected import ID in format 'project-name/job-id' or just 'job-id', got: %s", id),
+			)
+			return
+		}
+		// Use just the job ID part
+		id = parts[1]
+	}
+
+	// Set the ID in state
+	resp.State.SetAttribute(ctx, path.Root("id"), id)
 }
 
 // planToJobJSON converts Terraform plan to Rundeck job JSON format
