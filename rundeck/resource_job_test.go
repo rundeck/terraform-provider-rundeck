@@ -1068,17 +1068,17 @@ func TestAccJob_executionLifecyclePlugin_noConfig(t *testing.T) {
 // TestAccJob_projectSchedule tests a job with a single project schedule.
 // NOTE: Project schedules are a Rundeck Enterprise feature only.
 // PREREQUISITE: For this test to pass, you must MANUALLY create a project schedule named "my-schedule"
-// in the Rundeck Enterprise UI AFTER the project is created. This test cannot be fully automated
-// because Rundeck requires schedules to exist in project configuration before jobs can reference them.
+// in the Rundeck Enterprise UI. This test cannot be fully automated because Rundeck requires schedules
+// to exist in project configuration before jobs can reference them.
 //
 // To run this test:
-// 1. Set RUNDECK_ENTERPRISE_TESTS=1
-// 2. Run the test once (it will create the project but fail)
-// 3. In Rundeck UI, go to: Project Settings > Edit Configuration > Other > Schedules
-// 4. Create a schedule named "my-schedule"
-// 5. Run the test again
+// 1. Set RUNDECK_ENTERPRISE_TESTS=1 and RUNDECK_PROJECT_SCHEDULES_CONFIGURED=1
+// 2. Run the test (it will create the "terraform-schedules-test" project)
+// 3. In Rundeck UI, go to: Project "terraform-schedules-test" > Settings > Edit Configuration > Other > Schedules
+// 4. Create a schedule named "my-schedule" (any cron expression, e.g., "0 0 * * * ? *")
+// 5. The test should pass on subsequent runs
 //
-// For automated testing, set RUNDECK_PROJECT_SCHEDULES_CONFIGURED=1 to indicate schedules are pre-configured
+// The test will skip if RUNDECK_PROJECT_SCHEDULES_CONFIGURED is not set
 func TestAccJob_projectSchedule(t *testing.T) {
 	// Skip this test if not running against Rundeck Enterprise
 	if v := os.Getenv("RUNDECK_ENTERPRISE_TESTS"); v != "1" {
@@ -1109,15 +1109,14 @@ func TestAccJob_projectSchedule(t *testing.T) {
 // TestAccJob_projectSchedule_multiple tests a job with multiple project schedules.
 // NOTE: Project schedules are a Rundeck Enterprise feature only.
 // PREREQUISITE: For this test to pass, you must MANUALLY create TWO project schedules
-// in the Rundeck Enterprise UI AFTER the project is created:
+// in the Rundeck Enterprise UI:
 //  1. A schedule named "schedule-1"
 //  2. A schedule named "schedule-2"
 //
-// This test cannot be fully automated because Rundeck requires schedules to exist
-// in project configuration before jobs can reference them.
+// The test will create the "terraform-schedules-test" project. Then you must add the schedules via:
+// Project "terraform-schedules-test" > Settings > Edit Configuration > Other > Schedules
 //
-// In Rundeck, go to: Project Settings > Edit Configuration > Other > Schedules
-// Set RUNDECK_PROJECT_SCHEDULES_CONFIGURED=1 to indicate schedules are pre-configured
+// Set both RUNDECK_ENTERPRISE_TESTS=1 and RUNDECK_PROJECT_SCHEDULES_CONFIGURED=1 to run this test
 func TestAccJob_projectSchedule_multiple(t *testing.T) {
 	// Skip this test if not running against Rundeck Enterprise
 	if v := os.Getenv("RUNDECK_ENTERPRISE_TESTS"); v != "1" {
@@ -1137,7 +1136,7 @@ func TestAccJob_projectSchedule_multiple(t *testing.T) {
 			{
 				Config: testAccJobConfig_projectSchedule_multiple,
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("rundeck_job.test", "name", "job-with-multiple-schedules"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "name", "job-with-multiple-project-schedules"),
 					resource.TestCheckResourceAttr("rundeck_job.test", "project_schedule.#", "2"),
 				),
 			},
@@ -1148,11 +1147,10 @@ func TestAccJob_projectSchedule_multiple(t *testing.T) {
 // TestAccJob_projectSchedule_noOptions tests a job with a project schedule that has no job options.
 // NOTE: Project schedules are a Rundeck Enterprise feature only.
 // PREREQUISITE: For this test to pass, you must MANUALLY create a project schedule named "simple-schedule"
-// in the Rundeck Enterprise UI AFTER the project is created. This test cannot be fully automated
-// because Rundeck requires schedules to exist in project configuration before jobs can reference them.
+// in the Rundeck Enterprise UI. The test will create the "terraform-schedules-test" project. Then you must
+// add the schedule via: Project "terraform-schedules-test" > Settings > Edit Configuration > Other > Schedules
 //
-// In Rundeck, go to: Project Settings > Edit Configuration > Other > Schedules
-// Set RUNDECK_PROJECT_SCHEDULES_CONFIGURED=1 to indicate schedules are pre-configured
+// Set both RUNDECK_ENTERPRISE_TESTS=1 and RUNDECK_PROJECT_SCHEDULES_CONFIGURED=1 to run this test
 func TestAccJob_projectSchedule_noOptions(t *testing.T) {
 	// Skip this test if not running against Rundeck Enterprise
 	if v := os.Getenv("RUNDECK_ENTERPRISE_TESTS"); v != "1" {
@@ -1172,7 +1170,7 @@ func TestAccJob_projectSchedule_noOptions(t *testing.T) {
 			{
 				Config: testAccJobConfig_projectSchedule_noOptions,
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("rundeck_job.test", "name", "job-with-schedule-no-options"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "name", "job-with-project-schedule-no-options"),
 					resource.TestCheckResourceAttr("rundeck_job.test", "project_schedule.#", "1"),
 				),
 			},
@@ -1182,21 +1180,35 @@ func TestAccJob_projectSchedule_noOptions(t *testing.T) {
 
 // Project Schedule Test Configurations
 //
-// The following test configurations require Rundeck Enterprise and pre-created schedules.
-// Before running these tests, you must manually create the following schedules in your
-// Rundeck Enterprise instance via: Project Settings > Edit Configuration > Other > Schedules
+// The following test configurations require Rundeck Enterprise and manually created schedules.
+// The tests will automatically create the "terraform-schedules-test" project, but you must
+// manually add the following schedules via the Rundeck UI:
+// Project "terraform-schedules-test" > Settings > Edit Configuration > Other > Schedules
 //
-// Required schedules:
+// Required schedules (create with any cron expression, e.g., "0 0 * * * ? *"):
 //   - "my-schedule" (for testAccJobConfig_projectSchedule)
 //   - "schedule-1" and "schedule-2" (for testAccJobConfig_projectSchedule_multiple)
 //   - "simple-schedule" (for testAccJobConfig_projectSchedule_noOptions)
 //
-// The schedules can be created with any cron expression (e.g., "0 0 * * * ? *" for daily at midnight).
 // The actual schedule timing doesn't matter for the tests - only that the schedules exist by name.
+// Set RUNDECK_PROJECT_SCHEDULES_CONFIGURED=1 after creating the schedules to enable these tests.
 
 const testAccJobConfig_projectSchedule = `
+resource "rundeck_project" "test" {
+  name = "terraform-schedules-test"
+  description = "Test project for project schedules"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
+    }
+  }
+}
+
 resource "rundeck_job" "test" {
-  project_name = "terraform-schedules-test"
+  project_name = rundeck_project.test.name
   name = "job-with-project-schedule"
   description = "A job with project schedule"
   execution_enabled = true
@@ -1214,8 +1226,21 @@ resource "rundeck_job" "test" {
 `
 
 const testAccJobConfig_projectSchedule_multiple = `
+resource "rundeck_project" "test" {
+  name = "terraform-schedules-test"
+  description = "Test project for project schedules"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
+    }
+  }
+}
+
 resource "rundeck_job" "test" {
-  project_name = "terraform-schedules-test"
+  project_name = rundeck_project.test.name
   name = "job-with-multiple-project-schedules"
   description = "A job with multiple project schedules"
   execution_enabled = true
@@ -1238,8 +1263,21 @@ resource "rundeck_job" "test" {
 `
 
 const testAccJobConfig_projectSchedule_noOptions = `
+resource "rundeck_project" "test" {
+  name = "terraform-schedules-test"
+  description = "Test project for project schedules"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
+    }
+  }
+}
+
 resource "rundeck_job" "test" {
-  project_name = "terraform-schedules-test"
+  project_name = rundeck_project.test.name
   name = "job-with-project-schedule-no-options"
   description = "A job with project schedule without job_options"
   execution_enabled = true

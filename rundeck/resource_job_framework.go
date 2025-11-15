@@ -866,7 +866,18 @@ func (r *jobResource) planToJobJSON(ctx context.Context, plan *jobResourceModel)
 		}
 	}
 
-	// TODO: Convert remaining complex structures (orchestrator, log_limit, global_log_filter, etc.)
+	// Convert project_schedule
+	if !plan.ProjectSchedule.IsNull() && !plan.ProjectSchedule.IsUnknown() {
+		schedules, diags := convertProjectSchedulesToJSON(ctx, plan.ProjectSchedule)
+		if diags.HasError() {
+			return nil, fmt.Errorf("error converting project schedules: %v", diags.Errors())
+		}
+		if len(schedules) > 0 {
+			job.Schedule = schedules
+		}
+	}
+
+	// TODO: Convert remaining complex structures (orchestrator, log_limit, global_log_filter)
 	// For now, these can be left nil and will be added incrementally
 
 	return job, nil
