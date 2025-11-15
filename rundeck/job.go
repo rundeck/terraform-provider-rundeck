@@ -29,9 +29,11 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
 
 	"github.com/rundeck/go-rundeck/rundeck"
+	"github.com/rundeck/go-rundeck/rundeck/auth"
 )
 
 // JobSummary is an abbreviated description of a job that includes only its basic
@@ -488,11 +490,31 @@ type JobDispatch struct {
 
 // GetJob returns the full job details of the job with the given id.
 func GetJob(c *rundeck.BaseClient, id string) (*JobDetail, error) {
-	ctx := context.Background()
-	// Use empty format parameter to get JSON default (v44+)
-	resp, err := c.JobGet(ctx, id, "")
+	// Use custom HTTP request to get JSON format
+	// The SDK's JobGet method doesn't work properly with JSON at v56
+	url := c.BaseURI + "/job/" + id
+
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set Accept header to request JSON response
+	req.Header.Set("Accept", "application/json")
+
+	// Add auth token header - extract from TokenAuthorizer
+	if c.Authorizer != nil {
+		// The Authorizer is a TokenAuthorizer with a Token field
+		if tokenAuth, ok := c.Authorizer.(*auth.TokenAuthorizer); ok {
+			req.Header.Set("X-Rundeck-Auth-Token", tokenAuth.Token)
+		}
+	}
+
+	// Make the request
+	httpClient := &http.Client{}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute request: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -508,7 +530,7 @@ func GetJob(c *rundeck.BaseClient, id string) (*JobDetail, error) {
 		return nil, err
 	}
 
-	// API returns JSON by default at v44+ (provider minimum is v46)
+	// Parse JSON response
 	var jobs []JobDetail
 	if err := json.Unmarshal(respBytes, &jobs); err != nil {
 		return nil, fmt.Errorf("failed to parse job JSON: %w", err)
