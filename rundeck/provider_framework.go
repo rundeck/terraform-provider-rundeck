@@ -170,10 +170,12 @@ func (p *frameworkProvider) Configure(ctx context.Context, req provider.Configur
 	})
 
 	clients := &RundeckClients{
-		V1:    &clientV1,
-		V2:    clientV2,
-		Token: token,
-		ctx:   ctxWithAuth,
+		V1:         &clientV1,
+		V2:         clientV2,
+		Token:      token,
+		BaseURL:    fmt.Sprintf("%s://%s", apiURL.Scheme, apiURL.Host),
+		APIVersion: apiVersion,
+		ctx:        ctxWithAuth,
 	}
 
 	resp.DataSourceData = clients

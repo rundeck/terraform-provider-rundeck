@@ -2,6 +2,7 @@ package rundeck
 
 import (
 	"context"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -325,6 +326,9 @@ func convertNotificationsToJSON(ctx context.Context, notificationsList types.Lis
 		var notifType string
 		if ntype, ok := attrs["type"].(types.String); ok && !ntype.IsNull() {
 			notifType = ntype.ValueString()
+			// Convert Terraform underscore format to Rundeck format
+			// on_success -> onsuccess, on_failure -> onfailure, etc.
+			notifType = strings.ReplaceAll(notifType, "_", "")
 		} else {
 			continue
 		}
@@ -363,7 +367,8 @@ func convertNotificationsToJSON(ctx context.Context, notificationsList types.Lis
 				if recip, ok := emailAttrs["recipients"].(types.List); ok && !recip.IsNull() {
 					var recipients []string
 					diags.Append(recip.ElementsAs(ctx, &recipients, false)...)
-					emailMap["recipients"] = recipients
+					// Rundeck expects a comma-separated string, not an array
+					emailMap["recipients"] = strings.Join(recipients, ",")
 				}
 				
 				notifMap["email"] = emailMap

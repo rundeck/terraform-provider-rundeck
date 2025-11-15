@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
+	"net/http"
 	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -71,34 +71,34 @@ type jobResourceModel struct {
 
 // jobJSON represents the Rundeck Job JSON format (v44+)
 type jobJSON struct {
-	ID                     string                 `json:"id,omitempty"`
-	Name                   string                 `json:"name"`
-	Group                  string                 `json:"group,omitempty"`
-	Project                string                 `json:"project"`
-	Description            string                 `json:"description"`
-	ExecutionEnabled       bool                   `json:"executionEnabled"`
-	DefaultTab             string                 `json:"defaultTab,omitempty"`
-	LogLevel               string                 `json:"loglevel,omitempty"`
-	Loglimit               *string                `json:"loglimit,omitempty"`
-	LogLimitAction         *string                `json:"loglimitAction,omitempty"`
-	LogLimitStatus         *string                `json:"loglimitStatus,omitempty"`
-	MultipleExecutions     bool                   `json:"multipleExecutions,omitempty"`
-	Dispatch               *jobDispatch           `json:"dispatch,omitempty"`
-	Sequence               *jobSequence           `json:"sequence,omitempty"`
-	Notification           interface{}            `json:"notification,omitempty"`
-	Timeout                string                 `json:"timeout,omitempty"`
-	Retry                  *jobRetry              `json:"retry,omitempty"`
-	NodeFilterEditable     bool                   `json:"nodeFilterEditable"`
-	NodeFilters            *jobNodeFilters        `json:"nodeFilters,omitempty"`
-	Options                []interface{}          `json:"options,omitempty"`
-	Plugins                interface{}            `json:"plugins,omitempty"`
-	NodesSelectedByDefault bool                   `json:"nodesSelectedByDefault"`
-	Schedule               *jobSchedule           `json:"schedule,omitempty"`
-	ScheduleEnabled        bool                   `json:"scheduleEnabled"`
-	TimeZone               string                 `json:"timeZone,omitempty"`
-	Orchestrator           interface{}            `json:"orchestrator,omitempty"`
-	PluginConfig           interface{}            `json:"pluginConfig,omitempty"`
-	RunnerSelector         *jobRunnerSelector     `json:"runnerSelector,omitempty"`
+	ID                     string             `json:"id,omitempty"`
+	Name                   string             `json:"name"`
+	Group                  string             `json:"group,omitempty"`
+	Project                string             `json:"project"`
+	Description            string             `json:"description"`
+	ExecutionEnabled       bool               `json:"executionEnabled"`
+	DefaultTab             string             `json:"defaultTab,omitempty"`
+	LogLevel               string             `json:"loglevel,omitempty"`
+	Loglimit               *string            `json:"loglimit,omitempty"`
+	LogLimitAction         *string            `json:"loglimitAction,omitempty"`
+	LogLimitStatus         *string            `json:"loglimitStatus,omitempty"`
+	MultipleExecutions     bool               `json:"multipleExecutions,omitempty"`
+	Dispatch               *jobDispatch       `json:"dispatch,omitempty"`
+	Sequence               *jobSequence       `json:"sequence,omitempty"`
+	Notification           interface{}        `json:"notification,omitempty"`
+	Timeout                string             `json:"timeout,omitempty"`
+	Retry                  *jobRetry          `json:"retry,omitempty"`
+	NodeFilterEditable     bool               `json:"nodeFilterEditable"`
+	NodeFilters            *jobNodeFilters    `json:"nodeFilters,omitempty"`
+	Options                []interface{}      `json:"options,omitempty"`
+	Plugins                interface{}        `json:"plugins,omitempty"`
+	NodesSelectedByDefault bool               `json:"nodesSelectedByDefault"`
+	Schedule               *jobSchedule       `json:"schedule,omitempty"`
+	ScheduleEnabled        bool               `json:"scheduleEnabled"`
+	TimeZone               string             `json:"timeZone,omitempty"`
+	Orchestrator           interface{}        `json:"orchestrator,omitempty"`
+	PluginConfig           interface{}        `json:"pluginConfig,omitempty"`
+	RunnerSelector         *jobRunnerSelector `json:"runnerSelector,omitempty"`
 }
 
 type jobDispatch struct {
@@ -362,24 +362,34 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 		return
 	}
 
-	// Debug: write the JSON being sent to a file
-	os.WriteFile("/tmp/job_debug.json", jobJSON, 0644)
+	// Import the job using custom HTTP request to ensure JSON response
+	apiURL := fmt.Sprintf("%s/api/%s/project/%s/jobs/import", 
+		r.client.BaseURL,
+		r.client.APIVersion,
+		plan.ProjectName.ValueString())
+	
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewReader(jobJSON))
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error creating job",
+			fmt.Sprintf("Could not create request: %s", err.Error()),
+		)
+		return
+	}
 
-	// Import the job
-	client := r.client.V1
-	apiCtx := context.Background()
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Accept", "application/json")
+	httpReq.Header.Set("X-Rundeck-Auth-Token", r.client.Token)
+	
+	// Add query parameters
+	q := httpReq.URL.Query()
+	q.Add("fileformat", "json")
+	q.Add("dupeOption", "create")
+	q.Add("uuidOption", "preserve")
+	httpReq.URL.RawQuery = q.Encode()
 
-	// Call ProjectJobsImport with JSON format
-	response, err := client.ProjectJobsImport(
-		apiCtx,
-		plan.ProjectName.ValueString(),
-		io.NopCloser(bytes.NewReader(jobJSON)),
-		"application/json",
-		"",
-		"json",
-		"create",
-		"preserve",
-	)
+	httpClient := &http.Client{}
+	httpResp, err := httpClient.Do(httpReq)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating job",
@@ -387,9 +397,9 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 		)
 		return
 	}
+	defer httpResp.Body.Close()
 
-	// Parse the import response to get the job ID
-	responseBody, err := io.ReadAll(response.Body)
+	responseBody, err := io.ReadAll(httpResp.Body)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating job",
@@ -398,7 +408,7 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 		return
 	}
 
-	// Parse import result
+	// Parse JSON import result
 	var importResult struct {
 		Succeeded []struct {
 			ID      string `json:"id"`
@@ -406,8 +416,7 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 			Project string `json:"project"`
 		} `json:"succeeded"`
 		Failed []struct {
-			Error   string `json:"error"`
-			Message string `json:"message"`
+			Error string `json:"error"`
 		} `json:"failed"`
 	}
 
@@ -422,7 +431,7 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 	if len(importResult.Failed) > 0 {
 		resp.Diagnostics.AddError(
 			"Error creating job",
-			fmt.Sprintf("Job import failed: %s - %s", importResult.Failed[0].Error, importResult.Failed[0].Message),
+			fmt.Sprintf("Job import failed: %s", importResult.Failed[0].Error),
 		)
 		return
 	}
@@ -437,6 +446,17 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 
 	// Set the job ID
 	plan.ID = types.StringValue(importResult.Succeeded[0].ID)
+
+	// Set computed fields that may not have been set in the plan
+	if plan.PreserveOptionsOrder.IsUnknown() {
+		plan.PreserveOptionsOrder = types.BoolValue(false)
+	}
+	if plan.RunnerSelectorFilterMode.IsUnknown() {
+		plan.RunnerSelectorFilterMode = types.StringNull()
+	}
+	if plan.RunnerSelectorFilterType.IsUnknown() {
+		plan.RunnerSelectorFilterType = types.StringNull()
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }

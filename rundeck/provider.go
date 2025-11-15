@@ -120,8 +120,10 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 
 // RundeckClients wraps both v1 and v2 clients
 type RundeckClients struct {
-	V1    *rundeck.BaseClient
-	V2    *openapi.APIClient
-	Token string
-	ctx   context.Context
+	V1         *rundeck.BaseClient
+	V2         *openapi.APIClient
+	Token      string
+	BaseURL    string // Base Rundeck URL without /api/version
+	APIVersion string
+	ctx        context.Context
 }
