@@ -751,8 +751,24 @@ func (r *jobResource) ImportState(ctx context.Context, req resource.ImportStateR
 		id = parts[1]
 	}
 
-	// Use the standard passthrough with the parsed ID
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), id)...)
+	// Create a minimal state with just the ID
+	var state jobResourceModel
+	state.ID = types.StringValue(id)
+
+	// Set the initial state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Call Read to populate all fields from the API
+	readReq := resource.ReadRequest{State: resp.State}
+	readResp := resource.ReadResponse{State: resp.State}
+	r.Read(ctx, readReq, &readResp)
+
+	// Copy diagnostics and state from Read
+	resp.Diagnostics.Append(readResp.Diagnostics...)
+	resp.State = readResp.State
 }
 
 // planToJobJSON converts Terraform plan to Rundeck job JSON format
