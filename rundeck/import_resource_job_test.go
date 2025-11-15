@@ -10,16 +10,15 @@ import (
 func TestAccRundeckJob_Import(t *testing.T) {
 	name := "rundeck_job.test"
 	project_name := "terraform-acc-test-job"
-	var job JobDetail
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
-		CheckDestroy:             testAccJobCheckDestroy(&job),
+		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccJobConfig_basic,
-				Check:  testAccJobCheckExists(name, &job),
+				Check:  resource.TestCheckResourceAttr(name, "name", "basic-job"),
 			},
 			{
 				ResourceName:        name,

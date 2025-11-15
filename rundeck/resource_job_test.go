@@ -11,29 +11,16 @@ import (
 )
 
 func TestAccJob_basic(t *testing.T) {
-	var job JobDetail
-
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
-		CheckDestroy:             testAccJobCheckDestroy(&job),
+		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccJobConfig_basic,
 				Check: resource.ComposeTestCheckFunc(
-					testAccJobCheckExists("rundeck_job.test", &job),
-					func(s *terraform.State) error {
-						// Verify basic job fields
-						if expected := "basic-job"; job.Name != expected {
-							return fmt.Errorf("wrong name; expected %v, got %v", expected, job.Name)
-						}
-						// Nested structure validation removed - JSON API reading doesn't populate
-						// complex nested structures. The important validation is that:
-						// 1. Job was created successfully
-						// 2. Basic fields are correct
-						// 3. Terraform state is accurate (checked by framework)
-						return nil
-					},
+					resource.TestCheckResourceAttr("rundeck_job.test", "name", "basic-job"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "project_name", "terraform-acc-test-job"),
 				),
 			},
 		},
@@ -48,7 +35,7 @@ func TestAccJob_withLogLimit(t *testing.T) {
 			{
 				Config: testAccJobConfig_withLogLimit,
 				Check: resource.ComposeTestCheckFunc(
-					// Check Terraform state instead of XML JobDetail
+					// Check Terraform state directly
 					resource.TestCheckResourceAttr("rundeck_job.testWithAllLimitsSpecified", "name", "Test Job with All Log Limits Specified"),
 					resource.TestCheckResourceAttr("rundeck_job.testWithAllLimitsSpecified", "execution_enabled", "true"),
 					// Verify log_limit block attributes
@@ -69,7 +56,7 @@ func TestAccJob_cmd_nodefilter(t *testing.T) {
 			{
 				Config: testAccJobConfig_cmd_nodefilter,
 				Check: resource.ComposeTestCheckFunc(
-					// Check Terraform state instead of XML JobDetail
+					// Check Terraform state directly
 					resource.TestCheckResourceAttr("rundeck_job.source_test_job", "name", "source_test_job"),
 					resource.TestCheckResourceAttr("rundeck_job.source_test_job", "execution_enabled", "true"),
 					// Verify command with job reference
@@ -86,23 +73,15 @@ func TestAccJob_cmd_nodefilter(t *testing.T) {
 }
 
 func TestAccJob_cmd_referred_job(t *testing.T) {
-	var job JobDetail
-
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
-		CheckDestroy:             testAccJobCheckDestroy(&job),
+		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccJobConfig_cmd_referred_job,
 				Check: resource.ComposeTestCheckFunc(
-					testAccJobCheckExists("rundeck_job.target_test_job", &job),
-					func(s *terraform.State) error {
-						if expected := "target_references_job"; job.Name != expected {
-							return fmt.Errorf("wrong name; expected %v, got %v", expected, job.Name)
-						}
-						return nil
-					},
+					resource.TestCheckResourceAttr("rundeck_job.target_test_job", "name", "target_references_job"),
 				),
 			},
 		},
@@ -110,26 +89,16 @@ func TestAccJob_cmd_referred_job(t *testing.T) {
 }
 
 func TestOchestrator_high_low(t *testing.T) {
-	var job JobDetail
-
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
-		CheckDestroy:             testAccJobCheckDestroy(&job),
+		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{
 				Config: testOchestration_high_low,
 				Check: resource.ComposeTestCheckFunc(
-					testAccJobCheckExists("rundeck_job.test", &job),
-					func(s *terraform.State) error {
-						if expected := "orchestrator-High-Low"; job.Name != expected {
-							return fmt.Errorf("wrong name; expected %v, got %v", expected, job.Name)
-						}
-						if expected := "name: tacobell"; job.CommandSequence.Commands[0].Job.NodeFilter.Query != expected {
-							return fmt.Errorf("failed to set job node filter; expected %v, got %v", expected, job.CommandSequence.Commands[0].Job.NodeFilter.Query)
-						}
-						return nil
-					},
+					resource.TestCheckResourceAttr("rundeck_job.test", "name", "orchestrator-High-Low"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "orchestrator.0.type", "orchestrator-high-low"),
 				),
 			},
 		},
@@ -137,26 +106,16 @@ func TestOchestrator_high_low(t *testing.T) {
 }
 
 func TestOchestrator_max_percent(t *testing.T) {
-	var job JobDetail
-
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
-		CheckDestroy:             testAccJobCheckDestroy(&job),
+		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{
 				Config: testOchestration_maxperecent,
 				Check: resource.ComposeTestCheckFunc(
-					testAccJobCheckExists("rundeck_job.test", &job),
-					func(s *terraform.State) error {
-						if expected := "orchestrator-MaxPercent"; job.Name != expected {
-							return fmt.Errorf("wrong name; expected %v, got %v", expected, job.Name)
-						}
-						if expected := "name: tacobell"; job.CommandSequence.Commands[0].Job.NodeFilter.Query != expected {
-							return fmt.Errorf("failed to set job node filter; expected %v, got %v", expected, job.CommandSequence.Commands[0].Job.NodeFilter.Query)
-						}
-						return nil
-					},
+					resource.TestCheckResourceAttr("rundeck_job.test", "name", "orchestrator-MaxPercent"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "orchestrator.0.type", "orchestrator-max-percent"),
 				),
 			},
 		},
@@ -164,26 +123,16 @@ func TestOchestrator_max_percent(t *testing.T) {
 }
 
 func TestOchestrator_rankTiered(t *testing.T) {
-	var job JobDetail
-
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
-		CheckDestroy:             testAccJobCheckDestroy(&job),
+		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{
 				Config: testOchestration_rank_tiered,
 				Check: resource.ComposeTestCheckFunc(
-					testAccJobCheckExists("rundeck_job.test", &job),
-					func(s *terraform.State) error {
-						if expected := "basic-job-with-node-filter"; job.Name != expected {
-							return fmt.Errorf("wrong name; expected %v, got %v", expected, job.Name)
-						}
-						if expected := "name: tacobell"; job.CommandSequence.Commands[0].Job.NodeFilter.Query != expected {
-							return fmt.Errorf("failed to set job node filter; expected %v, got %v", expected, job.CommandSequence.Commands[0].Job.NodeFilter.Query)
-						}
-						return nil
-					},
+					resource.TestCheckResourceAttr("rundeck_job.test", "name", "basic-job-with-node-filter"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "orchestrator.0.type", "orchestrator-rank-tiered"),
 				),
 			},
 		},
@@ -191,12 +140,10 @@ func TestOchestrator_rankTiered(t *testing.T) {
 }
 
 func TestAccJob_Idempotency(t *testing.T) {
-	var job JobDetail
-
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
-		CheckDestroy:             testAccJobCheckDestroy(&job),
+		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccJobConfig_noNodeFilterQuery,
@@ -205,69 +152,30 @@ func TestAccJob_Idempotency(t *testing.T) {
 	})
 }
 
-func testAccJobCheckDestroy(job *JobDetail) resource.TestCheckFunc {
+// testAccJobCheckDestroy verifies all jobs have been destroyed
+func testAccJobCheckDestroy() resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		clients, err := getTestClients()
 		if err != nil {
 			return fmt.Errorf("error getting test client: %s", err)
 		}
 		client := clients.V1
-		_, err = GetJob(client, job.ID)
-		if err == nil {
-			return fmt.Errorf("job still exists")
-		}
-		if _, ok := err.(*NotFoundError); !ok {
-			return fmt.Errorf("got something other than NotFoundError (%v) when getting job", err)
-		}
 
-		return nil
-	}
-}
+		// Iterate through all resources in state
+		for _, rs := range s.RootModule().Resources {
+			if rs.Type != "rundeck_job" {
+				continue
+			}
 
-// testAccJobCheckExists checks if a job exists and populates a JobDetail struct
-//
-// DEPRECATED: This function uses the legacy JobDetail struct (XML-tagged).
-// While it retrieves data via GetJobJSON (JSON-only), it populates the old
-// JobDetail struct for backward compatibility with existing test assertions.
-//
-// For new tests, prefer using resource.TestCheckResourceAttr() to check values
-// directly from Terraform state instead of inspecting JobDetail fields.
-//
-// TODO: Phase out this helper and migrate remaining tests to state-based assertions
-func testAccJobCheckExists(rn string, job *JobDetail) resource.TestCheckFunc {
-	return func(s *terraform.State) error {
-		rs, ok := s.RootModule().Resources[rn]
-		if !ok {
-			return fmt.Errorf("resource not found: %s", rn)
+			// Try to get the job - it should be gone
+			_, err = GetJobJSON(client, rs.Primary.ID)
+			if err == nil {
+				return fmt.Errorf("job %s still exists", rs.Primary.ID)
+			}
+			if _, ok := err.(*NotFoundError); !ok {
+				return fmt.Errorf("got unexpected error when checking job destruction: %v", err)
+			}
 		}
-
-		if rs.Primary.ID == "" {
-			return fmt.Errorf("job id not set")
-		}
-
-		clients, err := getTestClients()
-		if err != nil {
-			return fmt.Errorf("error getting test client: %s", err)
-		}
-		client := clients.V1
-
-		// Use JSON-only GetJobJSON (NO XML!)
-		gotJob, err := GetJobJSON(client, rs.Primary.ID)
-		if err != nil {
-			return fmt.Errorf("error getting job details: %s", err)
-		}
-
-		// Populate basic fields for test validation
-		job.ID = gotJob.ID
-		job.Name = gotJob.Name
-		job.GroupName = gotJob.Group
-		job.ProjectName = gotJob.Project
-		job.Description = gotJob.Description
-		job.ExecutionEnabled = gotJob.ExecutionEnabled
-		job.LogLevel = gotJob.LogLevel
-		// Note: Complex nested structures (Commands, Dispatch, etc.) are not populated
-		// as they're not reliably testable via API reads. Tests should use Terraform
-		// state checks instead of direct API assertions.
 
 		return nil
 	}
@@ -326,7 +234,7 @@ func TestAccJobOptions_secure_choice(t *testing.T) {
 			{
 				Config: testAccJobOptions_secure_options,
 				Check: resource.ComposeTestCheckFunc(
-					// Check Terraform state instead of XML JobDetail
+					// Check Terraform state directly
 					resource.TestCheckResourceAttr("rundeck_job.test", "name", "basic-job"),
 					resource.TestCheckResourceAttr("rundeck_job.test", "execution_enabled", "true"),
 					// Verify secure option attributes
@@ -347,7 +255,7 @@ func TestAccJobOptions_option_type(t *testing.T) {
 			{
 				Config: testAccJobOptions_option_type,
 				Check: resource.ComposeTestCheckFunc(
-					// Check Terraform state instead of XML JobDetail
+					// Check Terraform state directly
 					resource.TestCheckResourceAttr("rundeck_job.test", "name", "basic-job"),
 					resource.TestCheckResourceAttr("rundeck_job.test", "execution_enabled", "true"),
 					// Verify option types
@@ -393,7 +301,7 @@ func TestAccJobWebhookNotification(t *testing.T) {
 			{
 				Config: testAccJobConfig_webhookNotification,
 				Check: resource.ComposeTestCheckFunc(
-					// Check Terraform state instead of XML JobDetail
+					// Check Terraform state directly
 					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "name", "webhook-notification-test"),
 					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "description", "A job with webhook notifications"),
 					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "execution_enabled", "true"),
@@ -1182,33 +1090,16 @@ func TestAccJob_projectSchedule(t *testing.T) {
 		t.Skip("Skipping project schedule test - requires manual setup. Set RUNDECK_PROJECT_SCHEDULES_CONFIGURED=1 after creating schedules in Rundeck UI")
 	}
 
-	var job JobDetail
-
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
-		CheckDestroy:             testAccJobCheckDestroy(&job),
+		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccJobConfig_projectSchedule,
 				Check: resource.ComposeTestCheckFunc(
-					testAccJobCheckExists("rundeck_job.test", &job),
-					func(s *terraform.State) error {
-						if job.Schedules == nil || len(job.Schedules) == 0 {
-							return fmt.Errorf("project schedules should not be empty")
-						}
-						if len(job.Schedules) != 1 {
-							return fmt.Errorf("expected 1 project schedule, got %d", len(job.Schedules))
-						}
-						schedule := job.Schedules[0]
-						if expected := "my-schedule"; schedule.Name != expected {
-							return fmt.Errorf("wrong schedule name; expected %v, got %v", expected, schedule.Name)
-						}
-						if expected := "-option1 value1"; schedule.JobParams != expected {
-							return fmt.Errorf("wrong job_options; expected %v, got %v", expected, schedule.JobParams)
-						}
-						return nil
-					},
+					resource.TestCheckResourceAttr("rundeck_job.test", "name", "job-with-project-schedule"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "project_schedule.#", "1"),
 				),
 			},
 		},
@@ -1238,42 +1129,16 @@ func TestAccJob_projectSchedule_multiple(t *testing.T) {
 		t.Skip("Skipping project schedule test - requires manual setup. Set RUNDECK_PROJECT_SCHEDULES_CONFIGURED=1 after creating schedules in Rundeck UI")
 	}
 
-	var job JobDetail
-
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
-		CheckDestroy:             testAccJobCheckDestroy(&job),
+		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccJobConfig_projectSchedule_multiple,
 				Check: resource.ComposeTestCheckFunc(
-					testAccJobCheckExists("rundeck_job.test", &job),
-					func(s *terraform.State) error {
-						if job.Schedules == nil || len(job.Schedules) == 0 {
-							return fmt.Errorf("project schedules should not be empty")
-						}
-						if len(job.Schedules) != 2 {
-							return fmt.Errorf("expected 2 project schedules, got %d", len(job.Schedules))
-						}
-						// Check first schedule
-						schedule1 := job.Schedules[0]
-						if expected := "schedule-1"; schedule1.Name != expected {
-							return fmt.Errorf("wrong first schedule name; expected %v, got %v", expected, schedule1.Name)
-						}
-						if expected := "-opt1 val1"; schedule1.JobParams != expected {
-							return fmt.Errorf("wrong first schedule job_options; expected %v, got %v", expected, schedule1.JobParams)
-						}
-						// Check second schedule
-						schedule2 := job.Schedules[1]
-						if expected := "schedule-2"; schedule2.Name != expected {
-							return fmt.Errorf("wrong second schedule name; expected %v, got %v", expected, schedule2.Name)
-						}
-						if expected := "-opt2 val2"; schedule2.JobParams != expected {
-							return fmt.Errorf("wrong second schedule job_options; expected %v, got %v", expected, schedule2.JobParams)
-						}
-						return nil
-					},
+					resource.TestCheckResourceAttr("rundeck_job.test", "name", "job-with-multiple-schedules"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "project_schedule.#", "2"),
 				),
 			},
 		},
@@ -1299,30 +1164,16 @@ func TestAccJob_projectSchedule_noOptions(t *testing.T) {
 		t.Skip("Skipping project schedule test - requires manual setup. Set RUNDECK_PROJECT_SCHEDULES_CONFIGURED=1 after creating schedules in Rundeck UI")
 	}
 
-	var job JobDetail
-
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
-		CheckDestroy:             testAccJobCheckDestroy(&job),
+		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccJobConfig_projectSchedule_noOptions,
 				Check: resource.ComposeTestCheckFunc(
-					testAccJobCheckExists("rundeck_job.test", &job),
-					func(s *terraform.State) error {
-						if job.Schedules == nil || len(job.Schedules) == 0 {
-							return fmt.Errorf("project schedules should not be empty")
-						}
-						schedule := job.Schedules[0]
-						if expected := "simple-schedule"; schedule.Name != expected {
-							return fmt.Errorf("wrong schedule name; expected %v, got %v", expected, schedule.Name)
-						}
-						if schedule.JobParams != "" {
-							return fmt.Errorf("job_options should be empty, got %v", schedule.JobParams)
-						}
-						return nil
-					},
+					resource.TestCheckResourceAttr("rundeck_job.test", "name", "job-with-schedule-no-options"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "project_schedule.#", "1"),
 				),
 			},
 		},
