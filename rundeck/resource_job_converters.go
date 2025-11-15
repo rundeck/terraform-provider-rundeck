@@ -335,18 +335,23 @@ func convertNotificationsToJSON(ctx context.Context, notificationsList types.Lis
 
 		notifMap := make(map[string]interface{})
 
-		// Webhook fields
+		// Format and HTTP method are top-level webhook notification properties
 		if v, ok := attrs["format"].(types.String); ok && !v.IsNull() {
 			notifMap["format"] = v.ValueString()
 		}
 		if v, ok := attrs["http_method"].(types.String); ok && !v.IsNull() {
 			notifMap["httpMethod"] = v.ValueString()
 		}
+
+		// Webhook URLs need to be nested in a "webhook" object
 		if v, ok := attrs["webhook_urls"].(types.List); ok && !v.IsNull() && !v.IsUnknown() {
 			var urls []string
 			diags.Append(v.ElementsAs(ctx, &urls, false)...)
 			if len(urls) > 0 {
-				notifMap["urls"] = urls
+				// Rundeck expects webhook URLs as a comma-separated string in a webhook object
+				webhookMap := make(map[string]interface{})
+				webhookMap["urls"] = strings.Join(urls, ",")
+				notifMap["webhook"] = webhookMap
 			}
 		}
 
