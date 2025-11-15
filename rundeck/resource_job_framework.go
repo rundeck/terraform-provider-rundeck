@@ -56,15 +56,15 @@ type jobResourceModel struct {
 	NodesSelectedByDefault        types.Bool   `tfsdk:"nodes_selected_by_default"`
 	TimeZone                      types.String `tfsdk:"time_zone"`
 	
-	// JSON-encoded complex structures
-	LogLimit                   types.String `tfsdk:"log_limit"`
-	Orchestrator               types.String `tfsdk:"orchestrator"`
-	Notification               types.String `tfsdk:"notification"`
-	Option                     types.String `tfsdk:"option"`
-	GlobalLogFilter            types.String `tfsdk:"global_log_filter"`
-	Command                    types.String `tfsdk:"command"`
-	ProjectSchedule            types.String `tfsdk:"project_schedule"`
-	ExecutionLifecyclePlugin   types.String `tfsdk:"execution_lifecycle_plugin"`
+	// Complex nested structures as lists
+	Command                    types.List `tfsdk:"command"`
+	Option                     types.List `tfsdk:"option"`
+	Notification               types.List `tfsdk:"notification"`
+	LogLimit                   types.List `tfsdk:"log_limit"`
+	Orchestrator               types.List `tfsdk:"orchestrator"`
+	GlobalLogFilter            types.List `tfsdk:"global_log_filter"`
+	ProjectSchedule            types.List `tfsdk:"project_schedule"`
+	ExecutionLifecyclePlugin   types.List `tfsdk:"execution_lifecycle_plugin"`
 }
 
 // jobJSON represents the Rundeck Job JSON format (v44+)
@@ -301,39 +301,16 @@ func (r *jobResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 			"time_zone": schema.StringAttribute{
 				Optional: true,
 			},
-			// Complex structures as JSON strings
-			"log_limit": schema.StringAttribute{
-				Optional:    true,
-				Description: "JSON string containing log limit configuration (output, action, status)",
-			},
-			"orchestrator": schema.StringAttribute{
-				Optional:    true,
-				Description: "JSON string containing orchestrator configuration",
-			},
-			"notification": schema.StringAttribute{
-				Optional:    true,
-				Description: "JSON string containing notification configuration",
-			},
-			"option": schema.StringAttribute{
-				Optional:    true,
-				Description: "JSON string containing job options configuration",
-			},
-			"global_log_filter": schema.StringAttribute{
-				Optional:    true,
-				Description: "JSON string containing global log filter configuration",
-			},
-			"command": schema.StringAttribute{
-				Required:    true,
-				Description: "JSON string containing command/workflow configuration (sequence of commands)",
-			},
-			"project_schedule": schema.StringAttribute{
-				Optional:    true,
-				Description: "JSON string containing project schedule configuration",
-			},
-			"execution_lifecycle_plugin": schema.StringAttribute{
-				Optional:    true,
-				Description: "JSON string containing execution lifecycle plugin configuration",
-			},
+		},
+		Blocks: map[string]schema.Block{
+			"command":                     jobCommandNestedBlock(),
+			"option":                      jobOptionNestedBlock(),
+			"notification":                jobNotificationNestedBlock(),
+			"log_limit":                   jobLogLimitNestedBlock(),
+			"orchestrator":                jobOrchestratorNestedBlock(),
+			"global_log_filter":           jobGlobalLogFilterNestedBlock(),
+			"project_schedule":            jobProjectScheduleNestedBlock(),
+			"execution_lifecycle_plugin":  jobExecutionLifecyclePluginNestedBlock(),
 		},
 	}
 }
