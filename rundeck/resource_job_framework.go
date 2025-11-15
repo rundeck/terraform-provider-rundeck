@@ -462,7 +462,7 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 	if len(importResult.Succeeded) == 0 {
 		resp.Diagnostics.AddError(
 			"Error creating job",
-			fmt.Sprintf("Job import succeeded but no job ID was returned\nHTTP Status: %d\nResponse body: %s\nParsed result: succeeded=%d, failed=%d, skipped=%d", 
+			fmt.Sprintf("Job import succeeded but no job ID was returned\nHTTP Status: %d\nResponse body: %s\nParsed result: succeeded=%d, failed=%d, skipped=%d",
 				httpResp.StatusCode, string(responseBody), len(importResult.Succeeded), len(importResult.Failed), len(importResult.Skipped)),
 		)
 		return
