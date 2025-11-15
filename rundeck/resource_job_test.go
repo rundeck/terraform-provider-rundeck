@@ -197,7 +197,7 @@ func TestAccJobNotification_wrongType(t *testing.T) {
 }
 
 func TestAccJobNotification_multiple(t *testing.T) {
-	t.Skip("Skipping: Schema-level validation for duplicate notification blocks not yet implemented")
+	t.Skip("TODO: Schema-level validation for duplicate notification blocks will be implemented in a future version")
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -212,7 +212,7 @@ func TestAccJobNotification_multiple(t *testing.T) {
 }
 
 func TestAccJobOptions_empty_choice(t *testing.T) {
-	t.Skip("Skipping: Schema-level validation for empty choice values not yet implemented")
+	t.Skip("TODO: Schema-level validation for empty choice values will be implemented in a future version")
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
