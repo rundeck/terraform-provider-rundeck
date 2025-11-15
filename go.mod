@@ -2,11 +2,12 @@ module github.com/terraform-providers/terraform-provider-rundeck
 
 require (
 	github.com/hashicorp/terraform-plugin-framework v1.16.1
+	github.com/hashicorp/terraform-plugin-framework-validators v0.19.0
 	github.com/hashicorp/terraform-plugin-go v0.29.0
 	github.com/hashicorp/terraform-plugin-mux v0.21.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.38.1
 	github.com/rundeck/go-rundeck/rundeck v0.0.0-20190510195016-2cf9670bbcc4
-	github.com/rundeck/go-rundeck/rundeck-v2 v0.0.0-20251023151714-f1ab6ee00810
+	github.com/rundeck/go-rundeck/rundeck-v2 v0.0.0-20251115214811-7b8e53bdb31e
 )
 
 require (
@@ -38,7 +39,6 @@ require (
 	github.com/hashicorp/logutils v1.0.0 // indirect
 	github.com/hashicorp/terraform-exec v0.23.1 // indirect
 	github.com/hashicorp/terraform-json v0.27.1 // indirect
-	github.com/hashicorp/terraform-plugin-framework-validators v0.19.0 // indirect
 	github.com/hashicorp/terraform-plugin-log v0.9.0 // indirect
 	github.com/hashicorp/terraform-registry-address v0.4.0 // indirect
 	github.com/hashicorp/terraform-svchost v0.1.1 // indirect
