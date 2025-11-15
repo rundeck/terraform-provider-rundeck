@@ -363,11 +363,11 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 	}
 
 	// Import the job using custom HTTP request to ensure JSON response
-	apiURL := fmt.Sprintf("%s/api/%s/project/%s/jobs/import", 
+	apiURL := fmt.Sprintf("%s/api/%s/project/%s/jobs/import",
 		r.client.BaseURL,
 		r.client.APIVersion,
 		plan.ProjectName.ValueString())
-	
+
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewReader(jobJSON))
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -380,7 +380,7 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Accept", "application/json")
 	httpReq.Header.Set("X-Rundeck-Auth-Token", r.client.Token)
-	
+
 	// Add query parameters
 	q := httpReq.URL.Query()
 	q.Add("fileformat", "json")
@@ -557,21 +557,34 @@ func (r *jobResource) Update(ctx context.Context, req resource.UpdateRequest, re
 		return
 	}
 
-	// Import/update the job
-	client := r.client.V1
-	apiCtx := context.Background()
+	// Import/update the job using custom HTTP request to ensure JSON response
+	apiURL := fmt.Sprintf("%s/api/%s/project/%s/jobs/import", 
+		r.client.BaseURL,
+		r.client.APIVersion,
+		plan.ProjectName.ValueString())
+	
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewReader(jobJSON))
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error updating job",
+			fmt.Sprintf("Could not create request: %s", err.Error()),
+		)
+		return
+	}
 
-	// Call ProjectJobsImport with JSON format for update
-	response, err := client.ProjectJobsImport(
-		apiCtx,
-		plan.ProjectName.ValueString(),
-		io.NopCloser(bytes.NewReader(jobJSON)),
-		"application/json",
-		"",
-		"json",
-		"update",
-		"preserve",
-	)
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Accept", "application/json")
+	httpReq.Header.Set("X-Rundeck-Auth-Token", r.client.Token)
+	
+	// Add query parameters
+	q := httpReq.URL.Query()
+	q.Add("fileformat", "json")
+	q.Add("dupeOption", "update") // Use "update" instead of "create"
+	q.Add("uuidOption", "preserve")
+	httpReq.URL.RawQuery = q.Encode()
+
+	httpClient := &http.Client{}
+	httpResp, err := httpClient.Do(httpReq)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error updating job",
@@ -579,9 +592,9 @@ func (r *jobResource) Update(ctx context.Context, req resource.UpdateRequest, re
 		)
 		return
 	}
+	defer httpResp.Body.Close()
 
-	// Parse the import response
-	responseBody, err := io.ReadAll(response.Body)
+	responseBody, err := io.ReadAll(httpResp.Body)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error updating job",
@@ -590,7 +603,7 @@ func (r *jobResource) Update(ctx context.Context, req resource.UpdateRequest, re
 		return
 	}
 
-	// Parse import result
+	// Parse JSON import result
 	var importResult struct {
 		Succeeded []struct {
 			ID      string `json:"id"`
@@ -598,15 +611,14 @@ func (r *jobResource) Update(ctx context.Context, req resource.UpdateRequest, re
 			Project string `json:"project"`
 		} `json:"succeeded"`
 		Failed []struct {
-			Error   string `json:"error"`
-			Message string `json:"message"`
+			Error string `json:"error"`
 		} `json:"failed"`
 	}
 
 	if err := json.Unmarshal(responseBody, &importResult); err != nil {
 		resp.Diagnostics.AddError(
 			"Error updating job",
-			fmt.Sprintf("Could not parse import response: %s", err.Error()),
+			fmt.Sprintf("Could not parse import response: %s\nResponse body: %s", err.Error(), string(responseBody)),
 		)
 		return
 	}
@@ -614,9 +626,20 @@ func (r *jobResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	if len(importResult.Failed) > 0 {
 		resp.Diagnostics.AddError(
 			"Error updating job",
-			fmt.Sprintf("Job import failed: %s - %s", importResult.Failed[0].Error, importResult.Failed[0].Message),
+			fmt.Sprintf("Job import failed: %s", importResult.Failed[0].Error),
 		)
 		return
+	}
+
+	// Set computed fields that may not have been set in the plan
+	if plan.PreserveOptionsOrder.IsUnknown() {
+		plan.PreserveOptionsOrder = types.BoolValue(false)
+	}
+	if plan.RunnerSelectorFilterMode.IsUnknown() {
+		plan.RunnerSelectorFilterMode = types.StringNull()
+	}
+	if plan.RunnerSelectorFilterType.IsUnknown() {
+		plan.RunnerSelectorFilterType = types.StringNull()
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
