@@ -108,7 +108,12 @@ func TestAccRundeckProjectRunner_update(t *testing.T) {
 
 func testAccProjectRunnerCheckDestroy(runner *openapi.RunnerInfo) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		clients := testAccProvider.Meta().(*RundeckClients)
+		// Create client from environment variables for test verification
+		clients, err := getTestClients()
+		if err != nil {
+			return fmt.Errorf("failed to create test client: %s", err)
+		}
+
 		client := clients.V2
 		ctx := clients.ctx
 
@@ -175,7 +180,12 @@ func testAccProjectRunnerCheckExists(rn string, runner *openapi.RunnerInfo) reso
 		projectName := parts[0]
 		runnerId := parts[1]
 
-		clients := testAccProvider.Meta().(*RundeckClients)
+		// Create client from environment variables for test verification
+		clients, err := getTestClients()
+		if err != nil {
+			return fmt.Errorf("failed to create test client: %s", err)
+		}
+
 		client := clients.V2
 		ctx := clients.ctx
 

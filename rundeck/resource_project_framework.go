@@ -125,6 +125,7 @@ func (r *projectResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Description: "Additional raw configuration parameters to include in the project configuration, with dots replaced with slashes in the key names due to limitations in Terraform's config language.",
 				ElementType: types.StringType,
 				Optional:    true,
+				Computed:    true,
 			},
 		},
 	}

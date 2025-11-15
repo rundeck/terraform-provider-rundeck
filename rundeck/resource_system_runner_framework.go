@@ -180,13 +180,15 @@ func (r *systemRunnerResource) Create(ctx context.Context, req resource.CreateRe
 	if installationType == "" {
 		installationType = "linux"
 	}
-	runnerRequest.SetInstallationType(installationType)
+	// Convert to uppercase for API (enum values are LINUX, WINDOWS, DOCKER, KUBERNETES)
+	runnerRequest.SetInstallationType(strings.ToUpper(installationType))
 
 	replicaType := plan.ReplicaType.ValueString()
 	if replicaType == "" {
 		replicaType = "manual"
 	}
-	runnerRequest.SetReplicaType(replicaType)
+	// Convert to uppercase for API (enum values are MANUAL, EPHEMERAL)
+	runnerRequest.SetReplicaType(strings.ToUpper(replicaType))
 
 	// Although this is a system runner, the API requires wrapping the runner request
 	projectRunnerRequest := openapi.NewCreateProjectRunnerRequest(name, description)
@@ -271,6 +273,16 @@ func (r *systemRunnerResource) Read(ctx context.Context, req resource.ReadReques
 		state.RunnerID = types.StringValue(*runnerInfo.Id)
 	}
 
+	// Note: InstallationType and ReplicaType ARE returned by the RunnerInfo API as enums
+	// Convert from uppercase enum to lowercase for Terraform state
+	if runnerInfo.InstallationType != nil {
+		state.InstallationType = types.StringValue(strings.ToLower(string(*runnerInfo.InstallationType)))
+	}
+
+	if runnerInfo.ReplicaType != nil {
+		state.ReplicaType = types.StringValue(strings.ToLower(string(*runnerInfo.ReplicaType)))
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -301,13 +313,15 @@ func (r *systemRunnerResource) Update(ctx context.Context, req resource.UpdateRe
 	if installationType == "" {
 		installationType = "linux"
 	}
-	saveRequest.SetInstallationType(installationType)
+	// Convert to uppercase for API (enum values are LINUX, WINDOWS, DOCKER, KUBERNETES)
+	saveRequest.SetInstallationType(strings.ToUpper(installationType))
 
 	replicaType := plan.ReplicaType.ValueString()
 	if replicaType == "" {
 		replicaType = "manual"
 	}
-	saveRequest.SetReplicaType(replicaType)
+	// Convert to uppercase for API (enum values are MANUAL, EPHEMERAL)
+	saveRequest.SetReplicaType(strings.ToUpper(replicaType))
 
 	if !plan.AssignedProjects.IsNull() && !plan.AssignedProjects.IsUnknown() {
 		projects := make(map[string]types.String)

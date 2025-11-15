@@ -173,13 +173,15 @@ func (r *projectRunnerResource) Create(ctx context.Context, req resource.CreateR
 	if installationType == "" {
 		installationType = "linux"
 	}
-	runnerRequest.SetInstallationType(installationType)
+	// Convert to uppercase for API (enum values are LINUX, WINDOWS, DOCKER, KUBERNETES)
+	runnerRequest.SetInstallationType(strings.ToUpper(installationType))
 
 	replicaType := plan.ReplicaType.ValueString()
 	if replicaType == "" {
 		replicaType = "manual"
 	}
-	runnerRequest.SetReplicaType(replicaType)
+	// Convert to uppercase for API (enum values are MANUAL, EPHEMERAL)
+	runnerRequest.SetReplicaType(strings.ToUpper(replicaType))
 
 	// Create project runner request
 	projectRunnerRequest := openapi.NewCreateProjectRunnerRequest(name, description)
@@ -199,7 +201,8 @@ func (r *projectRunnerResource) Create(ctx context.Context, req resource.CreateR
 	var runnerId string
 	if response.RunnerId != nil {
 		runnerId = *response.RunnerId
-		plan.ID = types.StringValue(runnerId)
+		// Store composite ID as project:runner_id
+		plan.ID = types.StringValue(fmt.Sprintf("%s:%s", projectName, runnerId))
 		plan.RunnerID = types.StringValue(runnerId)
 	}
 
@@ -250,8 +253,19 @@ func (r *projectRunnerResource) Read(ctx context.Context, req resource.ReadReque
 
 	client := r.clients.V2
 	apiCtx := r.clients.ctx
-	projectName := state.ProjectName.ValueString()
-	runnerId := state.ID.ValueString()
+
+	// Parse composite ID (project:runner_id)
+	idParts := strings.SplitN(state.ID.ValueString(), ":", 2)
+	if len(idParts) != 2 {
+		resp.Diagnostics.AddError(
+			"Invalid ID format",
+			fmt.Sprintf("Expected ID format 'project:runner_id', got: %s", state.ID.ValueString()),
+		)
+		return
+	}
+
+	projectName := idParts[0]
+	runnerId := idParts[1]
 
 	// Get runner info for the project
 	runnerInfo, apiResp, err := client.RunnerAPI.ProjectRunnerInfo(apiCtx, projectName, runnerId).Execute()
@@ -305,8 +319,19 @@ func (r *projectRunnerResource) Update(ctx context.Context, req resource.UpdateR
 
 	client := r.clients.V2
 	apiCtx := r.clients.ctx
-	projectName := plan.ProjectName.ValueString()
-	runnerId := plan.ID.ValueString()
+
+	// Parse composite ID (project:runner_id)
+	idParts := strings.SplitN(plan.ID.ValueString(), ":", 2)
+	if len(idParts) != 2 {
+		resp.Diagnostics.AddError(
+			"Invalid ID format",
+			fmt.Sprintf("Expected ID format 'project:runner_id', got: %s", plan.ID.ValueString()),
+		)
+		return
+	}
+
+	projectName := idParts[0]
+	runnerId := idParts[1]
 
 	// Create save runner request
 	saveRequest := openapi.NewSaveProjectRunnerRequest(runnerId)
@@ -383,8 +408,19 @@ func (r *projectRunnerResource) Delete(ctx context.Context, req resource.DeleteR
 
 	client := r.clients.V2
 	apiCtx := r.clients.ctx
-	projectName := state.ProjectName.ValueString()
-	runnerId := state.ID.ValueString()
+
+	// Parse composite ID (project:runner_id)
+	idParts := strings.SplitN(state.ID.ValueString(), ":", 2)
+	if len(idParts) != 2 {
+		resp.Diagnostics.AddError(
+			"Invalid ID format",
+			fmt.Sprintf("Expected ID format 'project:runner_id', got: %s", state.ID.ValueString()),
+		)
+		return
+	}
+
+	projectName := idParts[0]
+	runnerId := idParts[1]
 
 	_, err := client.RunnerAPI.DeleteProjectRunner(apiCtx, projectName, runnerId).Execute()
 	if err != nil {
