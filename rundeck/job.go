@@ -76,6 +76,7 @@ type JobJSON struct {
 	NodeFilters            map[string]string        `json:"nodefilters,omitempty"`
 	Dispatch               map[string]interface{}   `json:"dispatch,omitempty"`
 	Schedule               map[string]interface{}   `json:"schedule,omitempty"`
+	Schedules              []map[string]interface{} `json:"schedules,omitempty"`
 	Orchestrator           map[string]interface{}   `json:"orchestrator,omitempty"`
 	Plugins                map[string]interface{}   `json:"plugins,omitempty"`
 	LogLimit               *string                  `json:"loglimit,omitempty"`

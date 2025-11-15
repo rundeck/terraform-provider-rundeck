@@ -95,6 +95,7 @@ type jobJSON struct {
 	Plugins                interface{}        `json:"plugins,omitempty"`
 	NodesSelectedByDefault bool               `json:"nodesSelectedByDefault"`
 	Schedule               interface{}        `json:"schedule,omitempty"`
+	Schedules              []interface{}      `json:"schedules,omitempty"`
 	ScheduleEnabled        bool               `json:"scheduleEnabled"`
 	TimeZone               string             `json:"timeZone,omitempty"`
 	Orchestrator           interface{}        `json:"orchestrator,omitempty"`
@@ -873,7 +874,8 @@ func (r *jobResource) planToJobJSON(ctx context.Context, plan *jobResourceModel)
 			return nil, fmt.Errorf("error converting project schedules: %v", diags.Errors())
 		}
 		if len(schedules) > 0 {
-			job.Schedule = schedules
+			job.Schedules = schedules
+			job.Schedule = nil // Set cron schedule to null when using project schedules
 		}
 	}
 

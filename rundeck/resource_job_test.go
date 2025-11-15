@@ -1,6 +1,7 @@
 package rundeck
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"regexp"
@@ -1089,27 +1090,16 @@ func testAccJobCheckScheduleExists(expectedScheduleCount int, expectedScheduleNa
 			return fmt.Errorf("failed to get job from Rundeck: %w", err)
 		}
 
-		// Check if schedule field exists and has the expected structure
-		if job.Schedule == nil {
-			return fmt.Errorf("job schedule is nil - schedules not applied in Rundeck")
+		// Check if schedules field exists (project schedules are at job root level, not inside schedule)
+		if job.Schedules == nil || len(job.Schedules) == 0 {
+			return fmt.Errorf("job schedules array is nil or empty - project schedules not applied in Rundeck")
 		}
 
-		// Cast to map to inspect the schedule structure
-		scheduleMap, ok := job.Schedule.(map[string]interface{})
-		if !ok {
-			return fmt.Errorf("job schedule is not a map, got type: %T", job.Schedule)
-		}
+		// Debug: print what we actually got from Rundeck
+		schedJSON, _ := json.Marshal(job.Schedules)
+		fmt.Printf("\n🔍 DEBUG: Project schedules from Rundeck API:\n%s\n\n", string(schedJSON))
 
-		// Check for "schedules" array
-		schedulesArray, ok := scheduleMap["schedules"]
-		if !ok {
-			return fmt.Errorf("job schedule map does not contain 'schedules' field")
-		}
-
-		schedules, ok := schedulesArray.([]interface{})
-		if !ok {
-			return fmt.Errorf("schedules is not an array, got type: %T", schedulesArray)
-		}
+		schedules := job.Schedules
 
 		// Validate count
 		if len(schedules) != expectedScheduleCount {
@@ -1119,11 +1109,7 @@ func testAccJobCheckScheduleExists(expectedScheduleCount int, expectedScheduleNa
 		// Validate schedule names if provided
 		if len(expectedScheduleNames) > 0 {
 			foundNames := make([]string, 0, len(schedules))
-			for _, s := range schedules {
-				schedMap, ok := s.(map[string]interface{})
-				if !ok {
-					continue
-				}
+			for _, schedMap := range schedules {
 				if name, ok := schedMap["name"].(string); ok {
 					foundNames = append(foundNames, name)
 				}

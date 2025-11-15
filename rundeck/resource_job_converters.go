@@ -479,7 +479,8 @@ func convertExecutionLifecyclePluginsToJSON(ctx context.Context, pluginsList typ
 }
 
 // convertProjectSchedulesToJSON converts project_schedule blocks to JSON format
-func convertProjectSchedulesToJSON(ctx context.Context, schedulesList types.List) (map[string]interface{}, diag.Diagnostics) {
+// Returns an array of schedule objects for the "schedules" field at job root level
+func convertProjectSchedulesToJSON(ctx context.Context, schedulesList types.List) ([]interface{}, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	if schedulesList.IsNull() || schedulesList.IsUnknown() {
@@ -496,9 +497,8 @@ func convertProjectSchedulesToJSON(ctx context.Context, schedulesList types.List
 		return nil, diags
 	}
 
-	// Build project schedule structure
-	scheduleMap := make(map[string]interface{})
-	scheduleArray := make([]map[string]interface{}, 0, len(schedules))
+	// Build project schedule array
+	scheduleArray := make([]interface{}, 0, len(schedules))
 
 	for _, scheduleObj := range schedules {
 		attrs := scheduleObj.Attributes()
@@ -509,16 +509,17 @@ func convertProjectSchedulesToJSON(ctx context.Context, schedulesList types.List
 			schedule["name"] = v.ValueString()
 		}
 
-		// Get job_options (optional) - maps to "args" in Rundeck API
-		if v, ok := attrs["job_options"].(types.String); ok && !v.IsNull() {
-			schedule["args"] = v.ValueString()
+		// Get job_options (optional) - maps to "jobParams" in Rundeck API
+		if v, ok := attrs["job_options"].(types.String); ok && !v.IsNull() && v.ValueString() != "" {
+			schedule["jobParams"] = v.ValueString()
+		} else {
+			schedule["jobParams"] = nil
 		}
 
 		scheduleArray = append(scheduleArray, schedule)
 	}
 
-	scheduleMap["schedules"] = scheduleArray
-	return scheduleMap, diags
+	return scheduleArray, diags
 }
 
 // convertCommandPluginsToJSON converts command-level plugins blocks to JSON
