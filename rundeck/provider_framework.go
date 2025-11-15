@@ -188,6 +188,7 @@ func (p *frameworkProvider) Resources(ctx context.Context) []func() resource.Res
 		NewPasswordResource,
 		NewSystemRunnerResource,
 		NewProjectRunnerResource,
+		NewProjectResource,
 	}
 }
 
