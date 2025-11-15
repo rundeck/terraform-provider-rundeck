@@ -243,6 +243,8 @@ func (r *jobResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 			},
 			"continue_next_node_on_error": schema.BoolAttribute{
 				Optional: true,
+				Computed: true,
+				Default:  booldefault.StaticBool(false),
 			},
 			"rank_order": schema.StringAttribute{
 				Optional: true,
@@ -258,6 +260,7 @@ func (r *jobResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 			"preserve_options_order": schema.BoolAttribute{
 				Optional: true,
 				Computed: true,
+				Default:  booldefault.StaticBool(false),
 			},
 			"command_ordering_strategy": schema.StringAttribute{
 				Optional: true,
@@ -279,10 +282,12 @@ func (r *jobResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 			"runner_selector_filter_mode": schema.StringAttribute{
 				Optional: true,
 				Computed: true,
+				Default:  stringdefault.StaticString(""),
 			},
 			"runner_selector_filter_type": schema.StringAttribute{
 				Optional: true,
 				Computed: true,
+				Default:  stringdefault.StaticString(""),
 			},
 			"timeout": schema.StringAttribute{
 				Optional: true,
