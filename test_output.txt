@@ -1,0 +1,86 @@
+=== RUN   TestAccRundeckJob_Import
+    import_resource_job_test.go:15: Step 1/2 error: After applying this test step and performing a `terraform refresh`, the plan was not empty.
+        stdout
+        
+        
+        Terraform used the selected providers to generate the following execution
+        plan. Resource actions are indicated with the following symbols:
+        -/+ destroy and then create replacement
+        
+        Terraform will perform the following actions:
+        
+          # rundeck_job.test must be replaced
+        -/+ resource "rundeck_job" "test" {
+              + id                           = (known after apply)
+                name                         = "basic-job"
+                # (18 unchanged attributes hidden)
+        
+                # (4 unchanged blocks hidden)
+            }
+        
+        Plan: 1 to add, 0 to change, 1 to destroy.
+--- FAIL: TestAccRundeckJob_Import (0.99s)
+=== RUN   TestAccProject_Import
+--- PASS: TestAccProject_Import (0.87s)
+=== RUN   TestProvider
+--- PASS: TestProvider (0.00s)
+=== RUN   TestProvider_impl
+--- PASS: TestProvider_impl (0.00s)
+=== RUN   TestAccAclPolicy_basic
+--- PASS: TestAccAclPolicy_basic (0.67s)
+=== RUN   TestAccJob_basic
+    resource_job_test.go:16: Step 1/1 error: After applying this test step and performing a `terraform refresh`, the plan was not empty.
+        stdout
+        
+        
+        Terraform used the selected providers to generate the following execution
+        plan. Resource actions are indicated with the following symbols:
+        -/+ destroy and then create replacement
+        
+        Terraform will perform the following actions:
+        
+          # rundeck_job.test must be replaced
+        -/+ resource "rundeck_job" "test" {
+              + id                           = (known after apply)
+                name                         = "basic-job"
+                # (18 unchanged attributes hidden)
+        
+                # (4 unchanged blocks hidden)
+            }
+        
+        Plan: 1 to add, 0 to change, 1 to destroy.
+--- FAIL: TestAccJob_basic (1.04s)
+=== RUN   TestAccJob_withLogLimit
+    resource_job_test.go:49: Step 1/1 error: Check failed: Check 2/2 error: LoggingLimit should not be nil
+--- FAIL: TestAccJob_withLogLimit (0.62s)
+=== RUN   TestAccJob_cmd_nodefilter
+--- FAIL: TestAccJob_cmd_nodefilter (1.05s)
+panic: runtime error: invalid memory address or nil pointer dereference [recovered]
+	panic: runtime error: invalid memory address or nil pointer dereference
+[signal SIGSEGV: segmentation violation code=0x2 addr=0x79 pc=0x104dd9164]
+
+goroutine 5859 [running]:
+testing.tRunner.func1.2({0x1051a6f40, 0x105d06a00})
+	/Users/forrest/go/1.23.12/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.10.darwin-arm64/src/testing/testing.go:1734 +0x1ac
+testing.tRunner.func1()
+	/Users/forrest/go/1.23.12/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.10.darwin-arm64/src/testing/testing.go:1737 +0x334
+panic({0x1051a6f40?, 0x105d06a00?})
+	/Users/forrest/go/1.23.12/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.10.darwin-arm64/src/runtime/panic.go:792 +0x124
+github.com/terraform-providers/terraform-provider-rundeck/rundeck.TestAccJob_cmd_nodefilter.func2(0x0?)
+	/Users/forrest/Documents/GitHub/terraform-provider-rundeck/rundeck/resource_job_test.go:92 +0x34
+github.com/terraform-providers/terraform-provider-rundeck/rundeck.TestAccJob_cmd_nodefilter.ComposeTestCheckFunc.func6(0x14000386e00)
+	/Users/forrest/go/1.23.12/pkg/mod/github.com/hashicorp/terraform-plugin-sdk/v2@v2.38.1/helper/resource/testing.go:819 +0x64
+github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource.testStepNewConfig({_, _}, {_, _}, {0x0, 0x14000116670, 0x0, 0x140007083f0, 0x0, 0x0, ...}, ...)
+	/Users/forrest/go/1.23.12/pkg/mod/github.com/hashicorp/terraform-plugin-sdk/v2@v2.38.1/helper/resource/testing_new_config.go:102 +0x538
+github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource.runNewTest({0x10538f5e0, 0x14000790fc0}, {0x10539bb00, 0x1400073e000}, {0x0, 0x14000116670, 0x0, 0x140007083f0, 0x0, 0x0, ...}, ...)
+	/Users/forrest/go/1.23.12/pkg/mod/github.com/hashicorp/terraform-plugin-sdk/v2@v2.38.1/helper/resource/testing_new.go:287 +0xeac
+github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource.Test({0x10539bb00, 0x1400073e000}, {0x0, 0x14000116670, 0x0, 0x140007083f0, 0x0, 0x0, 0x0, 0x0, ...})
+	/Users/forrest/go/1.23.12/pkg/mod/github.com/hashicorp/terraform-plugin-sdk/v2@v2.38.1/helper/resource/testing.go:778 +0x4d0
+github.com/terraform-providers/terraform-provider-rundeck/rundeck.TestAccJob_cmd_nodefilter(0x1400073e000)
+	/Users/forrest/Documents/GitHub/terraform-provider-rundeck/rundeck/resource_job_test.go:82 +0x2d4
+testing.tRunner(0x1400073e000, 0x105379120)
+	/Users/forrest/go/1.23.12/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.10.darwin-arm64/src/testing/testing.go:1792 +0xe4
+created by testing.(*T).Run in goroutine 1
+	/Users/forrest/go/1.23.12/pkg/mod/golang.org/toolchain@v0.0.1-go1.24.10.darwin-arm64/src/testing/testing.go:1851 +0x374
+FAIL	github.com/terraform-providers/terraform-provider-rundeck/rundeck	6.136s
+FAIL

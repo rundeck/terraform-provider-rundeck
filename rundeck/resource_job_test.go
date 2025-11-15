@@ -89,6 +89,13 @@ func TestAccJob_cmd_nodefilter(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccJobCheckExists("rundeck_job.source_test_job", &job),
 					func(s *terraform.State) error {
+						// Add nil checks for nested structures
+						if job.CommandSequence == nil || len(job.CommandSequence.Commands) == 0 {
+							return fmt.Errorf("CommandSequence or Commands is nil/empty")
+						}
+						if job.CommandSequence.Commands[0].Job == nil {
+							return fmt.Errorf("Commands[0].Job is nil")
+						}
 						if job.CommandSequence.Commands[0].Job.FailOnDisable != true {
 							return fmt.Errorf("FailOnDisable should be enabled")
 						}
