@@ -368,9 +368,14 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 	}
 
 	// Import the job using custom HTTP request to ensure JSON response
+	// JSON job import requires API v44+, use the configured version if >= 44, otherwise use 44
+	apiVersion := r.client.APIVersion
+	if apiVersion < "44" {
+		apiVersion = "44"
+	}
 	apiURL := fmt.Sprintf("%s/api/%s/project/%s/jobs/import",
 		r.client.BaseURL,
-		r.client.APIVersion,
+		apiVersion,
 		plan.ProjectName.ValueString())
 
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewReader(jobJSON))
@@ -590,9 +595,14 @@ func (r *jobResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	}
 
 	// Import/update the job using custom HTTP request to ensure JSON response
+	// JSON job import requires API v44+, use the configured version if >= 44, otherwise use 44
+	apiVersion := r.client.APIVersion
+	if apiVersion < "44" {
+		apiVersion = "44"
+	}
 	apiURL := fmt.Sprintf("%s/api/%s/project/%s/jobs/import",
 		r.client.BaseURL,
-		r.client.APIVersion,
+		apiVersion,
 		plan.ProjectName.ValueString())
 
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewReader(jobJSON))
