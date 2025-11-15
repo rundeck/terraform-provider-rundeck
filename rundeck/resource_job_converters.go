@@ -200,6 +200,15 @@ func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]inte
 			}
 		}
 
+		// Handle command-level plugins (e.g., log_filter_plugin)
+		if v, ok := attrs["plugins"].(types.List); ok && !v.IsNull() && !v.IsUnknown() {
+			pluginsMap, pluginDiags := convertCommandPluginsToJSON(ctx, v)
+			diags.Append(pluginDiags...)
+			if len(pluginsMap) > 0 {
+				cmdMap["plugins"] = pluginsMap
+			}
+		}
+
 		result = append(result, cmdMap)
 	}
 
@@ -416,4 +425,122 @@ func createEmptyListValue(ctx context.Context, elemType attr.Type) types.List {
 // Helper to create object value from map
 func createObjectValue(ctx context.Context, attrTypes map[string]attr.Type, values map[string]attr.Value) (types.Object, diag.Diagnostics) {
 	return types.ObjectValue(attrTypes, values)
+}
+
+// convertExecutionLifecyclePluginsToJSON converts execution_lifecycle_plugin blocks to JSON
+func convertExecutionLifecyclePluginsToJSON(ctx context.Context, pluginsList types.List) (map[string]interface{}, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	if pluginsList.IsNull() || pluginsList.IsUnknown() {
+		return nil, diags
+	}
+
+	var plugins []types.Object
+	diags.Append(pluginsList.ElementsAs(ctx, &plugins, false)...)
+	if diags.HasError() {
+		return nil, diags
+	}
+
+	if len(plugins) == 0 {
+		return nil, diags
+	}
+
+	// Build ExecutionLifecycle plugin structure
+	executionLifecycle := make(map[string]interface{})
+	pluginArray := make([]map[string]interface{}, 0, len(plugins))
+
+	for _, pluginObj := range plugins {
+		attrs := pluginObj.Attributes()
+		plugin := make(map[string]interface{})
+
+		// Get plugin type (required)
+		if v, ok := attrs["type"].(types.String); ok && !v.IsNull() {
+			plugin["type"] = v.ValueString()
+		}
+
+		// Get config map (optional)
+		if v, ok := attrs["config"].(types.Map); ok && !v.IsNull() {
+			configMap := make(map[string]string)
+			for key, val := range v.Elements() {
+				if strVal, ok := val.(types.String); ok && !strVal.IsNull() {
+					configMap[key] = strVal.ValueString()
+				}
+			}
+			if len(configMap) > 0 {
+				plugin["config"] = configMap
+			}
+		}
+
+		pluginArray = append(pluginArray, plugin)
+	}
+
+	executionLifecycle["ExecutionLifecycle"] = pluginArray
+	return executionLifecycle, diags
+}
+
+// convertCommandPluginsToJSON converts command-level plugins blocks to JSON
+func convertCommandPluginsToJSON(ctx context.Context, pluginsList types.List) (map[string]interface{}, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	if pluginsList.IsNull() || pluginsList.IsUnknown() {
+		return nil, diags
+	}
+
+	var plugins []types.Object
+	diags.Append(pluginsList.ElementsAs(ctx, &plugins, false)...)
+	if diags.HasError() {
+		return nil, diags
+	}
+
+	if len(plugins) == 0 {
+		return nil, diags
+	}
+
+	// Each plugin object contains nested blocks like log_filter_plugin
+	result := make(map[string]interface{})
+
+	for _, pluginObj := range plugins {
+		attrs := pluginObj.Attributes()
+
+		// Check for log_filter_plugin blocks
+		if v, ok := attrs["log_filter_plugin"].(types.List); ok && !v.IsNull() {
+			var logFilters []types.Object
+			diags.Append(v.ElementsAs(ctx, &logFilters, false)...)
+			if diags.HasError() {
+				continue
+			}
+
+			logFilterArray := make([]map[string]interface{}, 0, len(logFilters))
+			for _, lfObj := range logFilters {
+				lfAttrs := lfObj.Attributes()
+				logFilter := make(map[string]interface{})
+
+				// Get type (required)
+				if typeVal, ok := lfAttrs["type"].(types.String); ok && !typeVal.IsNull() {
+					logFilter["type"] = typeVal.ValueString()
+				}
+
+				// Get config (optional)
+				if configVal, ok := lfAttrs["config"].(types.Map); ok && !configVal.IsNull() {
+					configMap := make(map[string]string)
+					for key, val := range configVal.Elements() {
+						if strVal, ok := val.(types.String); ok && !strVal.IsNull() {
+							configMap[key] = strVal.ValueString()
+						}
+					}
+					if len(configMap) > 0 {
+						logFilter["config"] = configMap
+					}
+				}
+
+				logFilterArray = append(logFilterArray, logFilter)
+			}
+
+			if len(logFilterArray) > 0 {
+				result["LogFilter"] = logFilterArray
+			}
+		}
+	}
+
+	return result, diags
 }

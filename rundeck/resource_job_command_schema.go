@@ -47,6 +47,27 @@ func jobCommandNestedBlock() schema.ListNestedBlock {
 				},
 			},
 			Blocks: map[string]schema.Block{
+				"plugins": schema.ListNestedBlock{
+					Description: "Command-level plugins (e.g., log filters)",
+					NestedObject: schema.NestedBlockObject{
+						Blocks: map[string]schema.Block{
+							"log_filter_plugin": schema.ListNestedBlock{
+								Description: "Log filter plugin configuration",
+								NestedObject: schema.NestedBlockObject{
+									Attributes: map[string]schema.Attribute{
+										"type": schema.StringAttribute{
+											Required: true,
+										},
+										"config": schema.MapAttribute{
+											Optional:    true,
+											ElementType: types.StringType,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
 				"script_interpreter": schema.ListNestedBlock{
 					Description: "Script interpreter configuration",
 					NestedObject: schema.NestedBlockObject{
@@ -482,6 +503,7 @@ var commandObjectType = types.ObjectType{
 		"expand_token_in_script_file": types.BoolType,
 		"file_extension":              types.StringType,
 		"keep_going_on_success":       types.BoolType,
+		"plugins":                     types.ListType{ElemType: types.ObjectType{}},
 		"script_interpreter":          types.ListType{ElemType: types.ObjectType{}},
 		"job":                         types.ListType{ElemType: types.ObjectType{}},
 		"step_plugin":                 types.ListType{ElemType: types.ObjectType{}},

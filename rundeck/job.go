@@ -511,6 +511,7 @@ type JobJSON struct {
 	Dispatch               map[string]interface{}   `json:"dispatch,omitempty"`
 	Schedule               map[string]interface{}   `json:"schedule,omitempty"`
 	Orchestrator           map[string]interface{}   `json:"orchestrator,omitempty"`
+	Plugins                map[string]interface{}   `json:"plugins,omitempty"`
 	LogLimit               *string                  `json:"loglimit,omitempty"`
 	LogLimitAction         *string                  `json:"loglimitAction,omitempty"`
 	LogLimitStatus         *string                  `json:"loglimitStatus,omitempty"`

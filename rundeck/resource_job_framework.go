@@ -855,6 +855,17 @@ func (r *jobResource) planToJobJSON(ctx context.Context, plan *jobResourceModel)
 		}
 	}
 
+	// Convert execution_lifecycle_plugin
+	if !plan.ExecutionLifecyclePlugin.IsNull() && !plan.ExecutionLifecyclePlugin.IsUnknown() {
+		plugins, diags := convertExecutionLifecyclePluginsToJSON(ctx, plan.ExecutionLifecyclePlugin)
+		if diags.HasError() {
+			return nil, fmt.Errorf("error converting execution lifecycle plugins: %v", diags.Errors())
+		}
+		if len(plugins) > 0 {
+			job.Plugins = plugins
+		}
+	}
+
 	// TODO: Convert remaining complex structures (orchestrator, log_limit, global_log_filter, etc.)
 	// For now, these can be left nil and will be added incrementally
 
