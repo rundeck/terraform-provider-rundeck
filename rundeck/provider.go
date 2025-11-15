@@ -50,11 +50,11 @@ func Provider() *schema.Provider {
 		ResourcesMap: map[string]*schema.Resource{
 			"rundeck_project": resourceRundeckProject(),
 			"rundeck_job":     resourceRundeckJob(),
-			// "rundeck_private_key": resourceRundeckPrivateKey(), // Migrated to Framework
-			// "rundeck_password":    resourceRundeckPassword(), // Migrated to Framework
-			// "rundeck_public_key":  resourceRundeckPublicKey(), // Migrated to Framework
+			// "rundeck_private_key":    resourceRundeckPrivateKey(), // Migrated to Framework
+			// "rundeck_password":       resourceRundeckPassword(), // Migrated to Framework
+			// "rundeck_public_key":     resourceRundeckPublicKey(), // Migrated to Framework
 			// "rundeck_acl_policy":     resourceRundeckAclPolicy(), // Migrated to Framework
-			"rundeck_system_runner":  resourceRundeckSystemRunner(),
+			// "rundeck_system_runner":  resourceRundeckSystemRunner(), // Migrated to Framework
 			"rundeck_project_runner": resourceRundeckProjectRunner(),
 		},
 
