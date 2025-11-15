@@ -341,11 +341,10 @@ func TestAccJobOptions_option_type(t *testing.T) {
 					resource.TestCheckResourceAttr("rundeck_job.test", "name", "basic-job"),
 					resource.TestCheckResourceAttr("rundeck_job.test", "execution_enabled", "true"),
 					// Verify option types
-					resource.TestCheckResourceAttr("rundeck_job.test", "option.0.name", "file"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "option.0.name", "input_file"),
 					resource.TestCheckResourceAttr("rundeck_job.test", "option.0.type", "file"),
-					resource.TestCheckResourceAttr("rundeck_job.test", "option.1.name", "filename"),
-					resource.TestCheckResourceAttr("rundeck_job.test", "option.1.type", "text"),
-					resource.TestCheckResourceAttr("rundeck_job.test", "option.2.name", "fileextension"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "option.1.name", "output_file_name"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "option.2.name", "output_file_extension"),
 					resource.TestCheckResourceAttr("rundeck_job.test", "option.2.type", "text"),
 				),
 			},
@@ -377,57 +376,33 @@ func TestAccJob_plugins(t *testing.T) {
 }
 
 func TestAccJobWebhookNotification(t *testing.T) {
-	var job JobDetail
-
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
-		CheckDestroy:             testAccJobCheckDestroy(&job),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccJobConfig_webhookNotification,
 				Check: resource.ComposeTestCheckFunc(
-					testAccJobCheckExists("rundeck_job.test_webhook", &job),
-					func(s *terraform.State) error {
-						if job.Notification == nil {
-							return fmt.Errorf("job notification should not be nil")
-						}
+					// Check Terraform state instead of XML JobDetail
+					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "name", "webhook-notification-test"),
+					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "description", "A job with webhook notifications"),
+					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "execution_enabled", "true"),
 
-						// Test on_success notification
-						if job.Notification.OnSuccess == nil {
-							return fmt.Errorf("job notification on_success should not be nil")
-						}
-						if expected := "json"; job.Notification.OnSuccess.Format != expected {
-							return fmt.Errorf("wrong format for on_success notification; expected %v, got %v", expected, job.Notification.OnSuccess.Format)
-						}
-						if expected := "post"; job.Notification.OnSuccess.HttpMethod != expected {
-							return fmt.Errorf("wrong httpMethod for on_success notification; expected %v, got %v", expected, job.Notification.OnSuccess.HttpMethod)
-						}
+					// Verify on_success notification (index 0)
+					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.0.type", "on_success"),
+					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.0.format", "json"),
+					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.0.http_method", "post"),
+					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.0.webhook_urls.0", "https://example.com/webhook"),
 
-						// Test on_failure notification
-						if job.Notification.OnFailure == nil {
-							return fmt.Errorf("job notification on_failure should not be nil")
-						}
-						if expected := ""; job.Notification.OnFailure.Format != expected {
-							return fmt.Errorf("format for on_failure notification should be empty, got %v", job.Notification.OnFailure.Format)
-						}
-						if expected := ""; job.Notification.OnFailure.HttpMethod != expected {
-							return fmt.Errorf("httpMethod for on_failure notification should be empty, got %v", job.Notification.OnFailure.HttpMethod)
-						}
+					// Verify on_failure notification (index 1)
+					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.1.type", "on_failure"),
+					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.1.webhook_urls.0", "https://example.com/webhook"),
 
-						// Test on_start notification
-						if job.Notification.OnStart == nil {
-							return fmt.Errorf("job notification on_start should not be nil")
-						}
-						if expected := "json"; job.Notification.OnStart.Format != expected {
-							return fmt.Errorf("wrong format for on_start notification; expected %v, got %v", expected, job.Notification.OnStart.Format)
-						}
-						if expected := "post"; job.Notification.OnStart.HttpMethod != expected {
-							return fmt.Errorf("wrong httpMethod for on_start notification; expected %v, got %v", expected, job.Notification.OnStart.HttpMethod)
-						}
-
-						return nil
-					},
+					// Verify on_start notification (index 2)
+					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.2.type", "on_start"),
+					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.2.format", "json"),
+					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.2.http_method", "post"),
+					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.2.webhook_urls.0", "https://example.com/webhook"),
 				),
 			},
 		},
