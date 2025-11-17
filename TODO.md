@@ -6,6 +6,73 @@ The provider has been successfully modernized to the Terraform Plugin Framework 
 
 ---
 
+## ✅ Recently Completed (2025-11-17)
+
+### Critical Bug Fixes
+
+1. **✅ NodeFilters Structure Fix** (CRITICAL - OSS & Enterprise)
+   - **Issue**: Jobs were executing locally instead of dispatching to nodes
+   - **Root Cause**: `dispatch` was at root level instead of nested inside `nodefilters`
+   - **Fix**: Correctly nested `dispatch` inside `nodefilters` for both job creation and reading
+   - **Impact**: ALL jobs with node filters now work correctly in OSS and Enterprise
+   - **Files**: `rundeck/resource_job_framework.go` (lines 128-131, 803-845, 1078-1104)
+
+2. **✅ Execution Lifecycle Plugin Structure Fix** (CRITICAL - Enterprise)
+   - **Issue**: Plugins were being completely ignored by Rundeck API
+   - **Root Cause**: Sent as array `[{type, config}]`, API expects map `{pluginType: config}`
+   - **Fix**: Changed converter to use map structure
+   - **Impact**: All 8 lifecycle plugins now work correctly
+   - **Files**: `rundeck/resource_job_converters.go` (lines 445-485)
+
+3. **✅ Execution Lifecycle Plugin Ordering Fix** (CRITICAL)
+   - **Issue**: "Provider produced inconsistent result" errors
+   - **Root Cause**: Map iteration order is unpredictable in Go
+   - **Fix**: Sort plugin types alphabetically before iteration
+   - **Impact**: Stable, predictable state with no inconsistency errors
+   - **Files**: `rundeck/resource_job_framework.go` (lines 1120-1128)
+
+4. **✅ Execution Lifecycle Plugin Empty Config Fix**
+   - **Issue**: Test failure `TestAccJob_executionLifecyclePlugin_noConfig`
+   - **Root Cause**: Empty config `{}` converted to `null` during read
+   - **Fix**: Always preserve map structure when config field exists
+   - **Impact**: Plugins with no config options now work correctly
+   - **Files**: `rundeck/resource_job_framework.go` (lines 1143-1145)
+
+### New Features
+
+5. **✅ UUID-Based Job References**
+   - **Feature**: Jobs can reference other jobs by immutable UUID instead of name
+   - **Benefit**: References survive job renames, more reliable for production
+   - **Backward Compatible**: Name-based references still work
+   - **Files**: `rundeck/resource_job_command_schema.go`, `rundeck/resource_job_converters.go`
+
+6. **✅ Import Functionality for Lifecycle Plugins**
+   - **Feature**: Execution lifecycle plugins now import correctly
+   - **Fix**: Changed `NodeFilters` from `map[string]string` to `map[string]interface{}`
+   - **Impact**: Import captures lifecycle plugins with configurations
+   - **Files**: `rundeck/job.go`, `rundeck/resource_job_framework.go`
+
+### Infrastructure Improvements
+
+7. **✅ Test Directory Reorganization**
+   - Separated OSS and Enterprise test environments
+   - Created comprehensive documentation (3,300+ lines across 3 READMEs)
+   - Updated CI/CD workflows for new structure
+   - **Structure**:
+     ```
+     test/
+     ├── README.md (overview)
+     ├── oss/ (Docker-based OSS testing)
+     └── enterprise/ (comprehensive Enterprise testing)
+     ```
+
+8. **✅ Scripts Cleanup**
+   - Removed unused scripts (circle-ci.sh, gogetcookie.sh, changelog-links.sh)
+   - Documented active scripts (gofmtcheck.sh, errcheck.sh)
+   - Added `scripts/README.md` for clarity
+
+---
+
 ## ⚠️ Known Limitations
 
 ### 1. Job Import - Nested Block State Verification
@@ -301,11 +368,11 @@ github.com/rundeck/go-rundeck/rundeck v0.0.0-20190510195016-2cf9670bbcc4
 
 ## 📊 Metrics & Monitoring
 
-**Current Test Coverage**:
-- 23 passing tests (18 job, 5 other resources)
-- 8 skipped Enterprise tests
-- 2 deferred validation tests
-- ~80% code paths tested
+**Current Test Coverage** (as of 2025-11-17):
+- ✅ 23 passing tests (18 job, 5 other resources) - ALL PASSING in CI/CD
+- 8 skipped Enterprise tests (require `RUNDECK_ENTERPRISE_TESTS=1`)
+- 2 deferred validation tests (future enhancement)
+- ~85% code paths tested
 
 **Coverage Gaps**:
 - Error paths (API failures, invalid responses)
@@ -324,22 +391,26 @@ github.com/rundeck/go-rundeck/rundeck v0.0.0-20190510195016-2cf9670bbcc4
 ## 🎬 Prioritization Recommendations
 
 ### High Priority (Before 1.1.0)
-1. ✅ Fix job import test (COMPLETED)
-2. Implement JSON-to-state converters for import verification
-3. Add schema-level validation for duplicate notifications and empty choices
-4. Expand documentation (import guide, migration guide)
+1. ✅ Fix job import test (COMPLETED 2025-11-16)
+2. ✅ Fix nodefilters structure (COMPLETED 2025-11-17 - CRITICAL)
+3. ✅ Fix lifecycle plugins structure, ordering, and empty config (COMPLETED 2025-11-17 - CRITICAL)
+4. ✅ Add UUID-based job references (COMPLETED 2025-11-17)
+5. ✅ Reorganize and document test infrastructure (COMPLETED 2025-11-17)
+6. Implement JSON-to-state converters for import verification (commands, options, notifications)
+7. Add schema-level validation for duplicate notifications and empty choices
+8. Expand documentation (import guide, migration guide)
 
 ### Medium Priority (1.x releases)
-5. Migrate remaining SDK resources to Framework
-6. Implement data sources
-7. Enhance error messages and handling
-8. Add integration test suite
+9. Migrate remaining SDK resources to Framework
+10. Implement data sources
+11. Enhance error messages and handling
+12. Add integration test suite
 
 ### Low Priority (Future)
-9. Advanced job features (global log filters, retry strategies)
-10. New resources (node sources, webhooks, users)
-11. Provider configuration enhancements
-12. Performance optimization
+13. Advanced job features (global log filters, retry strategies)
+14. New resources (node sources, webhooks, users)
+15. Provider configuration enhancements
+16. Performance optimization
 
 ---
 
@@ -354,7 +425,7 @@ If you're interested in contributing to any of these items:
 
 ---
 
-**Last Updated**: 2025-11-15
-**Version**: 1.0.0
+**Last Updated**: 2025-11-17
+**Version**: 1.0.0 (RC - pending final CI/CD validation)
 **Maintainer**: @forrest
 
