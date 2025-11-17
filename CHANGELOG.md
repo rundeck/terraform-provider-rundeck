@@ -1,3 +1,10 @@
+## 0.5.5
+
+**IMPORTANT**: 0.5.3 and 0.5.4 were not released publicly to Hashicorp. These versions were signed with a key that has been 
+rotated for security purposes.
+
+- No material changes in 0.5.5 except publicly making features from 0.5.4 and 0.5.3 avaialble in public registry.
+
 ## 0.5.4
 - Support for Enterprise Runners (system_runner and project_runner resources)
 - Introduces rundeck-v2 Go Client Library for runner management
@@ -14,7 +21,6 @@
 - Adds two new command options for Rundeck jobs to support custom script file extensions and token expansion in external scripts.
 - Introduces file_extension and expand_token_in_script_file to Terraform schema and mapping functions
 - Introduces support for configuring webhook notifications in Rundeck jobs by adding the ability to specify payload formats and HTTP methods.
-
 
 ## 0.5.1
 - Runner Selector support on Job Resource
