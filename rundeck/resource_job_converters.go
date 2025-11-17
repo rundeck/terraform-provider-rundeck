@@ -428,6 +428,8 @@ func createObjectValue(ctx context.Context, attrTypes map[string]attr.Type, valu
 }
 
 // convertExecutionLifecyclePluginsToJSON converts execution_lifecycle_plugin blocks to JSON
+// Rundeck expects: {"ExecutionLifecycle": {"pluginType": {config}, "anotherPlugin": {config}}}
+// NOT an array with "type" field
 func convertExecutionLifecyclePluginsToJSON(ctx context.Context, pluginsList types.List) (map[string]interface{}, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
@@ -445,36 +447,38 @@ func convertExecutionLifecyclePluginsToJSON(ctx context.Context, pluginsList typ
 		return nil, diags
 	}
 
-	// Build ExecutionLifecycle plugin structure
+	// Build ExecutionLifecycle plugin structure as a MAP (not array)
+	// The plugin type becomes the key, and the config becomes the value
 	executionLifecycle := make(map[string]interface{})
-	pluginArray := make([]map[string]interface{}, 0, len(plugins))
+	pluginMap := make(map[string]interface{})
 
 	for _, pluginObj := range plugins {
 		attrs := pluginObj.Attributes()
-		plugin := make(map[string]interface{})
 
-		// Get plugin type (required)
+		// Get plugin type (required) - this becomes the MAP KEY
+		var pluginType string
 		if v, ok := attrs["type"].(types.String); ok && !v.IsNull() {
-			plugin["type"] = v.ValueString()
+			pluginType = v.ValueString()
+		} else {
+			continue // Skip if no type
 		}
 
-		// Get config map (optional)
+		// Get config map (optional) - this becomes the MAP VALUE
+		configMap := make(map[string]string)
 		if v, ok := attrs["config"].(types.Map); ok && !v.IsNull() {
-			configMap := make(map[string]string)
 			for key, val := range v.Elements() {
 				if strVal, ok := val.(types.String); ok && !strVal.IsNull() {
 					configMap[key] = strVal.ValueString()
 				}
 			}
-			if len(configMap) > 0 {
-				plugin["config"] = configMap
-			}
 		}
 
-		pluginArray = append(pluginArray, plugin)
+		// Store as map[pluginType] = configMap
+		// Even if config is empty, store empty map (not nil)
+		pluginMap[pluginType] = configMap
 	}
 
-	executionLifecycle["ExecutionLifecycle"] = pluginArray
+	executionLifecycle["ExecutionLifecycle"] = pluginMap
 	return executionLifecycle, diags
 }
 
