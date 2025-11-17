@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -1065,10 +1066,10 @@ func (r *jobResource) jobJSONAPIToState(job *JobJSON, state *jobResourceModel) e
 
 	// Handle node filters
 	if job.NodeFilters != nil {
-		if filter, ok := job.NodeFilters["filter"]; ok {
+		if filter, ok := job.NodeFilters["filter"].(string); ok && filter != "" {
 			state.NodeFilterQuery = types.StringValue(filter)
 		}
-		if excludeFilter, ok := job.NodeFilters["excludeFilter"]; ok {
+		if excludeFilter, ok := job.NodeFilters["excludeFilter"].(string); ok && excludeFilter != "" {
 			state.NodeFilterExcludeQuery = types.StringValue(excludeFilter)
 		}
 	}
@@ -1101,12 +1102,67 @@ func (r *jobResource) jobJSONAPIToState(job *JobJSON, state *jobResourceModel) e
 		}
 	}
 
+	// Parse execution lifecycle plugins
+	if job.Plugins != nil {
+		if execLifecycle, ok := job.Plugins["ExecutionLifecycle"].(map[string]interface{}); ok && len(execLifecycle) > 0 {
+			var pluginsList []attr.Value
+
+			for pluginType, configVal := range execLifecycle {
+				// Each plugin is a map entry where key=type, value=config
+				pluginAttrs := map[string]attr.Value{
+					"type": types.StringValue(pluginType),
+				}
+
+				// Convert config to map[string]string
+				if configMap, ok := configVal.(map[string]interface{}); ok {
+					configStrMap := make(map[string]attr.Value)
+					for k, v := range configMap {
+						if strVal, ok := v.(string); ok {
+							configStrMap[k] = types.StringValue(strVal)
+						}
+					}
+					if len(configStrMap) > 0 {
+						pluginAttrs["config"] = types.MapValueMust(types.StringType, configStrMap)
+					} else {
+						// Empty config
+						pluginAttrs["config"] = types.MapNull(types.StringType)
+					}
+				} else {
+					// No config
+					pluginAttrs["config"] = types.MapNull(types.StringType)
+				}
+
+				pluginObj := types.ObjectValueMust(
+					map[string]attr.Type{
+						"type":   types.StringType,
+						"config": types.MapType{ElemType: types.StringType},
+					},
+					pluginAttrs,
+				)
+				pluginsList = append(pluginsList, pluginObj)
+			}
+
+			if len(pluginsList) > 0 {
+				state.ExecutionLifecyclePlugin = types.ListValueMust(
+					types.ObjectType{
+						AttrTypes: map[string]attr.Type{
+							"type":   types.StringType,
+							"config": types.MapType{ElemType: types.StringType},
+						},
+					},
+					pluginsList,
+				)
+			}
+		}
+	}
+
 	// Parse commands from sequence
 	if job.Sequence != nil {
 		if cmds, ok := job.Sequence["commands"].([]interface{}); ok && len(cmds) > 0 {
 			// TODO: Implement full command parsing
-			// For now, preserve from state to avoid drift
-			// Will be implemented along with plugins
+			// This is complex due to the variety of command types (shell, script, job, plugin)
+			// For now, import will require manual adjustment of command blocks
+			// Or re-import from Terraform config
 		}
 	}
 
@@ -1121,11 +1177,6 @@ func (r *jobResource) jobJSONAPIToState(job *JobJSON, state *jobResourceModel) e
 		// TODO: Implement full notification parsing
 		// For now, preserve from state to avoid drift
 	}
-
-	// IMPORTANT: The nested structures (commands, options, notifications) are currently
-	// preserved from state rather than re-parsed from JSON. This is causing plan drift.
-	// These need to be fully implemented to eliminate drift.
-	// The pattern established here will also apply to plugins implementation.
 
 	return nil
 }

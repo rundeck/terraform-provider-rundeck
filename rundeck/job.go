@@ -73,7 +73,7 @@ type JobJSON struct {
 	Options                []map[string]interface{} `json:"options,omitempty"`
 	Sequence               map[string]interface{}   `json:"sequence,omitempty"`
 	Notification           map[string]interface{}   `json:"notification,omitempty"`
-	NodeFilters            map[string]string        `json:"nodefilters,omitempty"`
+	NodeFilters            map[string]interface{}   `json:"nodefilters,omitempty"` // Contains "filter" and "dispatch" nested objects
 	Dispatch               map[string]interface{}   `json:"dispatch,omitempty"`
 	Schedule               map[string]interface{}   `json:"schedule,omitempty"`
 	Schedules              []map[string]interface{} `json:"schedules,omitempty"`
