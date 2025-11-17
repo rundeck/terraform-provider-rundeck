@@ -190,8 +190,8 @@ github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0t
 github.com/rogpeppe/go-internal v1.14.1/go.mod h1:MaRKkUm5W0goXpeCfT7UZI6fk/L7L7so1lCWt35ZSgc=
 github.com/rundeck/go-rundeck/rundeck v0.0.0-20190510195016-2cf9670bbcc4 h1:cHYuiq43YzTvI4TrNN0it8EuOGwXihXdoV/q/1fn9BY=
 github.com/rundeck/go-rundeck/rundeck v0.0.0-20190510195016-2cf9670bbcc4/go.mod h1:LwGKo0Rgd/scx5Z1OYIns6i0T9FxI/BUJ37+9TQa/9Y=
-github.com/rundeck/go-rundeck/rundeck-v2 v0.0.0-20251115214811-7b8e53bdb31e h1:wBpjoT68nsdwd4noU3gMAKg7KSbgCu2BvATcrPfRDrY=
-github.com/rundeck/go-rundeck/rundeck-v2 v0.0.0-20251115214811-7b8e53bdb31e/go.mod h1:Qegd0sJuhY3qoWwZlyA0NmcncIqml9XaPY6nVPFIMo4=
+github.com/rundeck/go-rundeck/rundeck-v2 v0.0.0-20251117191850-2c69e9b959d3 h1:ezhxVggwA3drHuMS9P4y39c17kimpwUFqqMScp8+z58=
+github.com/rundeck/go-rundeck/rundeck-v2 v0.0.0-20251117191850-2c69e9b959d3/go.mod h1:e7BxDC0ZW0js2rYhxsmLPdScgx0nbxvlU+FL0jUCCFk=
 github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 h1:n661drycOFuPLCN3Uc8sB6B/s6Z4t2xvBgU1htSHuq8=
 github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3/go.mod h1:A0bzQcvG0E7Rwjx0REVgAGH58e96+X0MeOfepqsbeW4=
 github.com/skeema/knownhosts v1.3.1 h1:X2osQ+RAjK76shCbvhHHHVl3ZlgDm8apHEHFqRjnBY8=
