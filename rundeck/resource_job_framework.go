@@ -86,13 +86,12 @@ type jobJSON struct {
 	LogLimitAction         *string            `json:"loglimitAction,omitempty"`
 	LogLimitStatus         *string            `json:"loglimitStatus,omitempty"`
 	MultipleExecutions     bool               `json:"multipleExecutions,omitempty"`
-	Dispatch               *jobDispatch       `json:"dispatch,omitempty"`
 	Sequence               *jobSequence       `json:"sequence,omitempty"`
 	Notification           interface{}        `json:"notification,omitempty"`
 	Timeout                string             `json:"timeout,omitempty"`
 	Retry                  *jobRetry          `json:"retry,omitempty"`
 	NodeFilterEditable     bool               `json:"nodeFilterEditable"`
-	NodeFilters            *jobNodeFilters    `json:"nodeFilters,omitempty"`
+	NodeFilters            *jobNodeFilters    `json:"nodefilters,omitempty"`
 	Options                []interface{}      `json:"options,omitempty"`
 	Plugins                interface{}        `json:"plugins,omitempty"`
 	NodesSelectedByDefault bool               `json:"nodesSelectedByDefault"`
@@ -126,8 +125,9 @@ type jobRetry struct {
 }
 
 type jobNodeFilters struct {
-	Filter        string `json:"filter,omitempty"`
-	ExcludeFilter string `json:"excludeFilter,omitempty"`
+	Filter        string       `json:"filter,omitempty"`
+	ExcludeFilter string       `json:"excludeFilter,omitempty"`
+	Dispatch      *jobDispatch `json:"dispatch,omitempty"`
 }
 
 type jobSchedule struct {
@@ -799,37 +799,47 @@ func (r *jobResource) planToJobJSON(ctx context.Context, plan *jobResourceModel)
 		}
 	}
 
-	// Handle dispatch/node filter configuration
-	if !plan.NodeFilterQuery.IsNull() || !plan.NodeFilterExcludeQuery.IsNull() {
+	// Handle node filters and dispatch configuration
+	// Note: When a job has node filters (dispatches to nodes), the dispatch config
+	// is nested INSIDE nodefilters, not at the root level.
+	// This applies to both Open Source and Enterprise Rundeck.
+	hasNodeFilters := !plan.NodeFilterQuery.IsNull() || !plan.NodeFilterExcludeQuery.IsNull()
+	hasDispatchConfig := !plan.MaxThreadCount.IsNull() || !plan.ContinueNextNodeOnError.IsNull() ||
+		!plan.RankOrder.IsNull() || !plan.RankAttribute.IsNull() ||
+		!plan.NodeFilterExcludePrecedence.IsNull() || !plan.SuccessOnEmptyNodeFilter.IsNull()
+
+	if hasNodeFilters || hasDispatchConfig {
 		job.NodeFilters = &jobNodeFilters{}
+
+		// Set filter fields
 		if !plan.NodeFilterQuery.IsNull() {
 			job.NodeFilters.Filter = plan.NodeFilterQuery.ValueString()
 		}
 		if !plan.NodeFilterExcludeQuery.IsNull() {
 			job.NodeFilters.ExcludeFilter = plan.NodeFilterExcludeQuery.ValueString()
 		}
-	}
 
-	// Handle dispatch configuration
-	if !plan.MaxThreadCount.IsNull() || !plan.ContinueOnError.IsNull() || !plan.RankOrder.IsNull() {
-		job.Dispatch = &jobDispatch{}
-		if !plan.MaxThreadCount.IsNull() {
-			job.Dispatch.ThreadCount = fmt.Sprintf("%d", plan.MaxThreadCount.ValueInt64())
-		}
-		if !plan.ContinueOnError.IsNull() {
-			job.Dispatch.KeepGoing = plan.ContinueOnError.ValueBool()
-		}
-		if !plan.NodeFilterExcludePrecedence.IsNull() {
-			job.Dispatch.ExcludePrecedence = plan.NodeFilterExcludePrecedence.ValueBool()
-		}
-		if !plan.RankOrder.IsNull() {
-			job.Dispatch.RankOrder = plan.RankOrder.ValueString()
-		}
-		if !plan.RankAttribute.IsNull() {
-			job.Dispatch.RankAttribute = plan.RankAttribute.ValueString()
-		}
-		if !plan.SuccessOnEmptyNodeFilter.IsNull() {
-			job.Dispatch.SuccessOnEmptyNodeFilter = plan.SuccessOnEmptyNodeFilter.ValueBool()
+		// Set dispatch configuration (nested inside nodefilters)
+		if hasDispatchConfig {
+			job.NodeFilters.Dispatch = &jobDispatch{}
+			if !plan.MaxThreadCount.IsNull() {
+				job.NodeFilters.Dispatch.ThreadCount = fmt.Sprintf("%d", plan.MaxThreadCount.ValueInt64())
+			}
+			if !plan.ContinueNextNodeOnError.IsNull() {
+				job.NodeFilters.Dispatch.KeepGoing = plan.ContinueNextNodeOnError.ValueBool()
+			}
+			if !plan.NodeFilterExcludePrecedence.IsNull() {
+				job.NodeFilters.Dispatch.ExcludePrecedence = plan.NodeFilterExcludePrecedence.ValueBool()
+			}
+			if !plan.RankOrder.IsNull() {
+				job.NodeFilters.Dispatch.RankOrder = plan.RankOrder.ValueString()
+			}
+			if !plan.RankAttribute.IsNull() {
+				job.NodeFilters.Dispatch.RankAttribute = plan.RankAttribute.ValueString()
+			}
+			if !plan.SuccessOnEmptyNodeFilter.IsNull() {
+				job.NodeFilters.Dispatch.SuccessOnEmptyNodeFilter = plan.SuccessOnEmptyNodeFilter.ValueBool()
+			}
 		}
 	}
 
@@ -961,22 +971,22 @@ func (r *jobResource) jobJSONToState(job *jobJSON, state *jobResourceModel) erro
 		}
 	}
 
-	// Handle dispatch configuration
-	if job.Dispatch != nil {
+	// Handle dispatch configuration (nested inside nodeFilters)
+	if job.NodeFilters != nil && job.NodeFilters.Dispatch != nil {
 		// Parse threadcount string to int64
-		if job.Dispatch.ThreadCount != "" {
-			threadCount, _ := strconv.ParseInt(job.Dispatch.ThreadCount, 10, 64)
+		if job.NodeFilters.Dispatch.ThreadCount != "" {
+			threadCount, _ := strconv.ParseInt(job.NodeFilters.Dispatch.ThreadCount, 10, 64)
 			state.MaxThreadCount = types.Int64Value(threadCount)
 		}
-		state.ContinueOnError = types.BoolValue(job.Dispatch.KeepGoing)
-		state.NodeFilterExcludePrecedence = types.BoolValue(job.Dispatch.ExcludePrecedence)
-		if job.Dispatch.RankOrder != "" {
-			state.RankOrder = types.StringValue(job.Dispatch.RankOrder)
+		state.ContinueOnError = types.BoolValue(job.NodeFilters.Dispatch.KeepGoing)
+		state.NodeFilterExcludePrecedence = types.BoolValue(job.NodeFilters.Dispatch.ExcludePrecedence)
+		if job.NodeFilters.Dispatch.RankOrder != "" {
+			state.RankOrder = types.StringValue(job.NodeFilters.Dispatch.RankOrder)
 		}
-		if job.Dispatch.RankAttribute != "" {
-			state.RankAttribute = types.StringValue(job.Dispatch.RankAttribute)
+		if job.NodeFilters.Dispatch.RankAttribute != "" {
+			state.RankAttribute = types.StringValue(job.NodeFilters.Dispatch.RankAttribute)
 		}
-		state.SuccessOnEmptyNodeFilter = types.BoolValue(job.Dispatch.SuccessOnEmptyNodeFilter)
+		state.SuccessOnEmptyNodeFilter = types.BoolValue(job.NodeFilters.Dispatch.SuccessOnEmptyNodeFilter)
 	}
 
 	// Handle runner selector
@@ -1064,7 +1074,7 @@ func (r *jobResource) jobJSONAPIToState(job *JobJSON, state *jobResourceModel) e
 		}
 	}
 
-	// Handle node filters
+	// Handle node filters and dispatch (nested inside nodefilters)
 	if job.NodeFilters != nil {
 		if filter, ok := job.NodeFilters["filter"].(string); ok && filter != "" {
 			state.NodeFilterQuery = types.StringValue(filter)
@@ -1072,23 +1082,23 @@ func (r *jobResource) jobJSONAPIToState(job *JobJSON, state *jobResourceModel) e
 		if excludeFilter, ok := job.NodeFilters["excludeFilter"].(string); ok && excludeFilter != "" {
 			state.NodeFilterExcludeQuery = types.StringValue(excludeFilter)
 		}
-	}
 
-	// Handle dispatch
-	if job.Dispatch != nil {
-		if threadCount, ok := job.Dispatch["threadcount"].(string); ok {
-			if tc, err := strconv.ParseInt(threadCount, 10, 64); err == nil {
-				state.MaxThreadCount = types.Int64Value(tc)
+		// Dispatch is nested inside nodefilters
+		if dispatch, ok := job.NodeFilters["dispatch"].(map[string]interface{}); ok {
+			if threadCount, ok := dispatch["threadcount"].(string); ok {
+				if tc, err := strconv.ParseInt(threadCount, 10, 64); err == nil {
+					state.MaxThreadCount = types.Int64Value(tc)
+				}
 			}
-		}
-		if keepGoing, ok := job.Dispatch["keepgoing"].(bool); ok {
-			state.ContinueNextNodeOnError = types.BoolValue(keepGoing)
-		}
-		if rankOrder, ok := job.Dispatch["rankOrder"].(string); ok {
-			state.RankOrder = types.StringValue(rankOrder)
-		}
-		if rankAttr, ok := job.Dispatch["rankAttribute"].(string); ok {
-			state.RankAttribute = types.StringValue(rankAttr)
+			if keepGoing, ok := dispatch["keepgoing"].(bool); ok {
+				state.ContinueNextNodeOnError = types.BoolValue(keepGoing)
+			}
+			if rankOrder, ok := dispatch["rankOrder"].(string); ok {
+				state.RankOrder = types.StringValue(rankOrder)
+			}
+			if rankAttr, ok := dispatch["rankAttribute"].(string); ok {
+				state.RankAttribute = types.StringValue(rankAttr)
+			}
 		}
 	}
 
