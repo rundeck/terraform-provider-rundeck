@@ -62,9 +62,9 @@ $ make testacc
 For local development, you can use the provided Docker setup:
 
 ```sh
-$ cd test
+$ cd test/oss
 $ docker-compose up -d
-$ cd ..
+$ cd ../..
 $ TF_ACC=1 go test -v ./rundeck -timeout 120m
 ```
 

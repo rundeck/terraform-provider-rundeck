@@ -12,7 +12,7 @@ wait_for_rd() (
 export -f wait_for_rd
 
 (
-    cd test
+    cd test/oss
     docker-compose up --build -d
 )
 

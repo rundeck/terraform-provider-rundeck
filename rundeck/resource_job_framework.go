@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -1117,7 +1118,15 @@ func (r *jobResource) jobJSONAPIToState(job *JobJSON, state *jobResourceModel) e
 		if execLifecycle, ok := job.Plugins["ExecutionLifecycle"].(map[string]interface{}); ok && len(execLifecycle) > 0 {
 			var pluginsList []attr.Value
 
-			for pluginType, configVal := range execLifecycle {
+			// Sort plugin types to ensure consistent ordering (maps are unordered in Go)
+			var pluginTypes []string
+			for pluginType := range execLifecycle {
+				pluginTypes = append(pluginTypes, pluginType)
+			}
+			sort.Strings(pluginTypes)
+
+			for _, pluginType := range pluginTypes {
+				configVal := execLifecycle[pluginType]
 				// Each plugin is a map entry where key=type, value=config
 				pluginAttrs := map[string]attr.Value{
 					"type": types.StringValue(pluginType),
