@@ -26,7 +26,6 @@ website/node_modules
 *.iml
 terraform-provider-rundeck
 tmp/
-
 vendor/
 website/vendor
 
