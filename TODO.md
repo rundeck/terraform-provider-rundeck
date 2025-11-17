@@ -427,5 +427,5 @@ If you're interested in contributing to any of these items:
 
 **Last Updated**: 2025-11-17
 **Version**: 1.0.0 (RC - pending final CI/CD validation)
-**Maintainer**: @forrest
+**Maintainer**: @fdevans
 
