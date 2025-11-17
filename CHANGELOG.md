@@ -12,10 +12,14 @@ This release modernizes the Terraform Provider to use the Terraform Plugin Frame
 **Enhancements:**
 - Migrated Job resource from Plugin SDK to modern Plugin Framework
 - Implemented native HCL nested blocks for all job configurations
-- Added full support for execution lifecycle plugins
+- **Fixed execution lifecycle plugins** - Now use correct map structure instead of array (CRITICAL FIX)
+- Added **UUID support for job references** - Reference other jobs by immutable UUID instead of name
 - Implemented project schedule functionality with validation
 - Eliminated all plan drift issues for Job resource
 - All API calls now use JSON format exclusively
+
+**Important Notes:**
+- **Execution Lifecycle Plugins:** Previous versions sent incorrect format to API, causing plugins to be silently ignored. Jobs with lifecycle plugins should be recreated or updated after upgrading to ensure plugins are properly applied.
 
 **Compatibility:**
 - Existing Terraform plan files from previous versions should work without modification

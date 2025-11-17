@@ -33,6 +33,56 @@ Define your runbook automation workflows as code. Jobs represent executable auto
   }
 ```
 
+## Example Usage (Job References - UUID vs Name)
+
+Jobs can reference other jobs in command steps. UUID-based references are immutable and recommended for production:
+
+```hcl
+# Define a reusable job
+resource "rundeck_job" "cleanup" {
+  name         = "cleanup-temp-files"
+  project_name = rundeck_project.main.name
+  description  = "Clean up temporary files"
+  
+  command {
+    shell_command = "find /tmp -type f -mtime +7 -delete"
+  }
+}
+
+# Reference by UUID (recommended - immutable)
+resource "rundeck_job" "deploy_with_cleanup" {
+  name         = "deploy-application"
+  project_name = rundeck_project.main.name
+  description  = "Deploy app and cleanup"
+  
+  command {
+    shell_command = "./deploy.sh"
+  }
+  
+  command {
+    job {
+      uuid = rundeck_job.cleanup.id  # References by UUID - won't break if cleanup job renamed
+    }
+    description = "Run cleanup after deployment"
+  }
+}
+
+# Reference by name (alternative - readable but fragile)
+resource "rundeck_job" "alternative_deploy" {
+  name         = "alternative-deploy"
+  project_name = rundeck_project.main.name
+  
+  command {
+    job {
+      name         = "cleanup-temp-files"
+      project_name = rundeck_project.main.name
+    }
+  }
+}
+```
+
+**UUID vs Name:** UUID references are immutable and survive job renames, making them more reliable for production. Name-based references are more readable and work across different Rundeck instances (dev/staging/prod).
+
 ## Example Usage (Key-Value Data Log filter to pass data between jobs)
 
 ```hcl
@@ -58,8 +108,8 @@ Define your runbook automation workflows as code. Jobs represent executable auto
       }
     command {
       job {
+        uuid              = rundeck_job.git_pull.id  # UUID reference recommended
         args              = "-environment_numbers $${data.environment_numbers}"
-        name              = "git_pull_review_environments"
       }
     }
     option {
@@ -347,11 +397,17 @@ A command's `script_interpreter` block has the following structure:
 
 A command's `job` block has the following structure:
 
-* `name`: (Required) The name of the job to execute. If no specific `project_name` was given the target job should be in the same project as the current job.
+**Job Identification (either uuid or name must be specified):**
 
-* `group_name`: (Optional) The name of the group that the target job belongs to, if any.
+* `uuid`: (Optional) The UUID of the job to execute. **Recommended** for production use as UUIDs are immutable and will not break if the referenced job is renamed. You can reference another `rundeck_job` resource's `id` attribute (e.g., `uuid = rundeck_job.target.id`).
 
-* `project_name` - (Optional) The name of another project that holds the target job.
+* `name`: (Optional) The name of the job to execute. If no specific `project_name` was given the target job should be in the same project as the current job. Note that name-based references can break if the target job is renamed.
+
+* `group_name`: (Optional) The name of the group that the target job belongs to, if any. Used with name-based references.
+
+* `project_name` - (Optional) The name of another project that holds the target job. Used with name-based references.
+
+**Job Execution Options:**
 
 * `run_for_each_node`: (Optional) Boolean controlling whether the job is run only once (`false`,
   the default) or whether it is run once for each node (`true`).
