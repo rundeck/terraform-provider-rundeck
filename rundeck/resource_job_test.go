@@ -88,6 +88,28 @@ func TestAccJob_cmd_referred_job(t *testing.T) {
 	})
 }
 
+func TestAccJob_cmd_referred_job_uuid(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		CheckDestroy:             testAccJobCheckDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_cmd_referred_job_uuid,
+				Check: resource.ComposeTestCheckFunc(
+					// Verify caller job was created
+					resource.TestCheckResourceAttr("rundeck_job.caller", "name", "caller-job"),
+					resource.TestCheckResourceAttr("rundeck_job.caller", "description", "Job that references another job by UUID"),
+					// Verify target job was created
+					resource.TestCheckResourceAttr("rundeck_job.target", "name", "target-job"),
+					// Verify the job reference uses UUID
+					resource.TestCheckResourceAttrSet("rundeck_job.caller", "command.0.job.0.uuid"),
+				),
+			},
+		},
+	})
+}
+
 func TestOchestrator_high_low(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -605,6 +627,44 @@ resource "rundeck_job" "target_test_job" {
       import_options = true
     }
     description = "Referenced job execution"
+  }
+}
+`
+
+const testAccJobConfig_cmd_referred_job_uuid = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-job-uuid-ref"
+  description = "Test project for UUID-based job references"
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
+    }
+  }
+}
+
+resource "rundeck_job" "target" {
+  project_name = rundeck_project.test.name
+  name = "target-job"
+  description = "Job to be referenced by UUID"
+  execution_enabled = true
+  command {
+    shell_command = "echo 'I am the target job'"
+  }
+}
+
+resource "rundeck_job" "caller" {
+  project_name = rundeck_project.test.name
+  name = "caller-job"
+  description = "Job that references another job by UUID"
+  execution_enabled = true
+  
+  command {
+    job {
+      uuid = rundeck_job.target.id
+    }
+    description = "Call target job by UUID"
   }
 }
 `

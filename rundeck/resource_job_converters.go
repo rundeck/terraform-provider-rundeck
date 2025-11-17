@@ -84,6 +84,11 @@ func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]inte
 				jobAttrs := jobs[0].Attributes()
 				jobMap := make(map[string]interface{})
 
+				// UUID reference (preferred, immutable)
+				if uuid, ok := jobAttrs["uuid"].(types.String); ok && !uuid.IsNull() {
+					jobMap["uuid"] = uuid.ValueString()
+				}
+				// Name-based reference (backward compatible)
 				if name, ok := jobAttrs["name"].(types.String); ok && !name.IsNull() {
 					jobMap["name"] = name.ValueString()
 				}

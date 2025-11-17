@@ -82,17 +82,24 @@ func jobCommandNestedBlock() schema.ListNestedBlock {
 					},
 				},
 				"job": schema.ListNestedBlock{
-					Description: "Reference to another job to execute",
+					Description: "Reference to another job to execute. Either uuid or name must be specified.",
 					NestedObject: schema.NestedBlockObject{
 						Attributes: map[string]schema.Attribute{
+							"uuid": schema.StringAttribute{
+								Optional:    true,
+								Description: "UUID of the job to reference (immutable, preferred). Can reference another rundeck_job's id attribute.",
+							},
 							"name": schema.StringAttribute{
-								Required: true,
+								Optional:    true,
+								Description: "Name of the job to reference. Required if uuid is not specified.",
 							},
 							"group_name": schema.StringAttribute{
-								Optional: true,
+								Optional:    true,
+								Description: "Group path of the job. Used with name-based references.",
 							},
 							"project_name": schema.StringAttribute{
-								Optional: true,
+								Optional:    true,
+								Description: "Project containing the job. Used with name-based references.",
 							},
 							"run_for_each_node": schema.BoolAttribute{
 								Optional: true,
