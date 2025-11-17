@@ -1140,14 +1140,11 @@ func (r *jobResource) jobJSONAPIToState(job *JobJSON, state *jobResourceModel) e
 							configStrMap[k] = types.StringValue(strVal)
 						}
 					}
-					if len(configStrMap) > 0 {
-						pluginAttrs["config"] = types.MapValueMust(types.StringType, configStrMap)
-					} else {
-						// Empty config
-						pluginAttrs["config"] = types.MapNull(types.StringType)
-					}
+					// Always create a map (even if empty) when config field exists
+					// This ensures consistency between empty config {} and null
+					pluginAttrs["config"] = types.MapValueMust(types.StringType, configStrMap)
 				} else {
-					// No config
+					// No config field at all
 					pluginAttrs["config"] = types.MapNull(types.StringType)
 				}
 
