@@ -48,17 +48,17 @@ type systemRunnerResource struct {
 }
 
 type systemRunnerResourceModel struct {
-	ID                  types.String `tfsdk:"id"`
-	Name                types.String `tfsdk:"name"`
-	Description         types.String `tfsdk:"description"`
-	TagNames            types.String `tfsdk:"tag_names"`
-	AssignedProjects    types.Map    `tfsdk:"assigned_projects"`
-	ProjectRunnerAsNode types.Map    `tfsdk:"project_runner_as_node"`
-	InstallationType    types.String `tfsdk:"installation_type"`
-	ReplicaType         types.String `tfsdk:"replica_type"`
-	RunnerID            types.String `tfsdk:"runner_id"`
-	Token               types.String `tfsdk:"token"`
-	DownloadToken       types.String `tfsdk:"download_token"`
+	ID                  types.String    `tfsdk:"id"`
+	Name                types.String    `tfsdk:"name"`
+	Description         types.String    `tfsdk:"description"`
+	TagNames            RunnerTagsValue `tfsdk:"tag_names"`
+	AssignedProjects    types.Map       `tfsdk:"assigned_projects"`
+	ProjectRunnerAsNode types.Map       `tfsdk:"project_runner_as_node"`
+	InstallationType    types.String    `tfsdk:"installation_type"`
+	ReplicaType         types.String    `tfsdk:"replica_type"`
+	RunnerID            types.String    `tfsdk:"runner_id"`
+	Token               types.String    `tfsdk:"token"`
+	DownloadToken       types.String    `tfsdk:"download_token"`
 }
 
 func (r *systemRunnerResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -82,8 +82,9 @@ func (r *systemRunnerResource) Schema(_ context.Context, _ resource.SchemaReques
 				Required:    true,
 			},
 			"tag_names": schema.StringAttribute{
-				Description: "Comma separated tags for the runner.",
+				Description: "Comma separated tags for the runner. Rundeck normalizes tags to lowercase and sorts them alphabetically. The provider handles this automatically to prevent plan drift.",
 				Optional:    true,
+				CustomType:  RunnerTagsType{},
 			},
 			"assigned_projects": schema.MapAttribute{
 				Description: "Map of assigned projects.",
@@ -174,10 +175,8 @@ func (r *systemRunnerResource) Create(ctx context.Context, req resource.CreateRe
 	runnerRequest := openapi.NewCreateProjectRunnerRequest(name, description)
 
 	if !plan.TagNames.IsNull() && !plan.TagNames.IsUnknown() {
-		// Normalize tags before sending to API and update plan
-		normalizedTags := normalizeRunnerTags(plan.TagNames.ValueString())
-		plan.TagNames = types.StringValue(normalizedTags)
-		runnerRequest.SetTagNames(normalizedTags)
+		// Send tags as-is to API, Rundeck will normalize them
+		runnerRequest.SetTagNames(plan.TagNames.ValueString())
 	}
 
 	if !plan.AssignedProjects.IsNull() && !plan.AssignedProjects.IsUnknown() {
@@ -244,8 +243,22 @@ func (r *systemRunnerResource) Create(ctx context.Context, req resource.CreateRe
 		plan.DownloadToken = types.StringValue(*response.DownloadTk)
 	}
 
-	// Set state with normalized values
+	// Set state initially
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Call Read to get the normalized values from the API
+	// This ensures tags and other fields match what Rundeck returns
+	readReq := resource.ReadRequest{State: resp.State}
+	readResp := resource.ReadResponse{State: resp.State}
+	r.Read(ctx, readReq, &readResp)
+	resp.Diagnostics.Append(readResp.Diagnostics...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.State = readResp.State
 }
 
 func (r *systemRunnerResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -299,7 +312,9 @@ func (r *systemRunnerResource) Read(ctx context.Context, req resource.ReadReques
 	if runnerInfo.TagNames != nil {
 		// Normalize tags to prevent plan drift from API case/order changes
 		tagNames := normalizeRunnerTags(strings.Join(runnerInfo.TagNames, ","))
-		state.TagNames = types.StringValue(tagNames)
+		state.TagNames = RunnerTagsValue{
+			StringValue: types.StringValue(tagNames),
+		}
 	}
 
 	if runnerInfo.Id != nil {
@@ -357,10 +372,8 @@ func (r *systemRunnerResource) Update(ctx context.Context, req resource.UpdateRe
 	saveRequest.SetDescription(plan.Description.ValueString())
 
 	if !plan.TagNames.IsNull() && !plan.TagNames.IsUnknown() {
-		// Normalize tags before sending to API and update plan
-		normalizedTags := normalizeRunnerTags(plan.TagNames.ValueString())
-		plan.TagNames = types.StringValue(normalizedTags)
-		saveRequest.SetTagNames(normalizedTags)
+		// Send tags as-is to API, Rundeck will normalize them
+		saveRequest.SetTagNames(plan.TagNames.ValueString())
 	}
 
 	installationType := plan.InstallationType.ValueString()

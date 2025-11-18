@@ -11,15 +11,19 @@ This release modernizes the Terraform Provider to use the Terraform Plugin Frame
 
 **Enhancements:**
 - Migrated Job resource from Plugin SDK to modern Plugin Framework
+- Migrated Runner resources (system_runner, project_runner) to Plugin Framework
 - Implemented native HCL nested blocks for all job configurations
 - **Fixed execution lifecycle plugins** - Now use correct map structure instead of array (CRITICAL FIX)
 - Added **UUID support for job references** - Reference other jobs by immutable UUID instead of name
 - Implemented project schedule functionality with validation
+- **Semantic equality for runner tags** - No more plan drift from Rundeck's tag normalization (lowercase/sorting)
 - Eliminated all plan drift issues for Job resource
 - All API calls now use JSON format exclusively
+- **Updated rundeck-v2 SDK** - Fixed `ErrorResponse` unmarshalling bug (v0.0.0-20251118045903-2710361703d5)
 
 **Important Notes:**
 - **Execution Lifecycle Plugins:** Previous versions sent incorrect format to API, causing plugins to be silently ignored. Jobs with lifecycle plugins should be recreated or updated after upgrading to ensure plugins are properly applied.
+- **Runner Tags:** Tag normalization is now handled automatically via semantic equality. Existing configurations work as-is - tags can be specified in any order or case (e.g., `"production,api,test"` equals `"api,production,test"`).
 
 **Compatibility:**
 - Existing Terraform plan files from previous versions should work without modification
@@ -30,6 +34,11 @@ This release modernizes the Terraform Provider to use the Terraform Plugin Frame
 - Job tests: 18 passed
 - Runner tests: 5 passed (system_runner, project_runner)
 - Enterprise features fully tested and working
+
+**Verified Bug Fixes:**
+- ✅ [#156](https://github.com/rundeck/terraform-provider-rundeck/issues/156) - EOF error on `terraform apply` - FIXED
+- ✅ [#126](https://github.com/rundeck/terraform-provider-rundeck/issues/126) - `multi_value_delimiter` not working - FIXED
+- ✅ [#198](https://github.com/rundeck/terraform-provider-rundeck/issues/198) - Password state corruption on connection errors - FIXED
 
 ---
 ## 0.5.5

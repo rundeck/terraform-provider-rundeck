@@ -3,7 +3,14 @@
 Prioritized list of remaining work for the Rundeck Terraform Provider.
 
 **Current Status**: v1.0.0 ready for release  
-**Last Updated**: 2025-11-17
+**Last Updated**: 2025-11-18
+
+**Recent Accomplishments** (v1.0.0):
+- ✅ **SDK Updated**: `rundeck-v2` updated to fix `ErrorResponse` bug
+- ✅ **Semantic Equality**: Runner tags now use semantic equality (no more plan drift)
+- ✅ **Issues Fixed**: #156 (EOF), #126 (delimiter), #198 (password state) all tested & verified
+- ✅ **Full JSON**: All XML code eliminated, JSON-only API interactions
+- ✅ **Runner Resources**: System and project runners fully migrated to Framework
 
 ---
 

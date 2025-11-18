@@ -52,7 +52,7 @@ The following arguments are supported:
 
 * `description` - (Required) The description of the runner.
 
-* `tag_names` - (Optional) Comma-separated tags for the runner.
+* `tag_names` - (Optional) Comma-separated tags for the runner. Rundeck normalizes tags to lowercase and sorts them alphabetically. The provider handles this automatically using semantic equality to prevent plan drift.
 
 * `assigned_projects` - (Optional) Map of assigned projects with their access levels (e.g., "read", "execute", "admin").
 

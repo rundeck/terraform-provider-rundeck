@@ -35,19 +35,19 @@ type projectRunnerResource struct {
 }
 
 type projectRunnerResourceModel struct {
-	ID                  types.String `tfsdk:"id"`
-	ProjectName         types.String `tfsdk:"project_name"`
-	Name                types.String `tfsdk:"name"`
-	Description         types.String `tfsdk:"description"`
-	TagNames            types.String `tfsdk:"tag_names"`
-	InstallationType    types.String `tfsdk:"installation_type"`
-	ReplicaType         types.String `tfsdk:"replica_type"`
-	RunnerAsNodeEnabled types.Bool   `tfsdk:"runner_as_node_enabled"`
-	RemoteNodeDispatch  types.Bool   `tfsdk:"remote_node_dispatch"`
-	RunnerNodeFilter    types.String `tfsdk:"runner_node_filter"`
-	RunnerID            types.String `tfsdk:"runner_id"`
-	Token               types.String `tfsdk:"token"`
-	DownloadToken       types.String `tfsdk:"download_token"`
+	ID                  types.String    `tfsdk:"id"`
+	ProjectName         types.String    `tfsdk:"project_name"`
+	Name                types.String    `tfsdk:"name"`
+	Description         types.String    `tfsdk:"description"`
+	TagNames            RunnerTagsValue `tfsdk:"tag_names"`
+	InstallationType    types.String    `tfsdk:"installation_type"`
+	ReplicaType         types.String    `tfsdk:"replica_type"`
+	RunnerAsNodeEnabled types.Bool      `tfsdk:"runner_as_node_enabled"`
+	RemoteNodeDispatch  types.Bool      `tfsdk:"remote_node_dispatch"`
+	RunnerNodeFilter    types.String    `tfsdk:"runner_node_filter"`
+	RunnerID            types.String    `tfsdk:"runner_id"`
+	Token               types.String    `tfsdk:"token"`
+	DownloadToken       types.String    `tfsdk:"download_token"`
 }
 
 func (r *projectRunnerResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -78,8 +78,9 @@ func (r *projectRunnerResource) Schema(_ context.Context, _ resource.SchemaReque
 				Required:    true,
 			},
 			"tag_names": schema.StringAttribute{
-				Description: "Comma separated tags for the runner.",
+				Description: "Comma separated tags for the runner. Rundeck normalizes tags to lowercase and sorts them alphabetically. The provider handles this automatically to prevent plan drift.",
 				Optional:    true,
+				CustomType:  RunnerTagsType{},
 			},
 			"installation_type": schema.StringAttribute{
 				Description: "Installation type of the runner (linux, windows, kubernetes, docker).",
@@ -176,10 +177,8 @@ func (r *projectRunnerResource) Create(ctx context.Context, req resource.CreateR
 	runnerRequest := openapi.NewCreateRunnerRequest(name, description)
 
 	if !plan.TagNames.IsNull() && !plan.TagNames.IsUnknown() {
-		// Normalize tags before sending to API and update plan
-		normalizedTags := normalizeRunnerTags(plan.TagNames.ValueString())
-		plan.TagNames = types.StringValue(normalizedTags)
-		runnerRequest.SetTagNames(normalizedTags)
+		// Send tags as-is to API, Rundeck will normalize them
+		runnerRequest.SetTagNames(plan.TagNames.ValueString())
 	}
 
 	installationType := plan.InstallationType.ValueString()
@@ -267,8 +266,22 @@ func (r *projectRunnerResource) Create(ctx context.Context, req resource.CreateR
 		plan.DownloadToken = types.StringValue(*response.DownloadTk)
 	}
 
-	// Set state with normalized values
+	// Set state initially
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Call Read to get the normalized values from the API
+	// This ensures tags and other fields match what Rundeck returns
+	readReq := resource.ReadRequest{State: resp.State}
+	readResp := resource.ReadResponse{State: resp.State}
+	r.Read(ctx, readReq, &readResp)
+	resp.Diagnostics.Append(readResp.Diagnostics...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.State = readResp.State
 }
 
 func (r *projectRunnerResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -328,7 +341,9 @@ func (r *projectRunnerResource) Read(ctx context.Context, req resource.ReadReque
 	if runnerInfo.TagNames != nil {
 		// Normalize tags to prevent plan drift from API case/order changes
 		tagNames := normalizeRunnerTags(strings.Join(runnerInfo.TagNames, ","))
-		state.TagNames = types.StringValue(tagNames)
+		state.TagNames = RunnerTagsValue{
+			StringValue: types.StringValue(tagNames),
+		}
 	}
 
 	if runnerInfo.Id != nil {
@@ -397,10 +412,8 @@ func (r *projectRunnerResource) Update(ctx context.Context, req resource.UpdateR
 	saveRequest.SetDescription(plan.Description.ValueString())
 
 	if !plan.TagNames.IsNull() && !plan.TagNames.IsUnknown() {
-		// Normalize tags before sending to API and update plan
-		normalizedTags := normalizeRunnerTags(plan.TagNames.ValueString())
-		plan.TagNames = types.StringValue(normalizedTags)
-		saveRequest.SetTagNames(normalizedTags)
+		// Send tags as-is to API, Rundeck will normalize them
+		saveRequest.SetTagNames(plan.TagNames.ValueString())
 	}
 
 	installationType := plan.InstallationType.ValueString()
