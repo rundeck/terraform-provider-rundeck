@@ -1484,7 +1484,7 @@ resource "rundeck_job" "test" {
   
   execution_lifecycle_plugin {
     type = "killhandler"
-    config = {}
+    # No config specified - testing plugins without configuration
   }
 }
 `

@@ -1134,8 +1134,9 @@ func (r *jobResource) jobJSONAPIToState(job *JobJSON, state *jobResourceModel) e
 
 				// Convert config to map[string]string
 				if configMap, ok := configVal.(map[string]interface{}); ok {
+					// Config field exists in API response
 					if len(configMap) > 0 {
-						// Config has entries - create map with values
+						// Config has actual values - create populated map
 						configStrMap := make(map[string]attr.Value)
 						for k, v := range configMap {
 							if strVal, ok := v.(string); ok {
@@ -1144,11 +1145,12 @@ func (r *jobResource) jobJSONAPIToState(job *JobJSON, state *jobResourceModel) e
 						}
 						pluginAttrs["config"] = types.MapValueMust(types.StringType, configStrMap)
 					} else {
-						// Config exists but is empty - set to null to match plan expectations
+						// Config is empty {} - normalize to null for consistency
+						// API returns {} even when no config specified, causing drift
 						pluginAttrs["config"] = types.MapNull(types.StringType)
 					}
 				} else {
-					// No config field at all - set to null
+					// No config field at all in API response - set to null
 					pluginAttrs["config"] = types.MapNull(types.StringType)
 				}
 
