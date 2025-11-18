@@ -42,36 +42,7 @@ Prioritized list of remaining work for the Rundeck Terraform Provider.
 
 ---
 
-### 3. Fix Password State Corruption on Connection Errors
-**Effort**: Small (4-6 hours)  
-**Why Important**: Users lose password resource state when API connection fails, requiring manual recovery.  
-**GitHub Issue**: [#198](https://github.com/rundeck/terraform-provider-rundeck/issues/198)
-
-**Problem**: 
-When connection to Rundeck fails during `terraform refresh` or `plan`, the `rundeck_password` resource is removed from state instead of being preserved.
-
-**Root Cause**: 
-`rundeck_password` still uses legacy SDK with inadequate error handling. Connection errors are treated as "resource not found" instead of temporary failures.
-
-**Impact**:
-- State file corruption
-- Users must manually recover state
-- Affects `rundeck_password`, `rundeck_private_key`, `rundeck_public_key`
-
-**Solution**:
-1. Improve error handling in legacy SDK resources (short-term)
-2. Migrate password/key resources to Framework (long-term, see Medium #4)
-
-**Test Strategy**:
-- Simulate connection failure during refresh
-- Verify state is preserved with error message
-- Verify recovery after connection restored
-
-**Related**: This will be fully resolved when migrating to Framework (Medium Priority #4)
-
----
-
-### 4. Documentation Improvements
+### 3. Documentation Improvements
 **Effort**: Medium (1-2 days)  
 **Why Important**: Reduces support burden and improves onboarding for new users upgrading from 0.x to 1.0.
 
@@ -342,7 +313,7 @@ resource "rundeck_scm_import" "project_import" {
 **GitHub Issues Status**:
 - ✅ [#156](https://github.com/rundeck/terraform-provider-rundeck/issues/156) - EOF error - **FIXED in v1.0.0** (tested & confirmed)
 - ✅ [#126](https://github.com/rundeck/terraform-provider-rundeck/issues/126) - multi_value_delimiter - **FIXED in v1.0.0** (tested & confirmed)
-- 🔴 [#198](https://github.com/rundeck/terraform-provider-rundeck/issues/198) - password state corruption - **TODO** (High #3)
+- ✅ [#198](https://github.com/rundeck/terraform-provider-rundeck/issues/198) - password state corruption - **FIXED in v1.0.0** (tested & confirmed)
 - 🟡 [#70](https://github.com/rundeck/terraform-provider-rundeck/issues/70) - extra_config merge - **Design decision** (Medium #6)
 - 🟢 [#76](https://github.com/rundeck/terraform-provider-rundeck/issues/76) - SCM support - **Feature request** (Low #9)
 
@@ -354,17 +325,16 @@ resource "rundeck_scm_import" "project_import" {
 - ✅ All critical features complete
 - ✅ All OSS tests passing
 - ✅ Documentation updated
-- ✅ GitHub issues #156 and #126 tested and confirmed fixed
-- 🟡 Update GitHub issues with test results
+- ✅ GitHub issues #156, #126, and #198 tested and confirmed fixed
+- 🟡 Post test results to GitHub issues
 
 ### For 1.1.0 (Next Month)
 1. Complete job import converters (High #1)
 2. Add schema validation (High #2)
-3. Fix password state corruption (High #3) - GitHub issue #198
-4. Write import/migration guides (High #4)
+3. Write import/migration guides (High #3)
 
 ### For 2.0.0 (Future)
-1. Migrate all resources to Framework (Medium #4) - Will fix issues #198, #70
+1. Migrate all resources to Framework (Medium #4) - Will address issue #70
 2. Remove SDKv2 dependency
 3. Implement data sources (Medium #5)
 4. Consider SCM support if demand increases (Low #9) - GitHub issue #76
@@ -375,8 +345,8 @@ resource "rundeck_scm_import" "project_import" {
 
 Want to tackle one of these? 
 
-1. **Small tasks** (< 1 day): High #2 (schema validation), High #3 (password fix), individual docs
-2. **Medium tasks** (1-5 days): High #1 (import), High #4 (docs), Medium #6 (extra_config), Medium #7 (errors)
+1. **Small tasks** (< 1 day): High #2 (schema validation), individual docs
+2. **Medium tasks** (1-5 days): High #1 (import), High #3 (docs), Medium #6 (extra_config), Medium #7 (errors)
 3. **Large tasks** (1-3 weeks): Medium #4 (Framework migrations), Medium #5 (data sources), Low #8 (advanced features), Low #9 (SCM)
 
 Open an issue on GitHub to discuss your approach before starting.
