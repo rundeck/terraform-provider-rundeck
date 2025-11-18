@@ -7,9 +7,21 @@ terraform {
 }
 
 provider "rundeck" {
-  url         = "http://localhost:4440"
-  auth_token  = "ztW3s5kZtInFzaUlg1M3oLn81t8sAJtI"
+  url         = var.rundeck_url
+  auth_token  = var.rundeck_token
   api_version = "56"
+}
+
+variable "rundeck_url" {
+  description = "Rundeck URL"
+  type        = string
+  default     = "http://localhost:4440"
+}
+
+variable "rundeck_token" {
+  description = "Rundeck API Token"
+  type        = string
+  sensitive   = true
 }
 
 #===============================================================================

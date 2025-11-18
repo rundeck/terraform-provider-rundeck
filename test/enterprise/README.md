@@ -28,16 +28,11 @@ This directory contains comprehensive test configurations for Rundeck Enterprise
 
 ## Quick Start
 
-### 1. Update API Token
+### 1. Set Environment Variables
 
-Edit `comprehensive.tf` and update the `auth_token`:
-
-```hcl
-provider "rundeck" {
-  url         = "http://localhost:4440"
-  auth_token  = "YOUR_ENTERPRISE_API_TOKEN_HERE"  # UPDATE THIS
-  api_version = "56"
-}
+```bash
+export RUNDECK_URL="http://localhost:4440"
+export RUNDECK_TOKEN="your-api-token-here"
 ```
 
 ### 2. Run Comprehensive Test
@@ -47,9 +42,39 @@ cd test/enterprise
 ./comprehensive.sh
 ```
 
+The script will:
+- Clean up any previous test state
+- Build the provider binary locally (portable, no absolute paths)
+- Configure Terraform to use the local provider build
+- Run `terraform plan` and `terraform apply`
+- Verify nodefilters and lifecycle plugin structures via API
+- Display a summary of what to verify in the UI
+
 ### 3. Review in UI
 
 Open http://localhost:4440/project/comprehensive-test and review the created jobs.
+
+## Portability & Community Sharing
+
+This test is designed to be **fully portable** and community-friendly:
+
+✅ **No hardcoded paths** - Provider binary is built into the test directory  
+✅ **No hardcoded credentials** - Uses environment variables  
+✅ **Self-contained** - All artifacts stay in the test directory  
+✅ **Automatic cleanup** - Script handles cleanup of generated files  
+✅ **Works anywhere** - Uses relative paths and dynamic path resolution  
+
+**Generated files** (automatically cleaned up):
+- `terraform-provider-rundeck` - Provider binary (built locally)
+- `.terraformrc` - Dev overrides config (generated per run)
+- `.terraform/` - Terraform state directory
+- `terraform.tfstate*` - Terraform state files
+
+All generated files are gitignored and can be safely removed with:
+```bash
+terraform destroy -auto-approve
+rm -f terraform-provider-rundeck .terraformrc
+```
 
 ## Files
 

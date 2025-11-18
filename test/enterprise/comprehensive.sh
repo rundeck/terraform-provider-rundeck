@@ -1,51 +1,63 @@
 #!/bin/bash
 set -e
 
+# Check for required environment variables
+if [ -z "$RUNDECK_TOKEN" ]; then
+    echo "ERROR: RUNDECK_TOKEN environment variable must be set"
+    echo "Usage: RUNDECK_TOKEN=your-token ./comprehensive.sh"
+    exit 1
+fi
+
+RUNDECK_URL="${RUNDECK_URL:-http://localhost:4440}"
+
 echo "=========================================="
 echo "Comprehensive Enterprise Test"
 echo "=========================================="
+echo "Rundeck URL: $RUNDECK_URL"
 echo
 
 # Clean up any previous test state
 echo "1. Cleaning up previous test state..."
 rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
+rm -f terraform-provider-rundeck .terraformrc
 echo "   ✓ Clean"
 echo
 
-# Build the provider
+# Build the provider and place binary in this test directory
 echo "2. Building provider..."
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+echo "   Building from: $REPO_ROOT"
+cd "$REPO_ROOT"
 go clean -cache
-go build -o terraform-provider-rundeck
-echo "   ✓ Provider built"
+go build -o "$PWD/test/enterprise/terraform-provider-rundeck"
+cd - > /dev/null  # Return to test directory
+echo "   ✓ Provider built: ./terraform-provider-rundeck"
 echo
 
-# Create dev overrides config
+# Create dev overrides config (using current directory for portability)
 echo "3. Setting up dev overrides..."
+TEST_DIR="$PWD"
 cat > .terraformrc <<EOF
 provider_installation {
   dev_overrides {
-    "terraform-providers/rundeck" = "$PWD"
+    "terraform-providers/rundeck" = "$TEST_DIR"
   }
   direct {}
 }
 EOF
 export TF_CLI_CONFIG_FILE="$PWD/.terraformrc"
-echo "   ✓ Dev overrides configured"
+echo "   ✓ Dev overrides configured (pointing to current directory)"
 echo
+
+# Export Terraform variables
+export TF_VAR_rundeck_url="$RUNDECK_URL"
+export TF_VAR_rundeck_token="$RUNDECK_TOKEN"
 
 # Show the plan
 echo "4. Showing Terraform plan..."
 echo "=========================================="
 terraform plan
 echo "=========================================="
-echo
-
-# Ask for confirmation
-read -p "Do you want to apply this configuration? (yes/no): " CONFIRM
-if [ "$CONFIRM" != "yes" ]; then
-    echo "   ⚠ Skipping apply"
-    exit 0
-fi
 echo
 
 # Apply the configuration
@@ -68,9 +80,9 @@ echo "7. Verifying nodefilters structure in created job..."
 JOB_ID=$(terraform output -json job_ids | jq -r '.node_dispatch')
 echo "   Job ID: $JOB_ID"
 echo
-curl -s -H "X-Rundeck-Auth-Token: ztW3s5kZtInFzaUlg1M3oLn81t8sAJtI" \
+curl -s -H "X-Rundeck-Auth-Token: ${RUNDECK_TOKEN}" \
      -H "Accept: application/json" \
-     "http://localhost:4440/api/56/job/$JOB_ID?format=json" | \
+     "${RUNDECK_URL}/api/56/job/$JOB_ID?format=json" | \
      jq '.[0] | {name, nodefilters}' | tee /tmp/enterprise_nodefilters_check.json
 echo
 
@@ -86,9 +98,9 @@ echo "8. Verifying execution lifecycle plugins structure..."
 PLUGIN_JOB_ID=$(terraform output -json job_ids | jq -r '.lifecycle_plugins')
 echo "   Job ID: $PLUGIN_JOB_ID"
 echo
-curl -s -H "X-Rundeck-Auth-Token: ztW3s5kZtInFzaUlg1M3oLn81t8sAJtI" \
+curl -s -H "X-Rundeck-Auth-Token: ${RUNDECK_TOKEN}" \
      -H "Accept: application/json" \
-     "http://localhost:4440/api/56/job/$PLUGIN_JOB_ID?format=json" | \
+     "${RUNDECK_URL}/api/56/job/$PLUGIN_JOB_ID?format=json" | \
      jq '.[0].plugins.ExecutionLifecycle' | tee /tmp/enterprise_plugins_check.json
 echo
 
@@ -106,7 +118,7 @@ echo "Comprehensive Test Complete!"
 echo "=========================================="
 echo
 echo "Next Steps:"
-echo "1. Open Rundeck UI: http://localhost:4440/project/comprehensive-test"
+echo "1. Open Rundeck UI: ${RUNDECK_URL}/project/comprehensive-test"
 echo "2. Review each job to verify settings"
 echo "3. Run a few jobs to test execution"
 echo "4. Test import functionality if desired"
@@ -119,4 +131,5 @@ echo "  terraform plan  # Should show no drift"
 echo
 echo "Cleanup:"
 echo "  terraform destroy -auto-approve"
+echo "  rm -f terraform-provider-rundeck .terraformrc"
 
