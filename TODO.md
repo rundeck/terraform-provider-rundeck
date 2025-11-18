@@ -178,7 +178,7 @@ After:  Error creating job "my-job" in project "prod": Rundeck returned validati
 
 ---
 
-### 7. Enterprise Test Automation
+### 7. Enterprise Test Automation & Enhancement
 **Effort**: Medium (3-5 days)  
 **Why Important**: 9 tests currently skip in CI/CD, manual testing is slow and error-prone.
 
@@ -186,12 +186,20 @@ After:  Error creating job "my-job" in project "prod": Rundeck returned validati
 - 4 project schedule tests
 - 5 runner tests (system + project)
 
-**Options**:
+**Comprehensive Test Improvements**:
+- Add automated cleanup command (destroy + remove artifacts)
+- Integrate drift validation into test flow
+- Make build process more robust
+- Add summary report generation
+- Document for community contributors
+- **File**: `test/enterprise/comprehensive.sh`
+
+**CI/CD Options**:
 1. GitHub Actions with Enterprise Docker image (requires license)
 2. Scheduled manual test runs against Enterprise instance
 3. Community-contributed test results
 
-**Goal**: Increase automated test coverage from ~85% to 95%
+**Goal**: Increase automated test coverage from ~85% to 95% + easier community testing
 
 ---
 
