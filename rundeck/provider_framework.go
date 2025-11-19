@@ -54,11 +54,11 @@ func (p *frameworkProvider) Schema(ctx context.Context, req provider.SchemaReque
 		Attributes: map[string]schema.Attribute{
 			"url": schema.StringAttribute{
 				Description: "URL of the root of the target Rundeck server.",
-				Optional:    true,
+				Required:    true,
 			},
 			"api_version": schema.StringAttribute{
 				Description: "API Version of the target Rundeck server (minimum: 46 for Rundeck 5.0.0+).",
-				Optional:    true,
+				Required:    true,
 			},
 			"auth_token": schema.StringAttribute{
 				Description: "Auth token to use with the Rundeck API.",
