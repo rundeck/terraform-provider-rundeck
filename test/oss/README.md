@@ -70,7 +70,8 @@ docker-compose down -v
 ### Build the Provider
 
 ```bash
-cd /Users/forrest/Documents/GitHub/terraform-provider-rundeck
+# Navigate to the provider repository root
+cd terraform-provider-rundeck  # or your clone location
 go build -o terraform-provider-rundeck
 ```
 

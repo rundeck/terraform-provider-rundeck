@@ -108,7 +108,7 @@ resource "rundeck_job" "alternative_deploy" {
       }
     command {
       job {
-        uuid              = rundeck_job.git_pull.id  # UUID reference recommended
+        uuid              = rundeck_job.git_pull.id  # uuid reference recommended
         args              = "-environment_numbers $${data.environment_numbers}"
       }
     }

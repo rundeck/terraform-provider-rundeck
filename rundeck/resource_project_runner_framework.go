@@ -221,9 +221,6 @@ func (r *projectRunnerResource) Create(ctx context.Context, req resource.CreateR
 		// Store composite ID as project:runner_id
 		plan.ID = types.StringValue(fmt.Sprintf("%s:%s", projectName, runnerId))
 		plan.RunnerID = types.StringValue(runnerId)
-
-		// Debug: Log what we got
-		resp.Diagnostics.AddWarning("DEBUG: Runner Created", fmt.Sprintf("Project: %s, RunnerID: %s, Composite ID: %s", projectName, runnerId, plan.ID.ValueString()))
 	} else {
 		resp.Diagnostics.AddError(
 			"Error creating project runner",
@@ -520,7 +517,8 @@ func (r *projectRunnerResource) ImportState(ctx context.Context, req resource.Im
 	projectName := idParts[0]
 	runnerId := idParts[1]
 
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), runnerId)...)
+	// Set composite ID in the format "project:runner_id" for consistency
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), req.ID)...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("project_name"), projectName)...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("runner_id"), runnerId)...)
 }

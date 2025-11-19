@@ -468,6 +468,7 @@ resource "rundeck_job" "test" {
 
   command {
     description = "runs a script from a URL"
+    # check-file.ps1 is a general file checker that works with any file type
     script_url = "https://raw.githubusercontent.com/fleschutz/PowerShell/refs/heads/main/scripts/check-file.ps1"
     script_file_args = "/tmp/terraform-acc-tests.yaml"
     file_extension = ".ps1"

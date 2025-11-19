@@ -336,8 +336,8 @@ The `comprehensive.sh` script performs a full test cycle:
 If you prefer manual steps:
 
 ```bash
-# Build provider
-cd /Users/forrest/Documents/GitHub/terraform-provider-rundeck
+# Build provider (navigate to your provider repository root)
+cd terraform-provider-rundeck  # or: $(git rev-parse --show-toplevel)
 go build -o terraform-provider-rundeck
 
 # Setup dev overrides
