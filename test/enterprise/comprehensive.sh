@@ -1,14 +1,70 @@
 #!/bin/bash
 set -e
 
+# Cleanup function
+cleanup() {
+    echo "=========================================="
+    echo "Cleaning Up Test Resources"
+    echo "=========================================="
+    
+    # Set up environment if not already set
+    if [ -z "$TF_VAR_rundeck_url" ]; then
+        export TF_VAR_rundeck_url="${RUNDECK_URL:-http://localhost:4440}"
+    fi
+    if [ -z "$TF_VAR_rundeck_token" ]; then
+        export TF_VAR_rundeck_token="$RUNDECK_TOKEN"
+    fi
+    
+    # Set dev overrides if .terraformrc exists
+    if [ -f ".terraformrc" ]; then
+        export TF_CLI_CONFIG_FILE="$PWD/.terraformrc"
+    fi
+    
+    echo "Destroying Terraform resources..."
+    terraform destroy -auto-approve || {
+        echo "⚠️  Terraform destroy failed, trying API cleanup..."
+        if [ -n "$RUNDECK_TOKEN" ] && [ -n "$TF_VAR_rundeck_url" ]; then
+            curl -X DELETE \
+                -H "X-Rundeck-Auth-Token: ${RUNDECK_TOKEN}" \
+                "${TF_VAR_rundeck_url}/api/56/project/comprehensive-test" 2>/dev/null || true
+            echo "   ✓ Deleted project via API"
+        fi
+    }
+    
+    echo "Removing local artifacts..."
+    rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
+    rm -f terraform-provider-rundeck .terraformrc
+    echo "   ✓ Cleanup complete"
+    echo
+}
+
+# Check if running cleanup only
+if [ "$1" = "destroy" ] || [ "$1" = "cleanup" ]; then
+    if [ -z "$RUNDECK_TOKEN" ]; then
+        echo "ERROR: RUNDECK_TOKEN environment variable must be set"
+        exit 1
+    fi
+    RUNDECK_URL="${RUNDECK_URL:-http://localhost:4440}"
+    cleanup
+    exit 0
+fi
+
 # Check for required environment variables
 if [ -z "$RUNDECK_TOKEN" ]; then
     echo "ERROR: RUNDECK_TOKEN environment variable must be set"
     echo "Usage: RUNDECK_TOKEN=your-token ./comprehensive.sh"
+    echo "   or: RUNDECK_TOKEN=your-token ./comprehensive.sh --destroy-after"
+    echo "   or: RUNDECK_TOKEN=your-token ./comprehensive.sh destroy  # cleanup only"
     exit 1
 fi
 
 RUNDECK_URL="${RUNDECK_URL:-http://localhost:4440}"
+DESTROY_AFTER=false
+
+# Check for --destroy-after flag
+if [ "$1" = "--destroy-after" ] || [ "$1" = "-d" ]; then
+    DESTROY_AFTER=true
+fi
 
 echo "=========================================="
 echo "Comprehensive Enterprise Test"
@@ -117,6 +173,16 @@ echo "=========================================="
 echo "Comprehensive Test Complete!"
 echo "=========================================="
 echo
+
+# If --destroy-after flag was set, cleanup now
+if [ "$DESTROY_AFTER" = true ]; then
+    echo "Running automatic cleanup (--destroy-after flag set)..."
+    echo
+    cleanup
+    echo "✅ Test complete and cleaned up!"
+    exit 0
+fi
+
 echo "Next Steps:"
 echo "1. Open Rundeck UI: ${RUNDECK_URL}/project/comprehensive-test"
 echo "2. Review each job to verify settings"
@@ -130,6 +196,8 @@ echo "  terraform import rundeck_job.import_test \$JOB_ID"
 echo "  terraform plan  # Should show no drift"
 echo
 echo "Cleanup:"
+echo "  ./comprehensive.sh destroy"
+echo "  # or manually:"
 echo "  terraform destroy -auto-approve"
 echo "  rm -f terraform-provider-rundeck .terraformrc"
 

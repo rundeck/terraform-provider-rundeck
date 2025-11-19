@@ -11,15 +11,75 @@ set -e
 #   export RUNDECK_URL="http://localhost:4440"
 #   export RUNDECK_TOKEN="your-api-token"
 #   ./test-custom.sh /path/to/your/plan/directory
+#   ./test-custom.sh /path/to/your/plan/directory --destroy-after
+#   ./test-custom.sh /path/to/your/plan/directory destroy
 #
 # Or for quick local testing:
 #   ./test-custom.sh .  # Use current directory
 # ==============================================================================
 
+# Cleanup function
+cleanup() {
+    echo "=========================================="
+    echo "Cleaning Up Test Resources"
+    echo "=========================================="
+    
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    
+    if [ -z "$PLAN_DIR" ]; then
+        echo "ERROR: Plan directory not specified"
+        echo "Usage: RUNDECK_TOKEN=your-token ./test-custom.sh /path/to/plan destroy"
+        exit 1
+    fi
+    
+    # Navigate to plan directory
+    cd "$PLAN_DIR"
+    
+    # Set up Terraform variables
+    export TF_VAR_rundeck_url="${RUNDECK_URL:-http://localhost:4440}"
+    export TF_VAR_rundeck_token="$RUNDECK_TOKEN"
+    
+    # Set dev overrides if .terraformrc exists in script directory
+    if [ -f "$SCRIPT_DIR/.terraformrc" ]; then
+        export TF_CLI_CONFIG_FILE="$SCRIPT_DIR/.terraformrc"
+    fi
+    
+    # Check for tfvars files
+    TFVARS_ARGS=""
+    if [ -f "terraform.tfvars" ]; then
+        TFVARS_ARGS="-var-file=terraform.tfvars"
+    elif [ -f "app.tfvars" ]; then
+        TFVARS_ARGS="-var-file=app.tfvars"
+    fi
+    
+    echo "Destroying Terraform resources..."
+    terraform destroy $TFVARS_ARGS -auto-approve || {
+        echo "⚠️  Terraform destroy encountered errors"
+        echo "   You may need to manually clean up resources in Rundeck UI"
+    }
+    
+    echo ""
+    echo "Removing local Terraform state..."
+    rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
+    echo "   ✓ State files removed"
+    
+    echo ""
+    echo "Removing provider artifacts from test directory..."
+    cd "$SCRIPT_DIR"
+    rm -f terraform-provider-rundeck .terraformrc
+    echo "   ✓ Provider artifacts removed"
+    
+    echo ""
+    echo "   ✓ Cleanup complete"
+    echo
+}
+
 # Check for required environment variables
 if [ -z "$RUNDECK_TOKEN" ]; then
     echo "ERROR: RUNDECK_TOKEN environment variable must be set"
     echo "Usage: RUNDECK_TOKEN=your-token ./test-custom.sh <plan-directory>"
+    echo "   or: RUNDECK_TOKEN=your-token ./test-custom.sh <plan-directory> --destroy-after"
+    echo "   or: RUNDECK_TOKEN=your-token ./test-custom.sh <plan-directory> destroy"
     exit 1
 fi
 
@@ -27,6 +87,17 @@ RUNDECK_URL="${RUNDECK_URL:-http://localhost:4440}"
 
 # Get the plan directory (default to current directory)
 PLAN_DIR="${1:-.}"
+
+# Check if running cleanup only
+if [ "$2" = "destroy" ] || [ "$2" = "cleanup" ]; then
+    cleanup
+    exit 0
+fi
+
+DESTROY_AFTER=false
+if [ "$2" = "--destroy-after" ] || [ "$2" = "-d" ]; then
+    DESTROY_AFTER=true
+fi
 
 if [ ! -d "$PLAN_DIR" ]; then
     echo "ERROR: Directory not found: $PLAN_DIR"
@@ -198,18 +269,25 @@ echo ""
 echo "Plan Directory: $PLAN_DIR"
 echo "Drift Status: $DRIFT_STATUS"
 echo ""
+
+# If --destroy-after flag was set, cleanup now
+if [ "$DESTROY_AFTER" = true ]; then
+    echo "Running automatic cleanup (--destroy-after flag set)..."
+    echo ""
+    cleanup
+    echo "✅ Test complete and cleaned up!"
+    exit 0
+fi
+
 echo "Next Steps:"
 echo "1. Review resources in Rundeck UI: $RUNDECK_URL"
 echo "2. Test functionality (run jobs, check configs, etc.)"
 echo "3. Report any issues: https://github.com/rundeck/terraform-provider-rundeck/issues"
 echo ""
 echo "Cleanup:"
-echo "  cd $PLAN_DIR"
-echo "  terraform destroy -auto-approve"
-echo ""
-echo "Provider artifacts (safe to remove):"
-echo "  rm -f $SCRIPT_DIR/terraform-provider-rundeck"
-echo "  rm -f $SCRIPT_DIR/.terraformrc"
+echo "  ./test-custom.sh $PLAN_DIR destroy"
+echo "  # or manually:"
+echo "  cd $PLAN_DIR && terraform destroy -auto-approve"
 echo ""
 
 # Return to script directory

@@ -82,6 +82,12 @@ cd test/enterprise
 # Or test in current directory
 cd /path/to/your/terraform/config
 /path/to/test-custom.sh .
+
+# Or run and auto-cleanup after
+./test-custom.sh /path/to/your/terraform/config --destroy-after
+
+# Cleanup only
+./test-custom.sh /path/to/your/terraform/config destroy
 ```
 
 #### What It Does
@@ -95,7 +101,8 @@ The script automatically:
 6. ✅ Asks for confirmation before apply
 7. ✅ Applies your configuration
 8. ✅ **Checks for drift** (automatic validation)
-9. ✅ Provides cleanup instructions
+9. ✅ (Optional) Auto-cleanup if `--destroy-after` used
+10. ✅ Provides cleanup instructions
 
 #### Example: Testing a Bug Report
 
@@ -296,7 +303,14 @@ The test configuration specifically validates recent critical fixes:
 The `comprehensive.sh` script performs a full test cycle:
 
 ```bash
+# Standard run (resources remain after test)
 ./comprehensive.sh
+
+# Run and auto-cleanup after (good for CI/CD)
+./comprehensive.sh --destroy-after
+
+# Cleanup only
+./comprehensive.sh destroy
 ```
 
 **What it does:**
@@ -304,17 +318,18 @@ The `comprehensive.sh` script performs a full test cycle:
 2. Builds the provider from source
 3. Sets up dev overrides
 4. Shows terraform plan
-5. Prompts for confirmation
-6. Applies configuration
-7. Verifies nodefilters structure via API
-8. Verifies lifecycle plugins via API
-9. Displays job UUIDs and summary
+5. Applies configuration (auto-approve)
+6. Verifies nodefilters structure via API
+7. Verifies lifecycle plugins via API
+8. Displays job UUIDs and summary
+9. (Optional) Auto-cleanup if `--destroy-after` used
 
 **Output includes:**
 - ✅ Verification that dispatch is nested in nodefilters
 - ✅ Verification that all 4 lifecycle plugins are present
 - 📋 URLs to view resources in Rundeck UI
 - 🔧 Instructions for testing import functionality
+- 🧹 Cleanup instructions
 
 ### Manual Run
 
@@ -450,15 +465,29 @@ curl -H "X-Rundeck-Auth-Token: YOUR_TOKEN" \
 
 ## Cleanup
 
-### Remove Test Resources
+### Automated Cleanup (Recommended)
 
 ```bash
 cd test/enterprise
-terraform destroy -auto-approve
+export RUNDECK_TOKEN="your-token"
+./comprehensive.sh destroy
 ```
 
-### Delete Project via API
+This handles everything: terraform destroy, API fallback if needed, and artifact removal.
 
+### Manual Cleanup
+
+**Via Terraform:**
+```bash
+cd test/enterprise
+export TF_VAR_rundeck_url="http://localhost:4440"
+export TF_VAR_rundeck_token="your-token"
+export TF_CLI_CONFIG_FILE="$PWD/.terraformrc"
+terraform destroy -auto-approve
+rm -f terraform-provider-rundeck .terraformrc
+```
+
+**Via API (if terraform fails):**
 ```bash
 curl -X DELETE \
      -H "X-Rundeck-Auth-Token: YOUR_TOKEN" \
