@@ -24,6 +24,12 @@ variable "rundeck_token" {
   sensitive   = true
 }
 
+variable "test_project_schedules" {
+  description = "Enable project schedule tests (requires terraform-schedules-test project with schedules)"
+  type        = bool
+  default     = false
+}
+
 #===============================================================================
 # Project Setup
 #===============================================================================
@@ -321,6 +327,98 @@ resource "rundeck_job" "import_test" {
 }
 
 #===============================================================================
+# Test 9: Project Schedules (Enterprise Feature - Optional)
+#===============================================================================
+# NOTE: These tests require manual setup in Rundeck UI:
+# 1. Create project "terraform-schedules-test"
+# 2. Go to: Project Settings > Edit Configuration > Other > Schedules
+# 3. Add schedules: "my-schedule", "schedule-1", "schedule-2", "simple-schedule"
+# 4. Run with: export TF_VAR_test_project_schedules=true
+#===============================================================================
+
+resource "rundeck_job" "project_schedule_single" {
+  count = var.test_project_schedules ? 1 : 0
+  
+  project_name      = "terraform-schedules-test"
+  name              = "09-Project-Schedule-Single"
+  description       = "Tests single project schedule"
+  execution_enabled = true
+  
+  node_filter_query = ".*"
+  
+  project_schedule {
+    name        = "my-schedule"
+    job_options = "-environment production -verbose true"
+  }
+  
+  option {
+    name          = "environment"
+    default_value = "dev"
+    value_choices = ["dev", "staging", "production"]
+  }
+  
+  option {
+    name          = "verbose"
+    default_value = "false"
+    value_choices = ["true", "false"]
+  }
+  
+  command {
+    shell_command = "echo 'Testing project schedule: $${option.environment}'"
+  }
+}
+
+resource "rundeck_job" "project_schedule_multiple" {
+  count = var.test_project_schedules ? 1 : 0
+  
+  project_name      = "terraform-schedules-test"
+  name              = "10-Project-Schedule-Multiple"
+  description       = "Tests multiple project schedules"
+  execution_enabled = true
+  
+  node_filter_query = ".*"
+  
+  project_schedule {
+    name        = "schedule-1"
+    job_options = "-region us-east-1"
+  }
+  
+  project_schedule {
+    name        = "schedule-2"
+    job_options = "-region us-west-2"
+  }
+  
+  option {
+    name          = "region"
+    default_value = "us-east-1"
+    value_choices = ["us-east-1", "us-west-2", "eu-west-1"]
+  }
+  
+  command {
+    shell_command = "echo 'Running in region: $${option.region}'"
+  }
+}
+
+resource "rundeck_job" "project_schedule_no_options" {
+  count = var.test_project_schedules ? 1 : 0
+  
+  project_name      = "terraform-schedules-test"
+  name              = "11-Project-Schedule-NoOptions"
+  description       = "Tests project schedule without job options"
+  execution_enabled = true
+  
+  node_filter_query = ".*"
+  
+  project_schedule {
+    name = "simple-schedule"
+  }
+  
+  command {
+    shell_command = "echo 'Simple scheduled job'"
+  }
+}
+
+#===============================================================================
 # Outputs
 #===============================================================================
 
@@ -330,17 +428,24 @@ output "project_url" {
 }
 
 output "job_ids" {
-  value = {
-    node_dispatch        = rundeck_job.node_dispatch_test.id
-    lifecycle_plugins    = rundeck_job.lifecycle_plugins_test.id
-    target_job           = rundeck_job.target_job.id
-    caller_uuid          = rundeck_job.caller_job_uuid.id
-    caller_name          = rundeck_job.caller_job_name.id
-    complex              = rundeck_job.complex_job.id
-    local_execution      = rundeck_job.local_execution.id
-    orchestrator         = rundeck_job.orchestrator_test.id
-    import_test          = rundeck_job.import_test.id
-  }
+  value = merge(
+    {
+      node_dispatch        = rundeck_job.node_dispatch_test.id
+      lifecycle_plugins    = rundeck_job.lifecycle_plugins_test.id
+      target_job           = rundeck_job.target_job.id
+      caller_uuid          = rundeck_job.caller_job_uuid.id
+      caller_name          = rundeck_job.caller_job_name.id
+      complex              = rundeck_job.complex_job.id
+      local_execution      = rundeck_job.local_execution.id
+      orchestrator         = rundeck_job.orchestrator_test.id
+      import_test          = rundeck_job.import_test.id
+    },
+    var.test_project_schedules ? {
+      project_schedule_single   = rundeck_job.project_schedule_single[0].id
+      project_schedule_multiple = rundeck_job.project_schedule_multiple[0].id
+      project_schedule_no_opts  = rundeck_job.project_schedule_no_options[0].id
+    } : {}
+  )
   description = "Job UUIDs for all test jobs"
 }
 
@@ -364,6 +469,13 @@ output "test_summary" {
   6. Orchestrator Test      - Tests orchestrator configuration
   7. Caller Job (Name)      - Tests backward compatible name references
   8. Import Test            - Minimal job for import testing
+  %{if var.test_project_schedules~}
+  
+  Enterprise Project Schedule Tests:
+  9. Single Schedule        - Tests job with one project schedule
+  10. Multiple Schedules    - Tests job with multiple project schedules
+  11. No Options            - Tests schedule without job options
+  %{endif~}
   
   What to Verify in UI:
   ✓ Job 1: Should dispatch to nodes (not "Execute Locally")
@@ -374,6 +486,9 @@ output "test_summary" {
   ✓ Job 6: Should have maxPercentage orchestrator
   ✓ Job 7: Should reference job 3a by name
   ✓ Job 8: Should have lifecycle plugins and node filters
+  %{if var.test_project_schedules~}
+  ✓ Jobs 9-11: Should have project schedules configured
+  %{endif~}
   
   To test import:
     terraform state rm rundeck_job.import_test
