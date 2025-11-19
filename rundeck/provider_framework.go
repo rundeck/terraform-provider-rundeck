@@ -125,13 +125,16 @@ func (p *frameworkProvider) Configure(ctx context.Context, req provider.Configur
 	if authToken != "" {
 		token = authToken
 	} else if authUsername != "" && authPassword != "" {
-		// Token generation from username/password would need to be implemented here
-		// For now, we'll require auth_token
-		resp.Diagnostics.AddError(
-			"Authentication Method Not Yet Supported",
-			"Username/password authentication is not yet implemented in the framework provider. Please use auth_token.",
-		)
-		return
+		// Generate token from username/password (same logic as SDKv2 provider)
+		t, err := _getToken(urlString, apiVersion, authUsername, authPassword)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Authentication Failed",
+				fmt.Sprintf("Unable to generate token from username/password: %s", err.Error()),
+			)
+			return
+		}
+		token = t
 	} else {
 		resp.Diagnostics.AddError(
 			"Missing Authentication",

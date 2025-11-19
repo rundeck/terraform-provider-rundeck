@@ -37,22 +37,28 @@ Manage your Rundeck runbook automation infrastructure as code. The Rundeck provi
 
 The provider configuration block accepts the following arguments:
 
-* ``url`` - (Required) The root URL of a Rundeck server. May alternatively be set via the
-  ``RUNDECK_URL`` environment variable.
+* `url` - (Optional) The root URL of a Rundeck server. May alternatively be set via the
+  `RUNDECK_URL` environment variable.
 
-* ``api_version`` - (Optional) The API version of the server. Defaults to `46`, the
-  minimum supported version. May alternatively be set via the ``RUNDECK_API_VERSION``
-  environment variable.
+* `api_version` - (Optional) The API version of the server. Defaults to `46` (Rundeck 5.0.0+).
+  May alternatively be set via the `RUNDECK_API_VERSION` environment variable.
 
-* ``auth_token`` - The API auth token to use when making requests. May alternatively
-  be set via the ``RUNDECK_AUTH_TOKEN`` environment variable. (RECOMMENDED)
+### Authentication
 
-**OR**
+**Option 1: API Token (Recommended)**
 
-* ``auth_username`` - Local Login User Name.  
-* ``auth_password`` - Local Login Password.
+* `auth_token` - API token for authentication. May alternatively be set via the 
+  `RUNDECK_AUTH_TOKEN` environment variable.
 
-> Note: Username and Password auth will not work with SSO configured systems.  It relies on local Rundeck accounts. Please be sensitive to keeping passwords in your plan files!
+**Option 2: Username and Password**
+
+* `auth_username` - Local Rundeck username. May alternatively be set via the
+  `RUNDECK_AUTH_USERNAME` environment variable.
+* `auth_password` - Local Rundeck password. May alternatively be set via the
+  `RUNDECK_AUTH_PASSWORD` environment variable.
+
+> **Note:** Username/password authentication only works with local Rundeck accounts, not SSO. 
+> API tokens are recommended for better security and to avoid storing passwords in plan files.
 
 Use the navigation to the left to read about the available resources.
 
@@ -61,6 +67,8 @@ Use the navigation to the left to read about the available resources.
 A full Example Exercise is included on the [Rundeck Learning site](https://docs.rundeck.com/docs/learning/howto/use-terraform-provider.html).
 
 For those familiar with Terraform and Rundeck use the contents below.
+
+### Using API Token (Recommended)
 
 ```hcl
 terraform {
@@ -76,6 +84,31 @@ provider "rundeck" {
   url         = "http://rundeck.example.com:4440/"
   api_version = "46"
   auth_token  = "abcd1234"
+}
+```
+
+### Using Username and Password
+
+```hcl
+provider "rundeck" {
+  url           = "http://rundeck.example.com:4440/"
+  api_version   = "46"
+  auth_username = "admin"
+  auth_password = "admin"
+}
+```
+
+### Using Environment Variables
+
+```bash
+export RUNDECK_URL="http://rundeck.example.com:4440/"
+export RUNDECK_AUTH_TOKEN="abcd1234"
+# api_version defaults to 46 if not specified
+```
+
+```hcl
+provider "rundeck" {
+  # Configuration loaded from environment variables
 }
 
 resource "rundeck_project" "terraform" {
