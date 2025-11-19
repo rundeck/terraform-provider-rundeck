@@ -197,6 +197,27 @@ If drift is detected, this may indicate a provider bug:
 3. Include in your GitHub issue report
 4. This is valuable feedback for identifying issues!
 
+**"Inconsistent dependency lock file" Error**
+
+If you see this error:
+```
+Error: Inconsistent dependency lock file
+The following dependency selections recorded in the lock file are inconsistent with the current configuration:
+  - provider registry.terraform.io/rundeck/rundeck: required by this configuration but no version is selected
+```
+
+**Solution**: The script automatically handles this by running `terraform init` once to create/update `.terraform.lock.hcl`. If this fails:
+
+```bash
+# Manually create the lock file
+cd /path/to/your/config
+unset TF_CLI_CONFIG_FILE  # Temporarily disable dev overrides
+terraform init -upgrade
+# Then re-run test-custom.sh
+```
+
+**Note**: The lock file is required even with dev overrides. The script creates it automatically on first run.
+
 ---
 
 ## Portability & Community Sharing

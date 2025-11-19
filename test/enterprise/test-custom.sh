@@ -101,10 +101,33 @@ fi
 echo "   Found $TF_FILES Terraform file(s)"
 echo ""
 
-# Step 7: Note about terraform init
-# With dev_overrides, terraform init is not needed and will error
-echo "6. Note: Skipping 'terraform init' (not needed with dev overrides)"
-echo ""
+# Step 7: Initialize if needed (for lock file)
+# Check if .terraform.lock.hcl exists, if not we need to init once
+if [ ! -f ".terraform.lock.hcl" ]; then
+    echo "6. Initializing Terraform (creating lock file)..."
+    echo "   Note: Temporarily disabling dev overrides for init"
+    
+    # Save dev overrides config
+    DEV_OVERRIDES_CONFIG="$TF_CLI_CONFIG_FILE"
+    unset TF_CLI_CONFIG_FILE
+    
+    # Run init to create lock file
+    terraform init -upgrade > /dev/null 2>&1
+    INIT_RESULT=$?
+    
+    # Restore dev overrides
+    export TF_CLI_CONFIG_FILE="$DEV_OVERRIDES_CONFIG"
+    
+    if [ $INIT_RESULT -eq 0 ]; then
+        echo "   ✓ Lock file created"
+    else
+        echo "   ⚠️  Init completed (may have warnings)"
+    fi
+    echo ""
+else
+    echo "6. Lock file exists, skipping init"
+    echo ""
+fi
 
 # Step 8: Check for tfvars files
 TFVARS_ARGS=""
