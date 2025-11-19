@@ -144,6 +144,59 @@ The script provides:
 - Cleanup instructions
 - Links to report issues
 
+#### Troubleshooting
+
+**Token Authorization Errors (403)**
+
+If you see `unauthorized` or `StatusCode=403`:
+
+```bash
+# 1. Check if token is hardcoded in tfvars files
+grep -r "rundeck_token" /path/to/your/config/*.tfvars
+
+# 2. If found, update the file with your current token
+# OR remove it and rely on environment variables only
+
+# 3. Verify token works via API
+curl -H "X-Rundeck-Auth-Token: $RUNDECK_TOKEN" \
+     "$RUNDECK_URL/api/56/system/info"
+```
+
+**Common cause**: Old tokens hardcoded in `terraform.tfvars` or `app.tfvars` files. The script uses `-var-file` which takes precedence over environment variables.
+
+**Provider Build Errors**
+
+If build fails:
+```bash
+# Ensure you're in the repo root
+cd /path/to/terraform-provider-rundeck
+
+# Check Go version (requires 1.24+)
+go version
+
+# Try manual build
+go build -o terraform-provider-rundeck
+```
+
+**"No RUNDECK_TOKEN environment variable" Error**
+
+```bash
+# Ensure token is exported BEFORE running script
+export RUNDECK_TOKEN="your-token-here"
+export RUNDECK_URL="http://localhost:4440"
+
+# Then run
+./test-custom.sh /path/to/config
+```
+
+**Drift Detected After Apply**
+
+If drift is detected, this may indicate a provider bug:
+1. Note which resource(s) show drift
+2. Capture the drift output
+3. Include in your GitHub issue report
+4. This is valuable feedback for identifying issues!
+
 ---
 
 ## Portability & Community Sharing

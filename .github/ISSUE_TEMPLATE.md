@@ -59,6 +59,39 @@ What actually happened?
 2. `terraform apply`
 3. ...
 
+### Reproduction Using Test Script
+**Recommended**: Use our test script to ensure consistent reproduction:
+
+```bash
+# 1. Clone the repo
+git clone https://github.com/rundeck/terraform-provider-rundeck.git
+cd terraform-provider-rundeck
+
+# 2. Checkout the branch/version where you see the issue
+git checkout main  # or specific version tag
+
+# 3. Set environment variables
+export RUNDECK_URL="http://your-rundeck:4440"
+export RUNDECK_TOKEN="your-api-token"
+
+# 4. Run test script with your configuration
+cd test/enterprise
+./test-custom.sh /path/to/your/terraform/config
+```
+
+**What this provides:**
+- ✅ Tests against latest provider code
+- ✅ Automatic drift detection
+- ✅ Consistent environment setup
+- ✅ Clear reproduction steps for maintainers
+
+See [test/enterprise/README.md](https://github.com/rundeck/terraform-provider-rundeck/blob/main/test/enterprise/README.md#testing-your-own-plans) for detailed instructions.
+
+**If the script reproduces your issue, please include:**
+- Your `.tf` configuration files
+- The complete script output
+- Drift check results (if applicable)
+
 ### Known Limitations
 Have you checked if this is a known limitation? See [TODO.md](https://github.com/rundeck/terraform-provider-rundeck/blob/main/TODO.md) for:
 - Features not yet implemented

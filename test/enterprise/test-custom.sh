@@ -101,21 +101,32 @@ fi
 echo "   Found $TF_FILES Terraform file(s)"
 echo ""
 
-# Step 7: Initialize Terraform (if needed)
-if [ ! -d ".terraform" ]; then
-    echo "6. Initializing Terraform..."
-    terraform init
-    echo ""
-fi
+# Step 7: Note about terraform init
+# With dev_overrides, terraform init is not needed and will error
+echo "6. Note: Skipping 'terraform init' (not needed with dev overrides)"
+echo ""
 
-# Step 8: Show the plan
-echo "7. Running Terraform plan..."
+# Step 8: Check for tfvars files
+TFVARS_ARGS=""
+if [ -f "terraform.tfvars" ]; then
+    TFVARS_ARGS="-var-file=terraform.tfvars"
+    echo "7. Found terraform.tfvars"
+elif [ -f "app.tfvars" ]; then
+    TFVARS_ARGS="-var-file=app.tfvars"
+    echo "7. Found app.tfvars"
+else
+    echo "7. No .tfvars file found (will use variables from .tf files or prompt)"
+fi
+echo ""
+
+# Step 9: Show the plan
+echo "8. Running Terraform plan..."
 echo "=========================================="
-terraform plan
+terraform plan $TFVARS_ARGS
 echo "=========================================="
 echo ""
 
-# Step 9: Ask for confirmation
+# Step 8: Ask for confirmation
 read -p "Do you want to apply this configuration? (yes/no): " CONFIRM
 if [ "$CONFIRM" != "yes" ]; then
     echo ""
@@ -130,23 +141,23 @@ fi
 echo ""
 
 # Step 10: Apply the configuration
-echo "8. Applying Terraform configuration..."
+echo "9. Applying Terraform configuration..."
 echo "=========================================="
-terraform apply -auto-approve
+terraform apply $TFVARS_ARGS -auto-approve
 echo "=========================================="
 echo ""
 
 # Step 11: Check for drift
-echo "9. Checking for plan drift..."
+echo "10. Checking for plan drift..."
 echo "=========================================="
-if terraform plan -detailed-exitcode > /dev/null 2>&1; then
+if terraform plan $TFVARS_ARGS -detailed-exitcode > /dev/null 2>&1; then
     echo "✅ SUCCESS: No drift detected!"
     DRIFT_STATUS="✅ No drift"
 else
     EXIT_CODE=$?
     if [ $EXIT_CODE -eq 2 ]; then
         echo "⚠️  WARNING: Drift detected - resources need changes"
-        terraform plan
+        terraform plan $TFVARS_ARGS
         DRIFT_STATUS="⚠️  Drift detected"
     else
         echo "❌ ERROR: terraform plan failed"
