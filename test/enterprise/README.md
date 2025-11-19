@@ -54,6 +54,98 @@ The script will:
 
 Open http://localhost:4440/project/comprehensive-test and review the created jobs.
 
+---
+
+## Testing Your Own Plans
+
+### "Bring Your Own Plan" - `test-custom.sh`
+
+**NEW**: Test your own Terraform configurations against the provider, including dev branches!
+
+#### Use Cases
+- ✅ Test your production configs before applying
+- ✅ Reproduce issues for bug reports
+- ✅ Validate dev branches before releases
+- ✅ Early adopter testing
+
+#### Quick Start
+
+```bash
+# 1. Set environment variables
+export RUNDECK_URL="http://localhost:4440"
+export RUNDECK_TOKEN="your-api-token"
+
+# 2. Run with your plan directory
+cd test/enterprise
+./test-custom.sh /path/to/your/terraform/config
+
+# Or test in current directory
+cd /path/to/your/terraform/config
+/path/to/test-custom.sh .
+```
+
+#### What It Does
+
+The script automatically:
+1. ✅ Cleans up previous test artifacts
+2. ✅ Builds the provider from source
+3. ✅ Sets up dev overrides (uses local build)
+4. ✅ Initializes Terraform (if needed)
+5. ✅ Shows plan for review
+6. ✅ Asks for confirmation before apply
+7. ✅ Applies your configuration
+8. ✅ **Checks for drift** (automatic validation)
+9. ✅ Provides cleanup instructions
+
+#### Example: Testing a Bug Report
+
+```bash
+# Customer reports an issue with their config
+cd /tmp/customer-issue
+cat > main.tf <<EOF
+resource "rundeck_job" "test" {
+  project_name = "test"
+  name = "my-job"
+  # ... their configuration
+}
+EOF
+
+# Test it
+export RUNDECK_TOKEN="your-token"
+/path/to/test-custom.sh .
+
+# If issue reproduces, report it with:
+# - Your .tf files
+# - Script output
+# - Drift check results
+```
+
+#### Testing Dev Branches
+
+```bash
+# Early adopter wants to test a fix before release
+cd terraform-provider-rundeck
+git checkout fix/some-issue
+
+# Test with their production config
+cd test/enterprise
+export RUNDECK_TOKEN="..."
+./test-custom.sh /path/to/their/production/config
+
+# Validates the fix works with real-world usage!
+```
+
+#### Output
+
+The script provides:
+- Clear step-by-step progress
+- **Automatic drift detection**
+- Summary with drift status
+- Cleanup instructions
+- Links to report issues
+
+---
+
 ## Portability & Community Sharing
 
 This test is designed to be **fully portable** and community-friendly:
@@ -81,7 +173,8 @@ rm -f terraform-provider-rundeck .terraformrc
 | File | Purpose |
 |------|---------|
 | `comprehensive.tf` | Complete test configuration with 9 test jobs |
-| `comprehensive.sh` | Automated test runner script |
+| `comprehensive.sh` | Automated comprehensive test runner |
+| `test-custom.sh` | **NEW** - Test your own Terraform plans |
 | `README.md` | This file |
 
 ## Test Configuration
