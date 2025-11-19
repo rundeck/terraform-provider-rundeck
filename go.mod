@@ -7,7 +7,7 @@ require (
 	github.com/hashicorp/terraform-plugin-mux v0.21.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.38.1
 	github.com/rundeck/go-rundeck/rundeck v0.0.0-20190510195016-2cf9670bbcc4
-	github.com/rundeck/go-rundeck/rundeck-v2 v0.0.0-20251118045903-2710361703d5
+	github.com/rundeck/go-rundeck/rundeck-v2 v0.0.0-20251119195248-d66294504216
 )
 
 require (
