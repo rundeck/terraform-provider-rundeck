@@ -40,7 +40,7 @@ TEST_DIR="$PWD"
 cat > .terraformrc <<EOF
 provider_installation {
   dev_overrides {
-    "terraform-providers/rundeck" = "$TEST_DIR"
+    "rundeck/rundeck" = "$TEST_DIR"
   }
   direct {}
 }

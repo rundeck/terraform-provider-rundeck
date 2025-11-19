@@ -99,7 +99,7 @@ export TF_CLI_CONFIG_FILE="$PWD/.terraformrc"
 terraform {
   required_providers {
     rundeck = {
-      source = "terraform-providers/rundeck"
+      source = "rundeck/rundeck"
     }
   }
 }

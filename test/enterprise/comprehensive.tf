@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     rundeck = {
-      source = "terraform-providers/rundeck"
+      source = "rundeck/rundeck"
     }
   }
 }

@@ -70,7 +70,7 @@ echo "3. Setting up dev overrides..."
 cat > .terraformrc <<EOF
 provider_installation {
   dev_overrides {
-    "terraform-providers/rundeck" = "$SCRIPT_DIR"
+    "rundeck/rundeck" = "$SCRIPT_DIR"
   }
   direct {}
 }
