@@ -17,13 +17,13 @@ func Provider() *schema.Provider {
 		Schema: map[string]*schema.Schema{
 			"url": {
 				Type:        schema.TypeString,
-				Required:    true,
+				Optional:    true,
 				DefaultFunc: schema.EnvDefaultFunc("RUNDECK_URL", nil),
 				Description: "URL of the root of the target Rundeck server.",
 			},
 			"api_version": {
 				Type:        schema.TypeString,
-				Required:    true,
+				Optional:    true,
 				DefaultFunc: schema.EnvDefaultFunc("RUNDECK_API_VERSION", "46"),
 				Description: "API Version of the target Rundeck server (minimum: 46 for Rundeck 5.0.0+).",
 			},
