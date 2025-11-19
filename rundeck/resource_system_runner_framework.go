@@ -282,7 +282,7 @@ func (r *systemRunnerResource) Read(ctx context.Context, req resource.ReadReques
 	}
 
 	if err != nil {
-		// Debug: Print raw response body if available
+		// Include response body in error message for troubleshooting
 		var bodyStr string
 		if apiResp != nil && apiResp.Body != nil {
 			bodyBytes, _ := io.ReadAll(apiResp.Body)
@@ -290,7 +290,7 @@ func (r *systemRunnerResource) Read(ctx context.Context, req resource.ReadReques
 		}
 		resp.Diagnostics.AddError(
 			"Error reading system runner",
-			fmt.Sprintf("Could not read system runner %s: %s\nRaw response: %s", runnerId, err.Error(), bodyStr),
+			fmt.Sprintf("Could not read system runner %s: %s\nAPI response: %s", runnerId, err.Error(), bodyStr),
 		)
 		return
 	}
