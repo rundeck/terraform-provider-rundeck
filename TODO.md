@@ -102,31 +102,7 @@ Prioritized list of remaining work for the Rundeck Terraform Provider.
 
 ## 🟡 Medium Priority (1.x Releases)
 
-### 4. ~~Migrate SDK Resources to Framework~~ ✅ COMPLETE
-**Status**: ✅ **100% Complete - All 8 resources migrated + dead code cleaned up**  
-**Completed**: v1.0.0
-
-**All Resources Migrated to Framework** ✅:
-- ✅ `rundeck_job` - Complete with all features
-- ✅ `rundeck_system_runner` - With semantic equality for tags
-- ✅ `rundeck_project_runner` - With semantic equality for tags
-- ✅ `rundeck_project` - Full migration complete
-- ✅ `rundeck_acl_policy` - Full migration complete
-- ✅ `rundeck_public_key` - Full migration complete
-- ✅ `rundeck_password` - Full migration complete
-- ✅ `rundeck_private_key` - Full migration complete
-
-**Benefits Achieved**:
-- ✅ Consistent error handling across all resources
-- ✅ Better plan diff accuracy
-- ✅ SDKv2 dependency completely removed
-- ✅ Unified testing patterns
-- ✅ Single provider implementation (no mux)
-- ✅ Dead SDKv2 code deleted (6 files removed)
-
----
-
-### 5. Implement Data Sources
+### 4. Implement Data Sources
 **Effort**: Medium (1 week)  
 **Why Important**: Enables referencing existing Rundeck resources without managing them, common pattern in Terraform.
 
@@ -143,7 +119,7 @@ Prioritized list of remaining work for the Rundeck Terraform Provider.
 
 ---
 
-### 6. Project extra_config Merge Behavior
+### 5. Project extra_config Merge Behavior
 **Effort**: Small-Medium (1-2 days)  
 **Why Important**: Users want additive configuration changes, not full replacements.  
 **GitHub Issue**: [#70](https://github.com/rundeck/terraform-provider-rundeck/issues/70)
@@ -192,7 +168,7 @@ extra_config = {
 
 ---
 
-### 7. Enhanced Error Handling
+### 6. Enhanced Error Handling
 **Effort**: Medium (3-5 days)  
 **Why Important**: Poor error messages waste user time and create support tickets.
 
@@ -243,36 +219,38 @@ After:  Error creating job "my-job" in project "prod": Rundeck returned validati
 
 ---
 
-## 🟢 Low Priority (Future)
+### 8. Code Organization Refactor
+**Effort**: Small (1-2 days remaining)  
+**Why Important**: Maintainability, but no user impact.
 
-### 8. Advanced Job Features
-**Effort**: Large (2-3 weeks)  
-**Status**: 60% Complete (3 of 5 done in v1.0.0)  
-**Why Important**: Completeness, but rarely used features.
-
-**Completed in v1.0.0** ✅:
-- ✅ **Global log filters** (job-level) - Full implementation with TO/FROM JSON converters
-  - `convertGlobalLogFilterToJSON()` implemented
-  - `convertGlobalLogFilterFromJSON()` implemented
-  - Supports plugin type and config
-- ✅ **Detailed log limit policies** - Complete implementation
-  - `convertLogLimitToJSON()` implemented
-  - `convertLogLimitFromJSON()` implemented
-  - Supports output, action, and status
-- ✅ **Orchestrator plugins** - All types supported
-  - `convertOrchestratorToJSON()` implemented
-  - `convertOrchestratorFromJSON()` implemented
-  - Supports maxPercentage, subset, rankTiered, and custom plugins
+**Completed** ✅:
+- ✅ `resource_job_converters.go` created with all TO/FROM JSON converters
+- ✅ Integration test suite added (2 tests with API validation)
 
 **Remaining**:
-- Retry with backoff strategies (partially done - basic retry exists, backoff strategies not implemented)
-- Advanced error handler recursion
-
-**Approach**: Remaining features on-demand based on user requests
+- Split `resource_job_framework.go` (1313 lines) into logical modules:
+  - Schema definition
+  - CRUD operations
+  - Helper functions
+- Extract common patterns (null handling, list conversion) into utilities
 
 ---
 
-### 9. SCM Integration Support
+## 🟢 Low Priority (Future)
+
+### 9. Advanced Job Features - Remaining
+**Effort**: Medium (1-2 weeks)  
+**Why Important**: Completeness, but rarely used features.
+
+**Remaining Tasks**:
+- Retry with backoff strategies (basic retry exists, backoff strategies not implemented)
+- Advanced error handler recursion
+
+**Approach**: On-demand based on user requests
+
+---
+
+### 10. SCM Integration Support
 **Effort**: Large (1-2 weeks)  
 **Why Important**: Users want to manage SCM configurations via Terraform.  
 **GitHub Issue**: [#76](https://github.com/rundeck/terraform-provider-rundeck/issues/76)
@@ -326,7 +304,7 @@ resource "rundeck_scm_import" "project_import" {
 
 ---
 
-### 10. New Resources (Other)
+### 11. New Resources (Other)
 **Effort**: Large (varies by resource)  
 **Why Important**: Expands provider capabilities, but low user demand currently.
 
@@ -340,7 +318,7 @@ resource "rundeck_scm_import" "project_import" {
 
 ---
 
-### 11. Provider Configuration Enhancements
+### 12. Provider Configuration Enhancements
 **Effort**: Medium (1 week)  
 **Why Important**: Nice-to-have features, not blocking users.
 
@@ -349,18 +327,6 @@ resource "rundeck_scm_import" "project_import" {
 - Custom HTTP client configuration (timeout, TLS settings)
 - Multiple Rundeck instance support (aliased providers)
 - Support for API key + username auth
-
----
-
-### 12. Code Organization Refactor
-**Effort**: Medium (3-5 days)  
-**Why Important**: Maintainability, but no user impact.
-
-**Tasks**:
-- Split `resource_job_framework.go` (1100+ lines) into multiple files
-- Group related converters in `resource_job_converters.go`
-- Extract common patterns (null handling, list conversion)
-- Add integration test suite
 
 ---
 
