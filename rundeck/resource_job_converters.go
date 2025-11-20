@@ -772,9 +772,23 @@ func convertGlobalLogFiltersToJSON(ctx context.Context, filtersList types.List) 
 	return result, diags
 }
 
+// normalizeCronSchedule normalizes a cron expression for Rundeck compatibility
+// Rundeck ignores day-of-month, so we normalize it to "?" to avoid drift
+func normalizeCronSchedule(cronExpr string) string {
+	parts := strings.Fields(cronExpr)
+	if len(parts) != 7 {
+		return cronExpr // Return as-is if invalid format
+	}
+
+	// Replace day-of-month (position 3) with "?" since Rundeck doesn't use it
+	parts[3] = "?"
+	return strings.Join(parts, " ")
+}
+
 // convertCronToScheduleObject converts a Quartz cron expression to Rundeck's schedule object format
 // Cron format: "seconds minutes hours day-of-month month day-of-week year"
 // Example: "* 0/40 * ? * * *" or "0 0 12 ? * * *"
+// Note: day-of-month is ignored by Rundeck and will be normalized to "?"
 func convertCronToScheduleObject(cronExpr string) (map[string]interface{}, error) {
 	parts := strings.Fields(cronExpr)
 	if len(parts) != 7 {
@@ -785,7 +799,7 @@ func convertCronToScheduleObject(cronExpr string) (map[string]interface{}, error
 	seconds := parts[0]
 	minutes := parts[1]
 	hours := parts[2]
-	// dayOfMonth := parts[3]  // Not used in Rundeck's format
+	// dayOfMonth := parts[3]  // Not used in Rundeck's format - always normalized to "?"
 	month := parts[4]
 	dayOfWeek := parts[5]
 	year := parts[6]
@@ -1017,32 +1031,14 @@ func convertNotificationsFromJSON(ctx context.Context, notificationsObj interfac
 
 	var notifList []attr.Value
 
-	// Sort notification types in logical lifecycle order for deterministic ordering
+	// Sort notification types alphabetically for deterministic ordering
 	// Go map iteration is non-deterministic, but Terraform lists are ordered
-	// Use lifecycle order: onstart -> onsuccess -> onfailure -> onretryablefailure -> onavgduration
-	notifTypeOrder := map[string]int{
-		"onstart":            1,
-		"onsuccess":          2,
-		"onfailure":          3,
-		"onretryablefailure": 4,
-		"onavgduration":      5,
-	}
-
+	// We use alphabetical sorting since we can't preserve user's input order from the API
 	notifTypes := make([]string, 0, len(notifMap))
 	for notifType := range notifMap {
 		notifTypes = append(notifTypes, notifType)
 	}
-
-	// Sort by lifecycle order
-	sort.Slice(notifTypes, func(i, j int) bool {
-		orderI, okI := notifTypeOrder[notifTypes[i]]
-		orderJ, okJ := notifTypeOrder[notifTypes[j]]
-		if okI && okJ {
-			return orderI < orderJ
-		}
-		// Fallback to alphabetical if type not in map
-		return notifTypes[i] < notifTypes[j]
-	})
+	sort.Strings(notifTypes)
 
 	// Parse each notification type (onsuccess, onfailure, onstart, onavgduration, onretryablefailure)
 	// Rundeck Read/Export format: { "onsuccess": { "email": {...}, "webhook": {...} }, "onfailure": { "email": {...} } }
@@ -1175,12 +1171,12 @@ func convertNotificationsFromJSON(ctx context.Context, notificationsObj interfac
 				emailAttrs["subject"] = types.StringNull()
 			}
 
-			// attach_log defaults to false if not present (Rundeck's default)
+			// attach_log - only set if present in API response
+			// If not present, leave as null to avoid drift when user doesn't specify it
 			if attachLog, ok := email["attachLog"].(bool); ok {
 				emailAttrs["attach_log"] = types.BoolValue(attachLog)
 			} else {
-				// If not present in API response, default to false to match Rundeck's behavior
-				emailAttrs["attach_log"] = types.BoolValue(false)
+				emailAttrs["attach_log"] = types.BoolNull()
 			}
 
 			emailObj := types.ObjectValueMust(

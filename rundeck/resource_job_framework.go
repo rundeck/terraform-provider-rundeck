@@ -371,12 +371,6 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 		return
 	}
 
-	// DEBUG: Log notification count before marshalling
-	if jobData.Notification != nil {
-		notifCount := len(jobData.Notification.(map[string]interface{}))
-		resp.Diagnostics.AddWarning("DEBUG Notifications", fmt.Sprintf("Job has %d notification types before marshal", notifCount))
-	}
-
 	// Marshal to JSON
 	jobJSON, err := json.Marshal([]interface{}{jobData})
 	if err != nil {
@@ -386,9 +380,6 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 		)
 		return
 	}
-
-	// DEBUG: Log marshalled JSON
-	resp.Diagnostics.AddWarning("DEBUG JSON", fmt.Sprintf("Marshalled JSON (first 1000 chars): %s", string(jobJSON[:min(1000, len(jobJSON))])))
 
 	// Import the job using custom HTTP request to ensure JSON response
 	// JSON job import requires API v46+ (Rundeck 5.0.0+)
@@ -918,7 +909,9 @@ func (r *jobResource) planToJobJSON(ctx context.Context, plan *jobResourceModel)
 
 	// Set regular cron schedule (if specified and not using project schedules)
 	if !plan.Schedule.IsNull() && !plan.Schedule.IsUnknown() {
-		scheduleObj, err := convertCronToScheduleObject(plan.Schedule.ValueString())
+		// Normalize schedule to use "?" for day-of-month (Rundeck doesn't store/use it)
+		normalizedSchedule := normalizeCronSchedule(plan.Schedule.ValueString())
+		scheduleObj, err := convertCronToScheduleObject(normalizedSchedule)
 		if err != nil {
 			return nil, fmt.Errorf("error converting schedule: %v", err)
 		}
