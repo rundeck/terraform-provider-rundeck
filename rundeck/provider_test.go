@@ -142,9 +142,11 @@ func getTestClients() (*RundeckClients, error) {
 	})
 
 	return &RundeckClients{
-		V1:    &clientV1,
-		V2:    clientV2,
-		Token: token,
-		ctx:   ctx,
+		V1:         &clientV1,
+		V2:         clientV2,
+		Token:      token,
+		BaseURL:    urlP,
+		APIVersion: apiVersion,
+		ctx:        ctx,
 	}, nil
 }
