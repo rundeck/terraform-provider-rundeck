@@ -446,9 +446,11 @@ A command's `log_filter_plugin`, `step_plugin`  or `node_step_plugin` block both
 
 `notification` blocks have the following structure:
 
-* `type`: (Required) The name of the type of notification. Can be of type `on_success`, `on_failure`, `on_start`.
+* `type`: (Required) The name of the type of notification. Can be of type `on_success`, `on_failure`, `on_start`, `on_retryable_failure`, `on_avg_duration`.
 
-* `email`: (Optional) block listed below to send emails as notificiation.
+**Note on Notification Ordering:** Notifications are stored and retrieved in alphabetical order by type (e.g., `on_failure`, `on_start`, `on_success`) for deterministic behavior. When defining multiple notifications, arrange them alphabetically in your Terraform configuration to prevent unnecessary diffs during `terraform plan`.
+
+* `email`: (Optional) block listed below to send emails as notification.
 
 * `webhook_urls`: (Optional) A list of urls to send a webhook notification.
 
