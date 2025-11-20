@@ -9,8 +9,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
-	"github.com/hashicorp/terraform-plugin-mux/tf5muxserver"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/rundeck/go-rundeck/rundeck"
 	openapi "github.com/rundeck/go-rundeck/rundeck-v2"
@@ -77,44 +75,13 @@ by:
 // token at http://192.168.50.2:4440/user/profile once you've logged in, and RUNDECK_URL will
 // be http://192.168.50.2:4440/ .
 
-var testAccProvider *schema.Provider
-
-func init() {
-	testAccProvider = Provider()
-}
-
 func testAccProtoV5ProviderFactories() map[string]func() (tfprotov5.ProviderServer, error) {
 	return map[string]func() (tfprotov5.ProviderServer, error){
 		"rundeck": func() (tfprotov5.ProviderServer, error) {
-			ctx := context.Background()
-
-			// Convert SDK provider to protocol v5 server
-			sdkProviderFunc := func() tfprotov5.ProviderServer {
-				return schema.NewGRPCProviderServer(Provider())
-			}
-
-			// Create Framework provider server
-			frameworkProviderFunc := providerserver.NewProtocol5(NewFrameworkProvider("test")())
-
-			// Create a muxed server that serves both SDK and Framework providers
-			muxServer, err := tf5muxserver.NewMuxServer(ctx, sdkProviderFunc, frameworkProviderFunc)
-			if err != nil {
-				return nil, err
-			}
-
-			return muxServer.ProviderServer(), nil
+			// Use Framework provider directly (SDKv2 removed)
+			return providerserver.NewProtocol5(NewFrameworkProvider("test")())(), nil
 		},
 	}
-}
-
-func TestProvider(t *testing.T) {
-	if err := Provider().InternalValidate(); err != nil {
-		t.Fatalf("err: %s", err)
-	}
-}
-
-func TestProvider_impl(t *testing.T) {
-	var _ *schema.Provider = Provider()
 }
 
 func testAccPreCheck(t *testing.T) {

@@ -2,6 +2,7 @@ package rundeck
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -593,6 +594,158 @@ func convertCommandPluginsToJSON(ctx context.Context, pluginsList types.List) (m
 				result["LogFilter"] = logFilterArray
 			}
 		}
+	}
+
+	return result, diags
+}
+
+// convertOrchestratorToJSON converts orchestrator block to JSON structure
+// Rundeck expects: {"type": "maxPercentage", "configuration": {"percent": "80"}}
+func convertOrchestratorToJSON(ctx context.Context, orchestratorList types.List) (map[string]interface{}, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	if orchestratorList.IsNull() || orchestratorList.IsUnknown() {
+		return nil, diags
+	}
+
+	var orchestrators []types.Object
+	diags.Append(orchestratorList.ElementsAs(ctx, &orchestrators, false)...)
+	if diags.HasError() {
+		return nil, diags
+	}
+
+	if len(orchestrators) == 0 {
+		return nil, diags
+	}
+
+	// Only use the first orchestrator block (job can only have one)
+	attrs := orchestrators[0].Attributes()
+
+	result := make(map[string]interface{})
+	config := make(map[string]interface{})
+
+	// Get orchestrator type (required)
+	if v, ok := attrs["type"].(types.String); ok && !v.IsNull() {
+		result["type"] = v.ValueString()
+	}
+
+	// Get configuration fields (optional, depends on type)
+	if v, ok := attrs["count"].(types.Int64); ok && !v.IsNull() {
+		config["count"] = fmt.Sprintf("%d", v.ValueInt64())
+	}
+	if v, ok := attrs["percent"].(types.Int64); ok && !v.IsNull() {
+		config["percent"] = fmt.Sprintf("%d", v.ValueInt64())
+	}
+	if v, ok := attrs["attribute"].(types.String); ok && !v.IsNull() {
+		config["attribute"] = v.ValueString()
+	}
+	if v, ok := attrs["sort"].(types.String); ok && !v.IsNull() {
+		config["sort"] = v.ValueString()
+	}
+
+	// Add configuration if any fields were set
+	if len(config) > 0 {
+		result["configuration"] = config
+	}
+
+	return result, diags
+}
+
+// convertLogLimitToJobFields converts log_limit block to separate job-level fields
+// Returns three values: loglimit, loglimitAction, loglimitStatus (all as strings)
+func convertLogLimitToJobFields(ctx context.Context, logLimitList types.List) (loglimit, action, status *string, diags diag.Diagnostics) {
+	if logLimitList.IsNull() || logLimitList.IsUnknown() {
+		return nil, nil, nil, diags
+	}
+
+	var logLimits []types.Object
+	diags.Append(logLimitList.ElementsAs(ctx, &logLimits, false)...)
+	if diags.HasError() {
+		return nil, nil, nil, diags
+	}
+
+	if len(logLimits) == 0 {
+		return nil, nil, nil, diags
+	}
+
+	// Only use the first log_limit block (job can only have one)
+	attrs := logLimits[0].Attributes()
+
+	if v, ok := attrs["output"].(types.String); ok && !v.IsNull() {
+		val := v.ValueString()
+		loglimit = &val
+	}
+	if v, ok := attrs["action"].(types.String); ok && !v.IsNull() {
+		val := v.ValueString()
+		action = &val
+	}
+	if v, ok := attrs["status"].(types.String); ok && !v.IsNull() {
+		val := v.ValueString()
+		status = &val
+	}
+
+	return loglimit, action, status, diags
+}
+
+// convertGlobalLogFiltersToJSON converts global_log_filter blocks to pluginConfig.LogFilter
+// Returns a map with LogFilter array for sequence-level pluginConfig
+func convertGlobalLogFiltersToJSON(ctx context.Context, filtersList types.List) (map[string]interface{}, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	if filtersList.IsNull() || filtersList.IsUnknown() {
+		return nil, diags
+	}
+
+	var filters []types.Object
+	diags.Append(filtersList.ElementsAs(ctx, &filters, false)...)
+	if diags.HasError() {
+		return nil, diags
+	}
+
+	if len(filters) == 0 {
+		return nil, diags
+	}
+
+	// Build LogFilter array
+	logFilterArray := make([]interface{}, 0, len(filters))
+
+	for _, filterObj := range filters {
+		attrs := filterObj.Attributes()
+		filter := make(map[string]interface{})
+
+		// Get filter type (required)
+		if v, ok := attrs["type"].(types.String); ok && !v.IsNull() {
+			filter["type"] = v.ValueString()
+		} else {
+			continue // Skip if no type
+		}
+
+		// Get config map (optional)
+		if v, ok := attrs["config"].(types.Map); ok && !v.IsNull() {
+			configElements := v.Elements()
+			if len(configElements) > 0 {
+				configMap := make(map[string]interface{})
+				for key, val := range configElements {
+					if strVal, ok := val.(types.String); ok && !strVal.IsNull() {
+						configMap[key] = strVal.ValueString()
+					}
+				}
+				if len(configMap) > 0 {
+					filter["config"] = configMap
+				}
+			}
+		}
+
+		logFilterArray = append(logFilterArray, filter)
+	}
+
+	if len(logFilterArray) == 0 {
+		return nil, diags
+	}
+
+	// Return in the format Rundeck expects for sequence.pluginConfig
+	result := map[string]interface{}{
+		"LogFilter": logFilterArray,
 	}
 
 	return result, diags

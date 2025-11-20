@@ -115,9 +115,10 @@ type jobDispatch struct {
 }
 
 type jobSequence struct {
-	KeepGoing bool          `json:"keepgoing,omitempty"`
-	Strategy  string        `json:"strategy,omitempty"`
-	Commands  []interface{} `json:"commands"`
+	KeepGoing    bool                   `json:"keepgoing,omitempty"`
+	Strategy     string                 `json:"strategy,omitempty"`
+	Commands     []interface{}          `json:"commands"`
+	PluginConfig map[string]interface{} `json:"pluginConfig,omitempty"`
 }
 
 type jobRetry struct {
@@ -918,8 +919,39 @@ func (r *jobResource) planToJobJSON(ctx context.Context, plan *jobResourceModel)
 		}
 	}
 
-	// TODO: Convert remaining complex structures (orchestrator, log_limit, global_log_filter)
-	// For now, these can be left nil and will be added incrementally
+	// Convert orchestrator
+	if !plan.Orchestrator.IsNull() && !plan.Orchestrator.IsUnknown() {
+		orchestrator, diags := convertOrchestratorToJSON(ctx, plan.Orchestrator)
+		if diags.HasError() {
+			return nil, fmt.Errorf("error converting orchestrator: %v", diags.Errors())
+		}
+		if len(orchestrator) > 0 {
+			job.Orchestrator = orchestrator
+		}
+	}
+
+	// Convert log_limit
+	if !plan.LogLimit.IsNull() && !plan.LogLimit.IsUnknown() {
+		loglimit, action, status, diags := convertLogLimitToJobFields(ctx, plan.LogLimit)
+		if diags.HasError() {
+			return nil, fmt.Errorf("error converting log limit: %v", diags.Errors())
+		}
+		job.Loglimit = loglimit
+		job.LogLimitAction = action
+		job.LogLimitStatus = status
+	}
+
+	// Convert global_log_filter
+	if !plan.GlobalLogFilter.IsNull() && !plan.GlobalLogFilter.IsUnknown() {
+		pluginConfig, diags := convertGlobalLogFiltersToJSON(ctx, plan.GlobalLogFilter)
+		if diags.HasError() {
+			return nil, fmt.Errorf("error converting global log filters: %v", diags.Errors())
+		}
+		if len(pluginConfig) > 0 && job.Sequence != nil {
+			// Add to sequence pluginConfig
+			job.Sequence.PluginConfig = pluginConfig
+		}
+	}
 
 	return job, nil
 }
