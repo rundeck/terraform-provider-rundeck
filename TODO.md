@@ -5,28 +5,9 @@ Prioritized list of remaining work for the Rundeck Terraform Provider.
 **Current Status**: v1.0.0 ready for release  
 **Last Updated**: 2025-11-20
 
-**Recent Accomplishments** (v1.0.0):
-- ✅ **SDKv2 Removed**: Single Plugin Framework implementation, mux eliminated
-- ✅ **SDK Updated**: Both SDKs now at v1.2.0 with proper module versioning
-- ✅ **Semantic Equality**: Runner tags use semantic equality (no more plan drift)
-- ✅ **Issues Fixed**: #156 (EOF), #126 (delimiter), #198 (password state) all tested & verified
-- ✅ **Full JSON**: All XML code eliminated, JSON-only API interactions
-- ✅ **All 8 Resources Migrated**: Job, runners (system/project), project, ACL, keys (public/private), password - 100% on Framework
-- ✅ **Complete Notification Support**: Email, webhook, plugin with proper API format handling
-- ✅ **Schedule Normalization**: Automatic cron normalization prevents drift
-- ✅ **Option Enforcement**: Correct inference from value_choices
-- ✅ **FROM JSON Converters**: Schedule, orchestrator, log limit, global log filter, notifications, options all implemented
-- ✅ **Orchestrator Support**: All types (maxPercentage, subset, rankTiered, custom plugins)
-- ✅ **Log Limit Support**: Full implementation (output, action, status)
-- ✅ **Global Log Filter Support**: Job-level log filtering with plugin config
-- ✅ **Integration Tests**: API validation tests verify actual Rundeck storage (2 new tests)
-- ✅ **Username/Password Auth**: Framework provider now supports auth_username/auth_password
-- ✅ **Zero Plan Drift**: All resources stable across all tested scenarios
-- ✅ **Comprehensive Testing**: 26/26 OSS tests passing, enterprise test validated (10 resources)
-
 ---
 
-## 🔴 High Priority (Before 1.1.0)
+## 🔴 High Priority
 
 ### 1. Complete Job Import - Command Parsing
 **Effort**: Small-Medium (1-2 days)  
@@ -100,7 +81,7 @@ Prioritized list of remaining work for the Rundeck Terraform Provider.
 
 ---
 
-## 🟡 Medium Priority (1.x Releases)
+## 🟡 Medium Priority
 
 ### 4. Implement Data Sources
 **Effort**: Medium (1 week)  
@@ -236,7 +217,7 @@ After:  Error creating job "my-job" in project "prod": Rundeck returned validati
 
 ---
 
-## 🟢 Low Priority (Future)
+## 🟢 Low Priority
 
 ### 9. Advanced Job Features - Remaining
 **Effort**: Medium (1-2 weeks)  
@@ -327,67 +308,6 @@ resource "rundeck_scm_import" "project_import" {
 - Custom HTTP client configuration (timeout, TLS settings)
 - Multiple Rundeck instance support (aliased providers)
 - Support for API key + username auth
-
----
-
-## 📊 Current Metrics
-
-**Test Coverage**:
-- ✅ 26/26 OSS tests passing (100%)
-  - Includes 2 new integration tests with API validation
-  - TestAccJob_ComplexIntegration - validates orchestrator, log limit, schedule, options, notifications via API
-  - TestAccJob_NotificationIntegration - validates email and webhook structures via API
-- ⏭️ 9 Enterprise tests skipped (require Enterprise Rundeck instance)
-- ⏭️ 2 validation tests skipped (future enhancement: duplicate notifications, empty choices)
-- ✅ Comprehensive enterprise test validated (10 resources, zero drift)
-- ~90% code path coverage
-
-**Known Limitations**:
-- Command import not yet implemented (commands don't drift, low priority)
-- No schema validation for duplicate notifications or empty choices (UX enhancement)
-- Project schedules require manual creation (no API available yet)
-
-**GitHub Issues Status**:
-- ✅ [#156](https://github.com/rundeck/terraform-provider-rundeck/issues/156) - EOF error - **FIXED in v1.0.0** (tested & confirmed)
-- ✅ [#126](https://github.com/rundeck/terraform-provider-rundeck/issues/126) - multi_value_delimiter - **FIXED in v1.0.0** (tested & confirmed)
-- ✅ [#198](https://github.com/rundeck/terraform-provider-rundeck/issues/198) - password state corruption - **FIXED in v1.0.0** (tested & confirmed)
-- 🟡 [#70](https://github.com/rundeck/terraform-provider-rundeck/issues/70) - extra_config merge - **Design decision** (Medium #6)
-- 🟢 [#76](https://github.com/rundeck/terraform-provider-rundeck/issues/76) - SCM support - **Feature request** (Low #9)
-
----
-
-## 🎯 Recommended Next Steps
-
-### For 1.0.0 Release (✅ READY)
-- ✅ All critical features complete
-- ✅ All 26 OSS tests passing (100%)
-- ✅ Comprehensive enterprise test validated
-- ✅ Integration tests with API validation
-- ✅ Documentation updated (CHANGELOG, job docs, PR description)
-- ✅ GitHub issues #156, #126, and #198 tested and confirmed fixed
-- ✅ Zero plan drift for all resources
-- 🟡 Post test results to GitHub issues after release
-
-### For 1.1.0 (Next 1-2 Months)
-1. Complete command import parser (High #1) - ~1-2 days
-2. Add schema validation (High #2) - ~1 day
-3. Write dedicated guide pages (High #3) - ~2 days
-   - Import guide (import.html.md)
-   - Migration guide (migration-v1.html.md)
-   - Enterprise features guide (enterprise.html.md)
-4. Project schedule resource (if API becomes available)
-
-### For 1.2.0+ (Next 3-6 Months)
-1. Migrate remaining SDKv2 resources to Framework (Medium #4) - ~1-2 weeks
-2. Implement data sources (Medium #5) - ~1 week
-3. Enhanced error handling (Medium #7) - ~3-5 days
-
-### For 2.0.0 (Future - 6-12 Months)
-1. ~~Complete framework migration~~ ✅ Done in v1.0.0
-2. ~~Remove SDKv2 dependency~~ ✅ Done in v1.0.0
-3. Clean up dead SDKv2 code files
-4. Advanced job features (Low #8)
-5. Consider SCM support if demand increases (Low #9) - GitHub issue #76
 
 ---
 
