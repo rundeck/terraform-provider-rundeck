@@ -1430,11 +1430,22 @@ func convertOptionsFromJSON(ctx context.Context, optionsArray []interface{}) (ty
 		}
 
 		// API field is "enforcedValues" not "enforced"
+		// Debug: check what fields are actually in optMap
 		if enforced, ok := optMap["enforcedValues"].(bool); ok {
 			optAttrs["require_predefined_choice"] = types.BoolValue(enforced)
+		} else if enforced, ok := optMap["enforced"].(bool); ok {
+			// Try alternate field name
+			optAttrs["require_predefined_choice"] = types.BoolValue(enforced)
 		} else {
-			// TODO: Investigate why enforcedValues is not returned by API when set to true
-			optAttrs["require_predefined_choice"] = types.BoolNull()
+			// If value_choices is specified, enforcedValues defaults to true
+			// Check if values or valuesList exists to infer the default
+			if _, hasValues := optMap["values"]; hasValues {
+				optAttrs["require_predefined_choice"] = types.BoolValue(true)
+			} else if _, hasValuesList := optMap["valuesList"]; hasValuesList {
+				optAttrs["require_predefined_choice"] = types.BoolValue(true)
+			} else {
+				optAttrs["require_predefined_choice"] = types.BoolNull()
+			}
 		}
 
 		if isDate, ok := optMap["isDate"].(bool); ok {

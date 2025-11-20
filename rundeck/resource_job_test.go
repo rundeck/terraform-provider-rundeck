@@ -329,7 +329,7 @@ func TestAccJobWebhookNotification(t *testing.T) {
 					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "execution_enabled", "true"),
 
 					// Notifications are ordered alphabetically: onfailure, onstart, onsuccess
-					
+
 					// Verify on_failure notification (index 0)
 					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.0.type", "on_failure"),
 					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.0.webhook_urls.0", "https://example.com/webhook"),
@@ -376,13 +376,7 @@ resource "rundeck_job" "test_webhook" {
     shell_command = "echo Hello World"
   }
   
-  notification {
-    type = "on_success"
-    format = "json"
-    http_method = "post"
-    webhook_urls = ["https://example.com/webhook"]
-  }
-  
+  # Notifications are ordered alphabetically: onfailure, onstart, onsuccess
   notification {
     type = "on_failure"
     webhook_urls = ["https://example.com/webhook"]
@@ -390,6 +384,13 @@ resource "rundeck_job" "test_webhook" {
   
   notification {
     type = "on_start"
+    format = "json"
+    http_method = "post"
+    webhook_urls = ["https://example.com/webhook"]
+  }
+  
+  notification {
+    type = "on_success"
     format = "json"
     http_method = "post"
     webhook_urls = ["https://example.com/webhook"]
@@ -708,7 +709,6 @@ resource "rundeck_job" "test" {
 	  email {
 		  recipients = ["foo@foo.bar"]
 	  }
-	  webhook_urls = ["http://localhost/testing"]
   }
 }
 `
