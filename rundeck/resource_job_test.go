@@ -925,7 +925,7 @@ resource "rundeck_project" "test" {
 	  nodes_selected_by_default = false
 	max_thread_count = 1
 	rank_order = "ascending"
-	  schedule = "0 0 12 * * * *"
+	  schedule = "0 0 12 ? * * *"
 	  schedule_enabled = true
 	option {
 	  name = "foo"
@@ -977,7 +977,7 @@ resource "rundeck_project" "test" {
 	  nodes_selected_by_default = false
 	max_thread_count = 1
 	rank_order = "ascending"
-	  schedule = "0 0 12 * * * *"
+	  schedule = "0 0 12 ? * * *"
 	  schedule_enabled = true
 	option {
 	  name = "foo"
@@ -1030,7 +1030,7 @@ resource "rundeck_project" "test" {
 	  nodes_selected_by_default = false
 	max_thread_count = 1
 	rank_order = "ascending"
-	  schedule = "0 0 12 * * * *"
+	  schedule = "0 0 12 ? * * *"
 	  schedule_enabled = true
 	option {
 	  name = "foo"
