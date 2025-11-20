@@ -3,31 +3,51 @@
 Prioritized list of remaining work for the Rundeck Terraform Provider.
 
 **Current Status**: v1.0.0 ready for release  
-**Last Updated**: 2025-11-18
+**Last Updated**: 2025-11-20
 
 **Recent Accomplishments** (v1.0.0):
-- ✅ **SDK Updated**: `rundeck-v2` updated to fix `ErrorResponse` bug
-- ✅ **Semantic Equality**: Runner tags now use semantic equality (no more plan drift)
+- ✅ **SDKv2 Removed**: Single Plugin Framework implementation, mux eliminated
+- ✅ **SDK Updated**: Both SDKs now at v1.2.0 with proper module versioning
+- ✅ **Semantic Equality**: Runner tags use semantic equality (no more plan drift)
 - ✅ **Issues Fixed**: #156 (EOF), #126 (delimiter), #198 (password state) all tested & verified
 - ✅ **Full JSON**: All XML code eliminated, JSON-only API interactions
-- ✅ **Runner Resources**: System and project runners fully migrated to Framework
+- ✅ **All 8 Resources Migrated**: Job, runners (system/project), project, ACL, keys (public/private), password - 100% on Framework
+- ✅ **Complete Notification Support**: Email, webhook, plugin with proper API format handling
+- ✅ **Schedule Normalization**: Automatic cron normalization prevents drift
+- ✅ **Option Enforcement**: Correct inference from value_choices
+- ✅ **FROM JSON Converters**: Schedule, orchestrator, log limit, global log filter, notifications, options all implemented
+- ✅ **Orchestrator Support**: All types (maxPercentage, subset, rankTiered, custom plugins)
+- ✅ **Log Limit Support**: Full implementation (output, action, status)
+- ✅ **Global Log Filter Support**: Job-level log filtering with plugin config
+- ✅ **Integration Tests**: API validation tests verify actual Rundeck storage (2 new tests)
+- ✅ **Username/Password Auth**: Framework provider now supports auth_username/auth_password
+- ✅ **Zero Plan Drift**: All resources stable across all tested scenarios
+- ✅ **Comprehensive Testing**: 26/26 OSS tests passing, enterprise test validated (10 resources)
 
 ---
 
 ## 🔴 High Priority (Before 1.1.0)
 
-### 1. Complete Job Import for Complex Structures
-**Effort**: Medium (2-3 days)  
-**Why Important**: Users importing existing jobs will see drift on first `terraform plan` for complex configurations (commands, options, notifications). This creates confusion and reduces adoption.
+### 1. Complete Job Import - Command Parsing
+**Effort**: Small-Medium (1-2 days)  
+**Status**: 90% Complete  
+**Why Important**: Commands are the only remaining structure not parsed during import.
+
+**What's Complete** ✅:
+- ✅ `convertScheduleObjectToCron()` - Parse schedule from API
+- ✅ `convertOrchestratorFromJSON()` - Parse orchestrator config
+- ✅ `convertLogLimitFromJSON()` - Parse log limit config
+- ✅ `convertOptionsFromJSON()` - Parse options array from API to Terraform state  
+- ✅ `convertNotificationsFromJSON()` - Parse notifications map to Terraform state
 
 **What's Missing**:
 - `convertCommandsFromJSON()` - Parse commands array from API to Terraform state
-- `convertOptionsFromJSON()` - Parse options array from API to Terraform state  
-- `convertNotificationsFromJSON()` - Parse notifications map to Terraform state
+  - Complex due to variety: shell, script, job reference (name/uuid), plugin, etc.
+  - Currently has TODO at line 1259 in resource_job_framework.go
 
 **Files**: `rundeck/resource_job_converters.go`, `rundeck/resource_job_framework.go`
 
-**Current Workaround**: Import works, but complex nested blocks added to `ImportStateVerifyIgnore`
+**Impact**: Low - Commands don't drift, import still works (you just manually add commands to config)
 
 ---
 
@@ -51,16 +71,25 @@ Prioritized list of remaining work for the Rundeck Terraform Provider.
 
 ### 3. Documentation Improvements
 **Effort**: Medium (1-2 days)  
+**Status**: Partially Complete (core docs done, guides deferred)  
 **Why Important**: Reduces support burden and improves onboarding for new users upgrading from 0.x to 1.0.
 
-**Priority Pages**:
+**Completed in v1.0.0** ✅:
+- ✅ **CHANGELOG.md** - Comprehensive v1.0.0 entry with breaking changes, enhancements, bug fixes
+- ✅ **Job Resource Docs** (`website/docs/r/job.html.md`) - Notification ordering, webhook format notes
+- ✅ **Runner Resource Docs** - Tag normalization behavior documented
+- ✅ **Issue Template** (`.github/ISSUE_TEMPLATE.md`) - Enhanced with test script guidance, version requirements
+- ✅ **Test Documentation** (`test/enterprise/README.md`, `test/oss/README.md`) - Portable examples, troubleshooting
+- ✅ **PR Description** - Complete migration guide with before/after examples
+
+**Deferred to v1.1.0** (nice-to-have guide pages):
 1. **Import Guide** (`website/docs/guides/import.html.md`) - NEW
    - Step-by-step import workflow
    - Known limitations for complex structures
    - Post-import cleanup best practices
 
 2. **Migration Guide** (`website/docs/guides/migration-v1.html.md`) - NEW
-   - 0.x → 1.0 upgrade path
+   - 0.x → 1.0 upgrade path (covered in CHANGELOG/PR description for now)
    - Breaking changes with examples
    - Rundeck version compatibility matrix
 
@@ -73,23 +102,27 @@ Prioritized list of remaining work for the Rundeck Terraform Provider.
 
 ## 🟡 Medium Priority (1.x Releases)
 
-### 4. Migrate Legacy SDK Resources to Framework
-**Effort**: Large (1-2 weeks)  
-**Why Important**: Removes dependency on legacy SDKv2, unifies implementation patterns, improves type safety.
+### 4. ~~Migrate SDK Resources to Framework~~ ✅ COMPLETE
+**Status**: ✅ **100% Complete - All 8 resources migrated + dead code cleaned up**  
+**Completed**: v1.0.0
 
-**Resources**:
-- `rundeck_project` - Most complex, has configuration maps
-- `rundeck_acl_policy` - Simple, good starting point
-- `rundeck_public_key` - Simple
-- `rundeck_password` - Simple
-- `rundeck_private_key` - Simple
+**All Resources Migrated to Framework** ✅:
+- ✅ `rundeck_job` - Complete with all features
+- ✅ `rundeck_system_runner` - With semantic equality for tags
+- ✅ `rundeck_project_runner` - With semantic equality for tags
+- ✅ `rundeck_project` - Full migration complete
+- ✅ `rundeck_acl_policy` - Full migration complete
+- ✅ `rundeck_public_key` - Full migration complete
+- ✅ `rundeck_password` - Full migration complete
+- ✅ `rundeck_private_key` - Full migration complete
 
-**Approach**: Migrate simple resources first (ACL, keys), then project last.
-
-**Benefits**:
-- Consistent error handling across all resources
-- Better plan diff accuracy
-- Eventually remove SDKv2 dependency
+**Benefits Achieved**:
+- ✅ Consistent error handling across all resources
+- ✅ Better plan diff accuracy
+- ✅ SDKv2 dependency completely removed
+- ✅ Unified testing patterns
+- ✅ Single provider implementation (no mux)
+- ✅ Dead SDKv2 code deleted (6 files removed)
 
 ---
 
@@ -178,28 +211,35 @@ After:  Error creating job "my-job" in project "prod": Rundeck returned validati
 
 ---
 
-### 7. Enterprise Test Automation & Enhancement
-**Effort**: Medium (3-5 days)  
-**Why Important**: 9 tests currently skip in CI/CD, manual testing is slow and error-prone.
+### 7. Enterprise Test Automation & CI/CD
+**Effort**: Small-Medium (2-3 days)  
+**Status**: Mostly Complete  
+**Why Important**: 9 tests currently skip in CI/CD (require Enterprise Rundeck).
 
-**Skipped Tests**:
-- 4 project schedule tests
-- 5 runner tests (system + project)
+**Completed** ✅:
+- ✅ `test/enterprise/comprehensive.sh` - Full enterprise validation
+  - Automated cleanup (destroy + remove artifacts)
+  - Drift validation integrated
+  - Portable (no hardcoded paths)
+  - Summary report generation
+- ✅ `test/enterprise/test-custom.sh` - "Bring your own plan" testing
+  - Automatic provider build
+  - Drift detection
+  - Easy community testing
+- ✅ Conditional project schedule tests (skip gracefully if not set up)
+- ✅ Documentation in `test/enterprise/README.md`
 
-**Comprehensive Test Improvements**:
-- Add automated cleanup command (destroy + remove artifacts)
-- Integrate drift validation into test flow
-- Make build process more robust
-- Add summary report generation
-- Document for community contributors
-- **File**: `test/enterprise/comprehensive.sh`
+**Remaining**:
+- Set up CI/CD with Enterprise Rundeck instance
+  - Option 1: GitHub Actions with Enterprise Docker (requires license)
+  - Option 2: Scheduled runs on internal Enterprise instance
+  - Option 3: Manual verification before releases
 
-**CI/CD Options**:
-1. GitHub Actions with Enterprise Docker image (requires license)
-2. Scheduled manual test runs against Enterprise instance
-3. Community-contributed test results
-
-**Goal**: Increase automated test coverage from ~85% to 95% + easier community testing
+**Skipped in CI/CD** (9 tests):
+- 1 execution lifecycle plugin test (multiple plugins)
+- 3 project schedule tests (API not available yet)
+- 3 project runner tests (Enterprise feature)
+- 2 system runner tests (Enterprise feature)
 
 ---
 
@@ -207,16 +247,28 @@ After:  Error creating job "my-job" in project "prod": Rundeck returned validati
 
 ### 8. Advanced Job Features
 **Effort**: Large (2-3 weeks)  
+**Status**: 60% Complete (3 of 5 done in v1.0.0)  
 **Why Important**: Completeness, but rarely used features.
 
-**Features**:
-- Global log filters (job-level, not command-level)
-- Detailed log limit policies
-- Retry with backoff strategies
-- Custom orchestrator plugins
+**Completed in v1.0.0** ✅:
+- ✅ **Global log filters** (job-level) - Full implementation with TO/FROM JSON converters
+  - `convertGlobalLogFilterToJSON()` implemented
+  - `convertGlobalLogFilterFromJSON()` implemented
+  - Supports plugin type and config
+- ✅ **Detailed log limit policies** - Complete implementation
+  - `convertLogLimitToJSON()` implemented
+  - `convertLogLimitFromJSON()` implemented
+  - Supports output, action, and status
+- ✅ **Orchestrator plugins** - All types supported
+  - `convertOrchestratorToJSON()` implemented
+  - `convertOrchestratorFromJSON()` implemented
+  - Supports maxPercentage, subset, rankTiered, and custom plugins
+
+**Remaining**:
+- Retry with backoff strategies (partially done - basic retry exists, backoff strategies not implemented)
 - Advanced error handler recursion
 
-**Approach**: Implement on-demand based on user requests
+**Approach**: Remaining features on-demand based on user requests
 
 ---
 
@@ -315,15 +367,19 @@ resource "rundeck_scm_import" "project_import" {
 ## 📊 Current Metrics
 
 **Test Coverage**:
-- ✅ 23/23 OSS tests passing (100%)
-- ⏭️ 9 Enterprise tests skipped (require manual setup)
-- ⏭️ 2 validation tests skipped (future enhancement)
-- ~85% code path coverage
+- ✅ 26/26 OSS tests passing (100%)
+  - Includes 2 new integration tests with API validation
+  - TestAccJob_ComplexIntegration - validates orchestrator, log limit, schedule, options, notifications via API
+  - TestAccJob_NotificationIntegration - validates email and webhook structures via API
+- ⏭️ 9 Enterprise tests skipped (require Enterprise Rundeck instance)
+- ⏭️ 2 validation tests skipped (future enhancement: duplicate notifications, empty choices)
+- ✅ Comprehensive enterprise test validated (10 resources, zero drift)
+- ~90% code path coverage
 
 **Known Limitations**:
-- Import works but shows drift for complex nested structures
-- No schema validation for duplicate notifications or empty choices
-- Enterprise features require manual testing
+- Command import not yet implemented (commands don't drift, low priority)
+- No schema validation for duplicate notifications or empty choices (UX enhancement)
+- Project schedules require manual creation (no API available yet)
 
 **GitHub Issues Status**:
 - ✅ [#156](https://github.com/rundeck/terraform-provider-rundeck/issues/156) - EOF error - **FIXED in v1.0.0** (tested & confirmed)
@@ -336,23 +392,36 @@ resource "rundeck_scm_import" "project_import" {
 
 ## 🎯 Recommended Next Steps
 
-### For 1.0.0 Release (Immediate)
+### For 1.0.0 Release (✅ READY)
 - ✅ All critical features complete
-- ✅ All OSS tests passing
-- ✅ Documentation updated
+- ✅ All 26 OSS tests passing (100%)
+- ✅ Comprehensive enterprise test validated
+- ✅ Integration tests with API validation
+- ✅ Documentation updated (CHANGELOG, job docs, PR description)
 - ✅ GitHub issues #156, #126, and #198 tested and confirmed fixed
-- 🟡 Post test results to GitHub issues
+- ✅ Zero plan drift for all resources
+- 🟡 Post test results to GitHub issues after release
 
-### For 1.1.0 (Next Month)
-1. Complete job import converters (High #1)
-2. Add schema validation (High #2)
-3. Write import/migration guides (High #3)
+### For 1.1.0 (Next 1-2 Months)
+1. Complete command import parser (High #1) - ~1-2 days
+2. Add schema validation (High #2) - ~1 day
+3. Write dedicated guide pages (High #3) - ~2 days
+   - Import guide (import.html.md)
+   - Migration guide (migration-v1.html.md)
+   - Enterprise features guide (enterprise.html.md)
+4. Project schedule resource (if API becomes available)
 
-### For 2.0.0 (Future)
-1. Migrate all resources to Framework (Medium #4) - Will address issue #70
-2. Remove SDKv2 dependency
-3. Implement data sources (Medium #5)
-4. Consider SCM support if demand increases (Low #9) - GitHub issue #76
+### For 1.2.0+ (Next 3-6 Months)
+1. Migrate remaining SDKv2 resources to Framework (Medium #4) - ~1-2 weeks
+2. Implement data sources (Medium #5) - ~1 week
+3. Enhanced error handling (Medium #7) - ~3-5 days
+
+### For 2.0.0 (Future - 6-12 Months)
+1. ~~Complete framework migration~~ ✅ Done in v1.0.0
+2. ~~Remove SDKv2 dependency~~ ✅ Done in v1.0.0
+3. Clean up dead SDKv2 code files
+4. Advanced job features (Low #8)
+5. Consider SCM support if demand increases (Low #9) - GitHub issue #76
 
 ---
 
@@ -370,6 +439,6 @@ Open an issue on GitHub to discuss your approach before starting.
 
 ---
 
-**Last Updated**: 2025-11-17  
-**Maintainer**: @fdevans  
-**Repository**: https://github.com/terraform-providers/terraform-provider-rundeck
+**Last Updated**: 2025-11-20  
+**Maintainer**: Rundeck Team  
+**Repository**: https://github.com/rundeck/terraform-provider-rundeck

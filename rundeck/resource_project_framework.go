@@ -26,6 +26,18 @@ var (
 	_ resource.ResourceWithImportState = &projectResource{}
 )
 
+// projectConfigAttributes maps Rundeck project config keys to Terraform attribute names
+var projectConfigAttributes = map[string]string{
+	"project.name":                          "name",
+	"project.description":                   "description",
+	"service.FileCopier.default.provider":   "default_node_file_copier_plugin",
+	"service.NodeExecutor.default.provider": "default_node_executor_plugin",
+	"project.ssh-authentication":            "ssh_authentication_type",
+	"project.ssh-keypath":                   "ssh_key_storage_path",
+	"project.ssh-key-storage-path":          "ssh_key_storage_path",
+	"project.ssh-keypath-file":              "ssh_key_file_path",
+}
+
 func NewProjectResource() resource.Resource {
 	return &projectResource{}
 }
