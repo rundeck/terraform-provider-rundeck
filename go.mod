@@ -10,19 +10,21 @@ require (
 )
 
 require (
-	contrib.go.opencensus.io/exporter/ocagent v0.5.0 // indirect
-	github.com/Azure/go-autorest v11.2.1+incompatible // indirect
+	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
+	github.com/Azure/go-autorest/autorest v0.11.30 // indirect
+	github.com/Azure/go-autorest/autorest/adal v0.9.24 // indirect
+	github.com/Azure/go-autorest/autorest/date v0.3.1 // indirect
+	github.com/Azure/go-autorest/autorest/validation v0.3.2 // indirect
+	github.com/Azure/go-autorest/logger v0.2.2 // indirect
+	github.com/Azure/go-autorest/tracing v0.6.1 // indirect
 	github.com/ProtonMail/go-crypto v1.1.6 // indirect
-	github.com/agext/levenshtein v1.2.2 // indirect
+	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
-	github.com/census-instrumentation/opencensus-proto v0.4.1 // indirect
 	github.com/cloudflare/circl v1.6.1 // indirect
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
-	github.com/fatih/color v1.16.0 // indirect
-	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
+	github.com/fatih/color v1.18.0 // indirect
+	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.11.3 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/go-checkpoint v0.5.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
@@ -38,38 +40,34 @@ require (
 	github.com/hashicorp/logutils v1.0.0 // indirect
 	github.com/hashicorp/terraform-exec v0.23.1 // indirect
 	github.com/hashicorp/terraform-json v0.27.1 // indirect
-	github.com/hashicorp/terraform-plugin-log v0.9.0 // indirect
+	github.com/hashicorp/terraform-plugin-log v0.10.0 // indirect
 	github.com/hashicorp/terraform-registry-address v0.4.0 // indirect
 	github.com/hashicorp/terraform-svchost v0.1.1 // indirect
 	github.com/hashicorp/yamux v0.1.2 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
-	github.com/oklog/run v1.1.0 // indirect
+	github.com/oklog/run v1.2.0 // indirect
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/zclconf/go-cty v1.17.0 // indirect
-	go.opencensus.io v0.24.0 // indirect
-	golang.org/x/crypto v0.42.0 // indirect
-	golang.org/x/mod v0.27.0 // indirect
-	golang.org/x/net v0.43.0 // indirect
-	golang.org/x/sync v0.17.0 // indirect
-	golang.org/x/sys v0.36.0 // indirect
-	golang.org/x/text v0.29.0 // indirect
-	golang.org/x/tools v0.36.0 // indirect
-	google.golang.org/api v0.162.0 // indirect
+	golang.org/x/crypto v0.45.0 // indirect
+	golang.org/x/mod v0.30.0 // indirect
+	golang.org/x/net v0.47.0 // indirect
+	golang.org/x/sync v0.18.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
+	golang.org/x/text v0.31.0 // indirect
+	golang.org/x/tools v0.39.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
-	google.golang.org/genproto v0.0.0-20240227224415-6ceb2ff114de // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250707201910-8d1bb00bc6a7 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250707201910-8d1bb00bc6a7 // indirect
-	google.golang.org/grpc v1.75.1 // indirect
-	google.golang.org/protobuf v1.36.9 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20251111163417-95abcf5c77ba // indirect
+	google.golang.org/grpc v1.77.0 // indirect
+	google.golang.org/protobuf v1.36.10 // indirect
 	gopkg.in/validator.v2 v2.0.1 // indirect
 )
 
