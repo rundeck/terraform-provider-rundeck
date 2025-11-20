@@ -403,4 +403,3 @@ resource "rundeck_job" "notification_test" {
   }
 }
 `
-

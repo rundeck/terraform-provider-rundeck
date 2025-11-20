@@ -195,12 +195,13 @@ resource "rundeck_job" "complex_job" {
   
   # Options
   option {
-    name          = "environment"
-    label         = "Environment"
-    default_value = "staging"
-    required      = true
-    value_choices = ["dev", "staging", "production"]
-    description   = "Target environment"
+    name                      = "environment"
+    label                     = "Environment"
+    default_value             = "staging"
+    required                  = true
+    value_choices             = ["dev", "staging", "production"]
+    require_predefined_choice = true
+    description               = "Target environment"
   }
   
   option {
@@ -228,15 +229,15 @@ resource "rundeck_job" "complex_job" {
     description   = "Run deployment script"
   }
   
-  # Notifications
-  notification {
-    type         = "on_success"
-    webhook_urls = ["https://example.com/webhook/success"]
-  }
-  
+  # Notifications (alphabetical order: onfailure, onsuccess)
   notification {
     type         = "on_failure"
     webhook_urls = ["https://example.com/webhook/failure"]
+  }
+  
+  notification {
+    type         = "on_success"
+    webhook_urls = ["https://example.com/webhook/success"]
   }
 }
 
