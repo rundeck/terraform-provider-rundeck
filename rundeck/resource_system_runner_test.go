@@ -12,7 +12,7 @@ import (
 
 func TestAccRundeckSystemRunner_basic(t *testing.T) {
 	if os.Getenv("RUNDECK_ENTERPRISE_TESTS") != "1" {
-		t.Skip("Skipping Rundeck Enterprise test - set RUNDECK_ENTERPRISE_TESTS=1 to run")
+		t.Skip("ENTERPRISE ONLY: System runners (requires Rundeck 5.17.0+, API v56+) - set RUNDECK_ENTERPRISE_TESTS=1")
 	}
 
 	var runner openapi.RunnerInfo
@@ -42,7 +42,7 @@ func TestAccRundeckSystemRunner_basic(t *testing.T) {
 
 func TestAccRundeckSystemRunner_update(t *testing.T) {
 	if os.Getenv("RUNDECK_ENTERPRISE_TESTS") != "1" {
-		t.Skip("Skipping Rundeck Enterprise test - set RUNDECK_ENTERPRISE_TESTS=1 to run")
+		t.Skip("ENTERPRISE ONLY: System runners (requires Rundeck 5.17.0+, API v56+) - set RUNDECK_ENTERPRISE_TESTS=1")
 	}
 
 	var runner openapi.RunnerInfo

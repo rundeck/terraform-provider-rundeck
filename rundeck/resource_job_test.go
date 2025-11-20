@@ -219,7 +219,7 @@ func TestAccJobNotification_wrongType(t *testing.T) {
 }
 
 func TestAccJobNotification_multiple(t *testing.T) {
-	t.Skip("TODO: Schema-level validation for duplicate notification blocks will be implemented in a future version")
+	t.Skip("DEFERRED: Provider-side schema validation for duplicate notification blocks (not a bug - API already validates)")
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -234,7 +234,7 @@ func TestAccJobNotification_multiple(t *testing.T) {
 }
 
 func TestAccJobOptions_empty_choice(t *testing.T) {
-	t.Skip("TODO: Schema-level validation for empty choice values will be implemented in a future version")
+	t.Skip("DEFERRED: Provider-side schema validation for empty choice values (not a bug - API already validates)")
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -1083,7 +1083,7 @@ func TestAccJob_executionLifecyclePlugin(t *testing.T) {
 func TestAccJob_executionLifecyclePlugin_multiple(t *testing.T) {
 	// Skip this test if not running against Rundeck Enterprise
 	if v := os.Getenv("RUNDECK_ENTERPRISE_TESTS"); v != "1" {
-		t.Skip("Skipping Rundeck Enterprise test - set RUNDECK_ENTERPRISE_TESTS=1 to run")
+		t.Skip("ENTERPRISE ONLY: Multiple execution lifecycle plugins (result-data-json-template, roi-metrics) - set RUNDECK_ENTERPRISE_TESTS=1")
 	}
 
 	resource.Test(t, resource.TestCase{
@@ -1209,7 +1209,7 @@ func testAccJobCheckScheduleExists(expectedScheduleCount int, expectedScheduleNa
 func TestAccJob_projectSchedule(t *testing.T) {
 	// Skip this test if not running against Rundeck Enterprise
 	if v := os.Getenv("RUNDECK_ENTERPRISE_TESTS"); v != "1" {
-		t.Skip("Skipping Rundeck Enterprise test - set RUNDECK_ENTERPRISE_TESTS=1 to run")
+		t.Skip("ENTERPRISE ONLY: Project schedules require manual setup (see test comments) - set RUNDECK_ENTERPRISE_TESTS=1")
 	}
 
 	// Skip if project schedules are not manually configured
@@ -1248,7 +1248,7 @@ func TestAccJob_projectSchedule(t *testing.T) {
 func TestAccJob_projectSchedule_multiple(t *testing.T) {
 	// Skip this test if not running against Rundeck Enterprise
 	if v := os.Getenv("RUNDECK_ENTERPRISE_TESTS"); v != "1" {
-		t.Skip("Skipping Rundeck Enterprise test - set RUNDECK_ENTERPRISE_TESTS=1 to run")
+		t.Skip("ENTERPRISE ONLY: Project schedules require manual setup (see test comments) - set RUNDECK_ENTERPRISE_TESTS=1")
 	}
 
 	// Skip if project schedules are not manually configured
@@ -1287,7 +1287,7 @@ func TestAccJob_projectSchedule_multiple(t *testing.T) {
 func TestAccJob_projectSchedule_noOptions(t *testing.T) {
 	// Skip this test if not running against Rundeck Enterprise
 	if v := os.Getenv("RUNDECK_ENTERPRISE_TESTS"); v != "1" {
-		t.Skip("Skipping Rundeck Enterprise test - set RUNDECK_ENTERPRISE_TESTS=1 to run")
+		t.Skip("ENTERPRISE ONLY: Project schedules require manual setup (see test comments) - set RUNDECK_ENTERPRISE_TESTS=1")
 	}
 
 	// Skip if project schedules are not manually configured
