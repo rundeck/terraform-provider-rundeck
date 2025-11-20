@@ -750,3 +750,37 @@ func convertGlobalLogFiltersToJSON(ctx context.Context, filtersList types.List) 
 
 	return result, diags
 }
+
+// convertCronToScheduleObject converts a Quartz cron expression to Rundeck's schedule object format
+// Cron format: "seconds minutes hours day-of-month month day-of-week year"
+// Example: "* 0/40 * ? * * *" or "0 0 12 ? * * *"
+func convertCronToScheduleObject(cronExpr string) (map[string]interface{}, error) {
+	parts := strings.Fields(cronExpr)
+	if len(parts) != 7 {
+		return nil, fmt.Errorf("invalid cron expression: expected 7 fields (seconds minutes hours day-of-month month day-of-week year), got %d", len(parts))
+	}
+
+	// Parse: seconds minutes hours day-of-month month day-of-week year
+	seconds := parts[0]
+	minutes := parts[1]
+	hours := parts[2]
+	// dayOfMonth := parts[3]  // Not used in Rundeck's format
+	month := parts[4]
+	dayOfWeek := parts[5]
+	year := parts[6]
+
+	schedule := map[string]interface{}{
+		"time": map[string]interface{}{
+			"seconds": seconds,
+			"minute":  minutes,
+			"hour":    hours,
+		},
+		"month": month,
+		"weekday": map[string]interface{}{
+			"day": dayOfWeek,
+		},
+		"year": year,
+	}
+
+	return schedule, nil
+}

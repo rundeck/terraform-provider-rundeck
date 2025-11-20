@@ -907,6 +907,15 @@ func (r *jobResource) planToJobJSON(ctx context.Context, plan *jobResourceModel)
 		}
 	}
 
+	// Set regular cron schedule (if specified and not using project schedules)
+	if !plan.Schedule.IsNull() && !plan.Schedule.IsUnknown() {
+		scheduleObj, err := convertCronToScheduleObject(plan.Schedule.ValueString())
+		if err != nil {
+			return nil, fmt.Errorf("error converting schedule: %v", err)
+		}
+		job.Schedule = scheduleObj
+	}
+
 	// Convert project_schedule
 	if !plan.ProjectSchedule.IsNull() && !plan.ProjectSchedule.IsUnknown() {
 		schedules, diags := convertProjectSchedulesToJSON(ctx, plan.ProjectSchedule)
