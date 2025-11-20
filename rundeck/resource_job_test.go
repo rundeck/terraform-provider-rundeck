@@ -328,18 +328,20 @@ func TestAccJobWebhookNotification(t *testing.T) {
 					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "description", "A job with webhook notifications"),
 					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "execution_enabled", "true"),
 
-					// Verify on_success notification (index 0)
-					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.0.type", "on_success"),
-					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.0.format", "json"),
-					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.0.http_method", "post"),
+					// Notifications are ordered alphabetically: onfailure, onstart, onsuccess
+					
+					// Verify on_failure notification (index 0)
+					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.0.type", "on_failure"),
 					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.0.webhook_urls.0", "https://example.com/webhook"),
 
-					// Verify on_failure notification (index 1)
-					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.1.type", "on_failure"),
+					// Verify on_start notification (index 1)
+					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.1.type", "on_start"),
+					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.1.format", "json"),
+					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.1.http_method", "post"),
 					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.1.webhook_urls.0", "https://example.com/webhook"),
 
-					// Verify on_start notification (index 2)
-					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.2.type", "on_start"),
+					// Verify on_success notification (index 2)
+					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.2.type", "on_success"),
 					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.2.format", "json"),
 					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.2.http_method", "post"),
 					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.2.webhook_urls.0", "https://example.com/webhook"),
@@ -420,7 +422,7 @@ resource "rundeck_job" "test" {
   max_thread_count = 1
   rank_order = "ascending"
   timeout = "42m"
-	schedule = "0 0 12 * * * *"
+	schedule = "0 0 12 ? * * *"
 	schedule_enabled = true
   option {
     name = "foo"
@@ -535,7 +537,7 @@ resource "rundeck_job" "source_test_job" {
   nodes_selected_by_default = false
   max_thread_count = 1
   rank_order = "ascending"
-	schedule = "0 0 12 * * * *"
+	schedule = "0 0 12 ? * * *"
 	schedule_enabled = true
   option {
     name = "foo"
@@ -1515,7 +1517,7 @@ resource "rundeck_job" "test" {
   max_thread_count = 1
   rank_order = "ascending"
   timeout = "42m"
-	schedule = "0 0 12 * * * *"
+	schedule = "0 0 12 ? * * *"
 	schedule_enabled = true
   option {
     name = "foo"

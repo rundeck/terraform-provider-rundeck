@@ -1433,6 +1433,7 @@ func convertOptionsFromJSON(ctx context.Context, optionsArray []interface{}) (ty
 		if enforced, ok := optMap["enforcedValues"].(bool); ok {
 			optAttrs["require_predefined_choice"] = types.BoolValue(enforced)
 		} else {
+			// TODO: Investigate why enforcedValues is not returned by API when set to true
 			optAttrs["require_predefined_choice"] = types.BoolNull()
 		}
 
