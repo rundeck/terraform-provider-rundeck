@@ -3,6 +3,8 @@ package rundeck
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -333,6 +335,8 @@ func convertNotificationsToJSON(ctx context.Context, notificationsList types.Lis
 		return nil, diags
 	}
 
+	// Rundeck expects: { "onsuccess": [ {...}, {...} ], "onfailure": [ {...} ] }
+	// Each notification type maps to an ARRAY of notification targets
 	result := make(map[string]interface{})
 
 	for _, notifObj := range notifications {
@@ -350,27 +354,26 @@ func convertNotificationsToJSON(ctx context.Context, notificationsList types.Lis
 
 		notifMap := make(map[string]interface{})
 
-		// Format and HTTP method are top-level webhook notification properties
-		if v, ok := attrs["format"].(types.String); ok && !v.IsNull() {
-			notifMap["format"] = v.ValueString()
-		}
-		if v, ok := attrs["http_method"].(types.String); ok && !v.IsNull() {
-			notifMap["httpMethod"] = v.ValueString()
-		}
+		// Determine what kind of notification this is (webhook, email, or plugin)
 
-		// Webhook URLs need to be nested in a "webhook" object
+		// Check for webhook (webhook_urls indicates this is a webhook notification)
 		if v, ok := attrs["webhook_urls"].(types.List); ok && !v.IsNull() && !v.IsUnknown() {
 			var urls []string
 			diags.Append(v.ElementsAs(ctx, &urls, false)...)
 			if len(urls) > 0 {
-				// Rundeck expects webhook URLs as a comma-separated string in a webhook object
-				webhookMap := make(map[string]interface{})
-				webhookMap["urls"] = strings.Join(urls, ",")
-				notifMap["webhook"] = webhookMap
+				// Webhook fields go at TOP LEVEL of notification object (not nested)
+				notifMap["urls"] = strings.Join(urls, ",")
+
+				if format, ok := attrs["format"].(types.String); ok && !format.IsNull() {
+					notifMap["format"] = format.ValueString()
+				}
+				if httpMethod, ok := attrs["http_method"].(types.String); ok && !httpMethod.IsNull() {
+					notifMap["httpMethod"] = httpMethod.ValueString()
+				}
 			}
 		}
 
-		// Email configuration
+		// Check for email configuration
 		if v, ok := attrs["email"].(types.List); ok && !v.IsNull() && !v.IsUnknown() {
 			var emails []types.Object
 			diags.Append(v.ElementsAs(ctx, &emails, false)...)
@@ -395,28 +398,46 @@ func convertNotificationsToJSON(ctx context.Context, notificationsList types.Lis
 			}
 		}
 
-		// Plugin configuration
+		// Check for plugin configuration
+		// Rundeck expects: "plugin": [ {"type": "...", "configuration": {...}}, {...} ]
 		if v, ok := attrs["plugin"].(types.List); ok && !v.IsNull() && !v.IsUnknown() {
 			var plugins []types.Object
 			diags.Append(v.ElementsAs(ctx, &plugins, false)...)
 			if len(plugins) > 0 {
-				pluginAttrs := plugins[0].Attributes()
-				pluginMap := make(map[string]interface{})
+				pluginArray := make([]interface{}, 0, len(plugins))
 
-				if ptype, ok := pluginAttrs["type"].(types.String); ok && !ptype.IsNull() {
-					pluginMap["type"] = ptype.ValueString()
-				}
-				if config, ok := pluginAttrs["config"].(types.Map); ok && !config.IsNull() {
-					var configMap map[string]string
-					diags.Append(config.ElementsAs(ctx, &configMap, false)...)
-					pluginMap["config"] = configMap
+				for _, pluginObj := range plugins {
+					pluginAttrs := pluginObj.Attributes()
+					pluginMap := make(map[string]interface{})
+
+					if ptype, ok := pluginAttrs["type"].(types.String); ok && !ptype.IsNull() {
+						pluginMap["type"] = ptype.ValueString()
+					}
+					if config, ok := pluginAttrs["config"].(types.Map); ok && !config.IsNull() {
+						var configMap map[string]string
+						diags.Append(config.ElementsAs(ctx, &configMap, false)...)
+						if len(configMap) > 0 {
+							pluginMap["configuration"] = configMap
+						}
+					}
+
+					pluginArray = append(pluginArray, pluginMap)
 				}
 
-				notifMap["plugin"] = pluginMap
+				notifMap["plugin"] = pluginArray
 			}
 		}
 
-		result[notifType] = notifMap
+		// Add this notification to the array for this notification type
+		// Initialize array if this is the first notification of this type
+		if _, exists := result[notifType]; !exists {
+			result[notifType] = []interface{}{}
+		}
+
+		// Append to the array for this notification type
+		if arr, ok := result[notifType].([]interface{}); ok {
+			result[notifType] = append(arr, notifMap)
+		}
 	}
 
 	return result, diags
@@ -783,4 +804,742 @@ func convertCronToScheduleObject(cronExpr string) (map[string]interface{}, error
 	}
 
 	return schedule, nil
+}
+
+// convertScheduleObjectToCron converts Rundeck's schedule object back to Quartz cron string
+// Input: {"month":"*","time":{"hour":"*","minute":"0/40","seconds":"*"},"weekday":{"day":"*"},"year":"*"}
+// Output: "* 0/40 * ? * * *"
+func convertScheduleObjectToCron(scheduleObj interface{}) (string, error) {
+	schedMap, ok := scheduleObj.(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("schedule is not a map")
+	}
+
+	// Extract time fields
+	timeMap, ok := schedMap["time"].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("schedule.time is not a map")
+	}
+
+	seconds, _ := timeMap["seconds"].(string)
+	minutes, _ := timeMap["minute"].(string)
+	hours, _ := timeMap["hour"].(string)
+
+	// Extract month
+	month, _ := schedMap["month"].(string)
+
+	// Extract weekday
+	weekdayMap, ok := schedMap["weekday"].(map[string]interface{})
+	var dayOfWeek string
+	if ok {
+		dayOfWeek, _ = weekdayMap["day"].(string)
+	}
+
+	// Extract year
+	year, _ := schedMap["year"].(string)
+
+	// Build cron string: seconds minutes hours day-of-month month day-of-week year
+	// Rundeck uses ? for day-of-month when day-of-week is specified
+	cronStr := fmt.Sprintf("%s %s %s ? %s %s %s", seconds, minutes, hours, month, dayOfWeek, year)
+
+	return cronStr, nil
+}
+
+// convertOrchestratorFromJSON converts Rundeck orchestrator JSON to Terraform state list
+func convertOrchestratorFromJSON(ctx context.Context, orchestratorObj interface{}) (types.List, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	if orchestratorObj == nil {
+		return types.ListNull(types.ObjectType{
+			AttrTypes: map[string]attr.Type{
+				"type":      types.StringType,
+				"count":     types.Int64Type,
+				"percent":   types.Int64Type,
+				"attribute": types.StringType,
+				"sort":      types.StringType,
+			},
+		}), diags
+	}
+
+	orchMap, ok := orchestratorObj.(map[string]interface{})
+	if !ok {
+		return types.ListNull(types.ObjectType{AttrTypes: map[string]attr.Type{}}), diags
+	}
+
+	orchAttrs := make(map[string]attr.Value)
+
+	// Type (required)
+	if orchType, ok := orchMap["type"].(string); ok {
+		orchAttrs["type"] = types.StringValue(orchType)
+	} else {
+		orchAttrs["type"] = types.StringNull()
+	}
+
+	// Configuration fields (optional, depends on type)
+	orchAttrs["count"] = types.Int64Null()
+	orchAttrs["percent"] = types.Int64Null()
+	orchAttrs["attribute"] = types.StringNull()
+	orchAttrs["sort"] = types.StringNull()
+
+	if config, ok := orchMap["configuration"].(map[string]interface{}); ok {
+		if count, ok := config["count"].(string); ok {
+			if countInt, err := strconv.ParseInt(count, 10, 64); err == nil {
+				orchAttrs["count"] = types.Int64Value(countInt)
+			}
+		}
+		if percent, ok := config["percent"].(string); ok {
+			if percentInt, err := strconv.ParseInt(percent, 10, 64); err == nil {
+				orchAttrs["percent"] = types.Int64Value(percentInt)
+			}
+		}
+		if attribute, ok := config["attribute"].(string); ok {
+			orchAttrs["attribute"] = types.StringValue(attribute)
+		}
+		if sort, ok := config["sort"].(string); ok {
+			orchAttrs["sort"] = types.StringValue(sort)
+		}
+	}
+
+	orchObj := types.ObjectValueMust(
+		map[string]attr.Type{
+			"type":      types.StringType,
+			"count":     types.Int64Type,
+			"percent":   types.Int64Type,
+			"attribute": types.StringType,
+			"sort":      types.StringType,
+		},
+		orchAttrs,
+	)
+
+	return types.ListValueMust(
+		types.ObjectType{
+			AttrTypes: map[string]attr.Type{
+				"type":      types.StringType,
+				"count":     types.Int64Type,
+				"percent":   types.Int64Type,
+				"attribute": types.StringType,
+				"sort":      types.StringType,
+			},
+		},
+		[]attr.Value{orchObj},
+	), diags
+}
+
+// convertLogLimitFromJSON converts Rundeck log limit fields to Terraform state list
+func convertLogLimitFromJSON(ctx context.Context, loglimit, loglimitAction, loglimitStatus *string) (types.List, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	if loglimit == nil || *loglimit == "" {
+		return types.ListNull(types.ObjectType{
+			AttrTypes: map[string]attr.Type{
+				"output": types.StringType,
+				"action": types.StringType,
+				"status": types.StringType,
+			},
+		}), diags
+	}
+
+	logLimitAttrs := make(map[string]attr.Value)
+	logLimitAttrs["output"] = types.StringValue(*loglimit)
+
+	if loglimitAction != nil {
+		logLimitAttrs["action"] = types.StringValue(*loglimitAction)
+	} else {
+		logLimitAttrs["action"] = types.StringNull()
+	}
+
+	if loglimitStatus != nil {
+		logLimitAttrs["status"] = types.StringValue(*loglimitStatus)
+	} else {
+		logLimitAttrs["status"] = types.StringNull()
+	}
+
+	logLimitObj := types.ObjectValueMust(
+		map[string]attr.Type{
+			"output": types.StringType,
+			"action": types.StringType,
+			"status": types.StringType,
+		},
+		logLimitAttrs,
+	)
+
+	return types.ListValueMust(
+		types.ObjectType{
+			AttrTypes: map[string]attr.Type{
+				"output": types.StringType,
+				"action": types.StringType,
+				"status": types.StringType,
+			},
+		},
+		[]attr.Value{logLimitObj},
+	), diags
+}
+
+// convertNotificationsFromJSON converts Rundeck notification JSON to Terraform state list
+func convertNotificationsFromJSON(ctx context.Context, notificationsObj interface{}) (types.List, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	// Define the notification object type schema - must match resource schema exactly
+	notificationObjectType := types.ObjectType{
+		AttrTypes: map[string]attr.Type{
+			"type":         types.StringType,
+			"webhook_urls": types.ListType{ElemType: types.StringType},
+			"format":       types.StringType,
+			"http_method":  types.StringType,
+			"email": types.ListType{
+				ElemType: types.ObjectType{
+					AttrTypes: map[string]attr.Type{
+						"recipients": types.ListType{ElemType: types.StringType},
+						"subject":    types.StringType,
+						"attach_log": types.BoolType,
+					},
+				},
+			},
+			"plugin": types.ListType{
+				ElemType: types.ObjectType{
+					AttrTypes: map[string]attr.Type{
+						"type":   types.StringType,
+						"config": types.MapType{ElemType: types.StringType},
+					},
+				},
+			},
+		},
+	}
+
+	if notificationsObj == nil {
+		return types.ListNull(notificationObjectType), diags
+	}
+
+	notifMap, ok := notificationsObj.(map[string]interface{})
+	if !ok {
+		return types.ListNull(notificationObjectType), diags
+	}
+
+	var notifList []attr.Value
+
+	// Sort notification types in logical lifecycle order for deterministic ordering
+	// Go map iteration is non-deterministic, but Terraform lists are ordered
+	// Use lifecycle order: onstart -> onsuccess -> onfailure -> onretryablefailure -> onavgduration
+	notifTypeOrder := map[string]int{
+		"onstart":            1,
+		"onsuccess":          2,
+		"onfailure":          3,
+		"onretryablefailure": 4,
+		"onavgduration":      5,
+	}
+
+	notifTypes := make([]string, 0, len(notifMap))
+	for notifType := range notifMap {
+		notifTypes = append(notifTypes, notifType)
+	}
+
+	// Sort by lifecycle order
+	sort.Slice(notifTypes, func(i, j int) bool {
+		orderI, okI := notifTypeOrder[notifTypes[i]]
+		orderJ, okJ := notifTypeOrder[notifTypes[j]]
+		if okI && okJ {
+			return orderI < orderJ
+		}
+		// Fallback to alphabetical if type not in map
+		return notifTypes[i] < notifTypes[j]
+	})
+
+	// Parse each notification type (onsuccess, onfailure, onstart, onavgduration, onretryablefailure)
+	// Rundeck Read/Export format: { "onsuccess": { "email": {...}, "webhook": {...} }, "onfailure": { "email": {...} } }
+	// Each type maps to an OBJECT with notification targets as keys
+	for _, notifType := range notifTypes {
+		notifData := notifMap[notifType]
+
+		// Convert Rundeck format back to Terraform format
+		// onsuccess -> on_success, onfailure -> on_failure
+		terraformType := notifType
+		if notifType == "onsuccess" {
+			terraformType = "on_success"
+		} else if notifType == "onfailure" {
+			terraformType = "on_failure"
+		} else if notifType == "onstart" {
+			terraformType = "on_start"
+		} else if notifType == "onavgduration" {
+			terraformType = "on_avg_duration"
+		} else if notifType == "onretryablefailure" {
+			terraformType = "on_retryable_failure"
+		}
+
+		// Each notification type maps to an OBJECT with target types as keys
+		// Format: { "email": {...}, "urls": "...", "plugin": [...] }
+		targetMap, ok := notifData.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// Determine notification types by checking what fields are present in the target map
+		// 1. Webhook: has "urls" key (Rundeck export uses "urls", not a "webhook" wrapper)
+		// 2. Email: has "email" key
+		// 3. Plugin: has "plugin" key
+
+		// Check for webhook (urls, format, httpMethod at top level in the targetMap)
+		if urls, hasUrls := targetMap["urls"].(string); hasUrls {
+			notifAttrs := make(map[string]attr.Value)
+			notifAttrs["type"] = types.StringValue(terraformType)
+
+			urlList := strings.Split(urls, ",")
+			urlValues := make([]attr.Value, len(urlList))
+			for i, url := range urlList {
+				urlValues[i] = types.StringValue(strings.TrimSpace(url))
+			}
+			notifAttrs["webhook_urls"] = types.ListValueMust(types.StringType, urlValues)
+
+			// Parse format and http_method for webhook (at top level)
+			if format, ok := targetMap["format"].(string); ok {
+				notifAttrs["format"] = types.StringValue(format)
+			} else {
+				notifAttrs["format"] = types.StringNull()
+			}
+
+			if httpMethod, ok := targetMap["httpMethod"].(string); ok {
+				notifAttrs["http_method"] = types.StringValue(httpMethod)
+			} else {
+				notifAttrs["http_method"] = types.StringNull()
+			}
+
+			// Null out other targets
+			notifAttrs["email"] = types.ListNull(types.ObjectType{
+				AttrTypes: map[string]attr.Type{
+					"recipients": types.ListType{ElemType: types.StringType},
+					"subject":    types.StringType,
+					"attach_log": types.BoolType,
+				},
+			})
+			notifAttrs["plugin"] = types.ListNull(types.ObjectType{
+				AttrTypes: map[string]attr.Type{
+					"type":   types.StringType,
+					"config": types.MapType{ElemType: types.StringType},
+				},
+			})
+
+			notifObj := types.ObjectValueMust(
+				map[string]attr.Type{
+					"type":         types.StringType,
+					"webhook_urls": types.ListType{ElemType: types.StringType},
+					"format":       types.StringType,
+					"http_method":  types.StringType,
+					"email": types.ListType{
+						ElemType: types.ObjectType{
+							AttrTypes: map[string]attr.Type{
+								"recipients": types.ListType{ElemType: types.StringType},
+								"subject":    types.StringType,
+								"attach_log": types.BoolType,
+							},
+						},
+					},
+					"plugin": types.ListType{
+						ElemType: types.ObjectType{
+							AttrTypes: map[string]attr.Type{
+								"type":   types.StringType,
+								"config": types.MapType{ElemType: types.StringType},
+							},
+						},
+					},
+				},
+				notifAttrs,
+			)
+			notifList = append(notifList, notifObj)
+		}
+
+		// Check for email notification
+		if email, ok := targetMap["email"].(map[string]interface{}); ok {
+			notifAttrs := make(map[string]attr.Value)
+			notifAttrs["type"] = types.StringValue(terraformType)
+
+			// Null out webhook fields
+			notifAttrs["webhook_urls"] = types.ListNull(types.StringType)
+			notifAttrs["format"] = types.StringNull()
+			notifAttrs["http_method"] = types.StringNull()
+
+			emailAttrs := make(map[string]attr.Value)
+
+			if recipients, ok := email["recipients"].(string); ok {
+				recipList := strings.Split(recipients, ",")
+				recipValues := make([]attr.Value, len(recipList))
+				for i, recip := range recipList {
+					recipValues[i] = types.StringValue(strings.TrimSpace(recip))
+				}
+				emailAttrs["recipients"] = types.ListValueMust(types.StringType, recipValues)
+			} else {
+				emailAttrs["recipients"] = types.ListNull(types.StringType)
+			}
+
+			if subject, ok := email["subject"].(string); ok {
+				emailAttrs["subject"] = types.StringValue(subject)
+			} else {
+				emailAttrs["subject"] = types.StringNull()
+			}
+
+			// attach_log defaults to false if not present (Rundeck's default)
+			if attachLog, ok := email["attachLog"].(bool); ok {
+				emailAttrs["attach_log"] = types.BoolValue(attachLog)
+			} else {
+				// If not present in API response, default to false to match Rundeck's behavior
+				emailAttrs["attach_log"] = types.BoolValue(false)
+			}
+
+			emailObj := types.ObjectValueMust(
+				map[string]attr.Type{
+					"recipients": types.ListType{ElemType: types.StringType},
+					"subject":    types.StringType,
+					"attach_log": types.BoolType,
+				},
+				emailAttrs,
+			)
+			notifAttrs["email"] = types.ListValueMust(
+				types.ObjectType{
+					AttrTypes: map[string]attr.Type{
+						"recipients": types.ListType{ElemType: types.StringType},
+						"subject":    types.StringType,
+						"attach_log": types.BoolType,
+					},
+				},
+				[]attr.Value{emailObj},
+			)
+
+			// Null out plugin
+			notifAttrs["plugin"] = types.ListNull(types.ObjectType{
+				AttrTypes: map[string]attr.Type{
+					"type":   types.StringType,
+					"config": types.MapType{ElemType: types.StringType},
+				},
+			})
+
+			notifObj := types.ObjectValueMust(
+				map[string]attr.Type{
+					"type":         types.StringType,
+					"webhook_urls": types.ListType{ElemType: types.StringType},
+					"format":       types.StringType,
+					"http_method":  types.StringType,
+					"email": types.ListType{
+						ElemType: types.ObjectType{
+							AttrTypes: map[string]attr.Type{
+								"recipients": types.ListType{ElemType: types.StringType},
+								"subject":    types.StringType,
+								"attach_log": types.BoolType,
+							},
+						},
+					},
+					"plugin": types.ListType{
+						ElemType: types.ObjectType{
+							AttrTypes: map[string]attr.Type{
+								"type":   types.StringType,
+								"config": types.MapType{ElemType: types.StringType},
+							},
+						},
+					},
+				},
+				notifAttrs,
+			)
+			notifList = append(notifList, notifObj)
+		}
+
+		// Check for plugin notification (plugin is an ARRAY, can contain multiple plugins)
+		if pluginArray, ok := targetMap["plugin"].([]interface{}); ok {
+			// For Rundeck API, multiple plugins in one notification target are in an array
+			// For Terraform, we represent each plugin as a separate entry in the plugin list
+
+			// Create ONE Terraform notification block with ALL plugins from this target
+			notifAttrs := make(map[string]attr.Value)
+			notifAttrs["type"] = types.StringValue(terraformType)
+
+			// Null out webhook and email fields
+			notifAttrs["webhook_urls"] = types.ListNull(types.StringType)
+			notifAttrs["format"] = types.StringNull()
+			notifAttrs["http_method"] = types.StringNull()
+			notifAttrs["email"] = types.ListNull(types.ObjectType{
+				AttrTypes: map[string]attr.Type{
+					"recipients": types.ListType{ElemType: types.StringType},
+					"subject":    types.StringType,
+					"attach_log": types.BoolType,
+				},
+			})
+
+			// Parse all plugins in the array
+			var pluginObjs []attr.Value
+			for _, p := range pluginArray {
+				pluginMap, ok := p.(map[string]interface{})
+				if !ok {
+					continue
+				}
+
+				pluginAttrs := make(map[string]attr.Value)
+
+				if pluginType, ok := pluginMap["type"].(string); ok {
+					pluginAttrs["type"] = types.StringValue(pluginType)
+				} else {
+					pluginAttrs["type"] = types.StringNull()
+				}
+
+				if config, ok := pluginMap["configuration"].(map[string]interface{}); ok {
+					configMap := make(map[string]attr.Value)
+					for k, v := range config {
+						if strVal, ok := v.(string); ok {
+							configMap[k] = types.StringValue(strVal)
+						}
+					}
+					pluginAttrs["config"] = types.MapValueMust(types.StringType, configMap)
+				} else {
+					pluginAttrs["config"] = types.MapNull(types.StringType)
+				}
+
+				pluginObj := types.ObjectValueMust(
+					map[string]attr.Type{
+						"type":   types.StringType,
+						"config": types.MapType{ElemType: types.StringType},
+					},
+					pluginAttrs,
+				)
+				pluginObjs = append(pluginObjs, pluginObj)
+			}
+
+			if len(pluginObjs) > 0 {
+				notifAttrs["plugin"] = types.ListValueMust(
+					types.ObjectType{
+						AttrTypes: map[string]attr.Type{
+							"type":   types.StringType,
+							"config": types.MapType{ElemType: types.StringType},
+						},
+					},
+					pluginObjs,
+				)
+
+				notifObj := types.ObjectValueMust(
+					map[string]attr.Type{
+						"type":         types.StringType,
+						"webhook_urls": types.ListType{ElemType: types.StringType},
+						"format":       types.StringType,
+						"http_method":  types.StringType,
+						"email": types.ListType{
+							ElemType: types.ObjectType{
+								AttrTypes: map[string]attr.Type{
+									"recipients": types.ListType{ElemType: types.StringType},
+									"subject":    types.StringType,
+									"attach_log": types.BoolType,
+								},
+							},
+						},
+						"plugin": types.ListType{
+							ElemType: types.ObjectType{
+								AttrTypes: map[string]attr.Type{
+									"type":   types.StringType,
+									"config": types.MapType{ElemType: types.StringType},
+								},
+							},
+						},
+					},
+					notifAttrs,
+				)
+				notifList = append(notifList, notifObj)
+			}
+		}
+	}
+
+	if len(notifList) == 0 {
+		return types.ListNull(notificationObjectType), diags
+	}
+
+	return types.ListValueMust(notificationObjectType, notifList), diags
+}
+
+// convertOptionsFromJSON converts Rundeck options JSON array to Terraform state list
+func convertOptionsFromJSON(ctx context.Context, optionsArray []interface{}) (types.List, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	if len(optionsArray) == 0 {
+		return types.ListNull(types.ObjectType{AttrTypes: map[string]attr.Type{}}), diags
+	}
+
+	var optionList []attr.Value
+
+	for _, optData := range optionsArray {
+		optMap, ok := optData.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		optAttrs := make(map[string]attr.Value)
+
+		// Required fields
+		if name, ok := optMap["name"].(string); ok {
+			optAttrs["name"] = types.StringValue(name)
+		} else {
+			optAttrs["name"] = types.StringNull()
+		}
+
+		// Optional string fields
+		optAttrs["default_value"] = types.StringNull()
+		if defaultValue, ok := optMap["value"].(string); ok {
+			optAttrs["default_value"] = types.StringValue(defaultValue)
+		}
+
+		optAttrs["description"] = types.StringNull()
+		if description, ok := optMap["description"].(string); ok {
+			optAttrs["description"] = types.StringValue(description)
+		}
+
+		optAttrs["label"] = types.StringNull()
+		if label, ok := optMap["label"].(string); ok {
+			optAttrs["label"] = types.StringValue(label)
+		}
+
+		optAttrs["value_choices_url"] = types.StringNull()
+		if valuesUrl, ok := optMap["valuesUrl"].(string); ok {
+			optAttrs["value_choices_url"] = types.StringValue(valuesUrl)
+		}
+
+		optAttrs["validation_regex"] = types.StringNull()
+		if regex, ok := optMap["regex"].(string); ok {
+			optAttrs["validation_regex"] = types.StringValue(regex)
+		}
+
+		optAttrs["multi_value_delimiter"] = types.StringNull()
+		if delimiter, ok := optMap["delimiter"].(string); ok {
+			optAttrs["multi_value_delimiter"] = types.StringValue(delimiter)
+		}
+
+		// API field is "secure" not "obscureInput"
+		if secure, ok := optMap["secure"].(bool); ok {
+			optAttrs["obscure_input"] = types.BoolValue(secure)
+		} else {
+			optAttrs["obscure_input"] = types.BoolNull()
+		}
+
+		optAttrs["storage_path"] = types.StringNull()
+		if storagePath, ok := optMap["storagePath"].(string); ok {
+			optAttrs["storage_path"] = types.StringValue(storagePath)
+		}
+
+		optAttrs["type"] = types.StringNull()
+		if optType, ok := optMap["type"].(string); ok {
+			optAttrs["type"] = types.StringValue(optType)
+		}
+
+		// Boolean fields - use correct API field names (match TO JSON converter)
+		if required, ok := optMap["required"].(bool); ok {
+			optAttrs["required"] = types.BoolValue(required)
+		} else {
+			optAttrs["required"] = types.BoolNull()
+		}
+
+		if multiValued, ok := optMap["multivalued"].(bool); ok {
+			optAttrs["allow_multiple_values"] = types.BoolValue(multiValued)
+		} else {
+			optAttrs["allow_multiple_values"] = types.BoolNull()
+		}
+
+		// API field is "enforcedValues" not "enforced"
+		if enforced, ok := optMap["enforcedValues"].(bool); ok {
+			optAttrs["require_predefined_choice"] = types.BoolValue(enforced)
+		} else {
+			optAttrs["require_predefined_choice"] = types.BoolNull()
+		}
+
+		if isDate, ok := optMap["isDate"].(bool); ok {
+			optAttrs["is_date"] = types.BoolValue(isDate)
+		} else {
+			optAttrs["is_date"] = types.BoolNull()
+		}
+
+		// API field is "valueExposed" not "exposedToScripts"
+		if exposed, ok := optMap["valueExposed"].(bool); ok {
+			optAttrs["exposed_to_scripts"] = types.BoolValue(exposed)
+		} else {
+			optAttrs["exposed_to_scripts"] = types.BoolNull()
+		}
+
+		if hidden, ok := optMap["hidden"].(bool); ok {
+			optAttrs["hidden"] = types.BoolValue(hidden)
+		} else {
+			optAttrs["hidden"] = types.BoolNull()
+		}
+
+		if sortVals, ok := optMap["sortValues"].(bool); ok {
+			optAttrs["sort_values"] = types.BoolValue(sortVals)
+		} else {
+			optAttrs["sort_values"] = types.BoolNull()
+		}
+
+		if dateFormat, ok := optMap["dateFormat"].(string); ok {
+			optAttrs["date_format"] = types.StringValue(dateFormat)
+		} else {
+			optAttrs["date_format"] = types.StringNull()
+		}
+
+		// value_choices list
+		if values, ok := optMap["values"].([]interface{}); ok && len(values) > 0 {
+			choiceValues := make([]attr.Value, len(values))
+			for i, v := range values {
+				if strVal, ok := v.(string); ok {
+					choiceValues[i] = types.StringValue(strVal)
+				}
+			}
+			optAttrs["value_choices"] = types.ListValueMust(types.StringType, choiceValues)
+		} else {
+			optAttrs["value_choices"] = types.ListNull(types.StringType)
+		}
+
+		optionObj := types.ObjectValueMust(
+			map[string]attr.Type{
+				"name":                      types.StringType,
+				"default_value":             types.StringType,
+				"description":               types.StringType,
+				"label":                     types.StringType,
+				"value_choices":             types.ListType{ElemType: types.StringType},
+				"value_choices_url":         types.StringType,
+				"required":                  types.BoolType,
+				"allow_multiple_values":     types.BoolType,
+				"multi_value_delimiter":     types.StringType,
+				"require_predefined_choice": types.BoolType,
+				"validation_regex":          types.StringType,
+				"obscure_input":             types.BoolType,
+				"storage_path":              types.StringType,
+				"type":                      types.StringType,
+				"is_date":                   types.BoolType,
+				"exposed_to_scripts":        types.BoolType,
+				"hidden":                    types.BoolType,
+				"sort_values":               types.BoolType,
+				"date_format":               types.StringType,
+			},
+			optAttrs,
+		)
+
+		optionList = append(optionList, optionObj)
+	}
+
+	if len(optionList) == 0 {
+		return types.ListNull(types.ObjectType{AttrTypes: map[string]attr.Type{}}), diags
+	}
+
+	return types.ListValueMust(
+		types.ObjectType{
+			AttrTypes: map[string]attr.Type{
+				"name":                      types.StringType,
+				"default_value":             types.StringType,
+				"description":               types.StringType,
+				"label":                     types.StringType,
+				"value_choices":             types.ListType{ElemType: types.StringType},
+				"value_choices_url":         types.StringType,
+				"required":                  types.BoolType,
+				"allow_multiple_values":     types.BoolType,
+				"multi_value_delimiter":     types.StringType,
+				"require_predefined_choice": types.BoolType,
+				"validation_regex":          types.StringType,
+				"obscure_input":             types.BoolType,
+				"storage_path":              types.StringType,
+				"type":                      types.StringType,
+				"is_date":                   types.BoolType,
+				"exposed_to_scripts":        types.BoolType,
+				"hidden":                    types.BoolType,
+				"sort_values":               types.BoolType,
+				"date_format":               types.StringType,
+			},
+		},
+		optionList,
+	), diags
 }

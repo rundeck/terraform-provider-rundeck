@@ -371,6 +371,12 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 		return
 	}
 
+	// DEBUG: Log notification count before marshalling
+	if jobData.Notification != nil {
+		notifCount := len(jobData.Notification.(map[string]interface{}))
+		resp.Diagnostics.AddWarning("DEBUG Notifications", fmt.Sprintf("Job has %d notification types before marshal", notifCount))
+	}
+
 	// Marshal to JSON
 	jobJSON, err := json.Marshal([]interface{}{jobData})
 	if err != nil {
@@ -380,6 +386,9 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 		)
 		return
 	}
+
+	// DEBUG: Log marshalled JSON
+	resp.Diagnostics.AddWarning("DEBUG JSON", fmt.Sprintf("Marshalled JSON (first 1000 chars): %s", string(jobJSON[:min(1000, len(jobJSON))])))
 
 	// Import the job using custom HTTP request to ensure JSON response
 	// JSON job import requires API v46+ (Rundeck 5.0.0+)
@@ -513,7 +522,7 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 	}
 
 	// Update plan with values from API
-	if err = r.jobJSONAPIToState(apiJobData, &plan); err != nil {
+	if err = r.jobJSONAPIToState(ctx, apiJobData, &plan); err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading job after creation",
 			fmt.Sprintf("Could not convert job JSON to state: %s", err.Error()),
@@ -550,7 +559,7 @@ func (r *jobResource) Read(ctx context.Context, req resource.ReadRequest, resp *
 	}
 
 	// Convert JSON API response to Terraform state
-	if err := r.jobJSONAPIToState(jobData, &state); err != nil {
+	if err := r.jobJSONAPIToState(ctx, jobData, &state); err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading job",
 			fmt.Sprintf("Could not convert job JSON to state: %s", err.Error()),
@@ -966,7 +975,7 @@ func (r *jobResource) planToJobJSON(ctx context.Context, plan *jobResourceModel)
 }
 
 // jobJSONToState converts Rundeck job JSON to Terraform state
-func (r *jobResource) jobJSONToState(job *jobJSON, state *jobResourceModel) error {
+func (r *jobResource) jobJSONToState(ctx context.Context, job *jobJSON, state *jobResourceModel) error {
 	state.ID = types.StringValue(job.ID)
 	state.Name = types.StringValue(job.Name)
 	state.GroupName = types.StringValue(job.Group)
@@ -1044,10 +1053,6 @@ func (r *jobResource) jobJSONToState(job *jobJSON, state *jobResourceModel) erro
 		}
 	}
 
-	// TODO: Convert JSON structures back to Framework nested lists
-	// For now, we preserve input from config and don't update these from reads
-	// This allows basic job CRUD to work while we implement full bidirectional conversion
-
 	// Set sequence metadata
 	if job.Sequence != nil {
 		if job.Sequence.Strategy != "" {
@@ -1056,15 +1061,51 @@ func (r *jobResource) jobJSONToState(job *jobJSON, state *jobResourceModel) erro
 		state.ContinueNextNodeOnError = types.BoolValue(job.Sequence.KeepGoing)
 	}
 
-	// For complex nested structures, preserve null if not set
-	// The create/update will send them, but read won't overwrite them
-	// This is a known limitation until we implement JSON->List converters
+	// Convert schedule from JSON to state
+	if job.Schedule != nil {
+		cronStr, err := convertScheduleObjectToCron(job.Schedule)
+		if err == nil {
+			state.Schedule = types.StringValue(cronStr)
+		}
+	}
+
+	// Convert orchestrator from JSON to state
+	if job.Orchestrator != nil {
+		orchestratorList, diags := convertOrchestratorFromJSON(ctx, job.Orchestrator)
+		if !diags.HasError() {
+			state.Orchestrator = orchestratorList
+		}
+	}
+
+	// Convert log_limit from JSON to state
+	if job.Loglimit != nil || job.LogLimitAction != nil || job.LogLimitStatus != nil {
+		logLimitList, diags := convertLogLimitFromJSON(ctx, job.Loglimit, job.LogLimitAction, job.LogLimitStatus)
+		if !diags.HasError() {
+			state.LogLimit = logLimitList
+		}
+	}
+
+	// Convert notifications from JSON to state
+	if job.Notification != nil {
+		notificationsList, diags := convertNotificationsFromJSON(ctx, job.Notification)
+		if !diags.HasError() {
+			state.Notification = notificationsList
+		}
+	}
+
+	// Convert options from JSON to state
+	if len(job.Options) > 0 {
+		optionsList, diags := convertOptionsFromJSON(ctx, job.Options)
+		if !diags.HasError() {
+			state.Option = optionsList
+		}
+	}
 
 	return nil
 }
 
 // jobJSONAPIToState converts API JSON response to Terraform state
-func (r *jobResource) jobJSONAPIToState(job *JobJSON, state *jobResourceModel) error {
+func (r *jobResource) jobJSONAPIToState(ctx context.Context, job *JobJSON, state *jobResourceModel) error {
 	// Map JSON fields directly to Terraform state
 	state.ID = types.StringValue(job.ID)
 	state.Name = types.StringValue(job.Name)
@@ -1229,16 +1270,49 @@ func (r *jobResource) jobJSONAPIToState(job *JobJSON, state *jobResourceModel) e
 		}
 	}
 
-	// Parse options
-	if len(job.Options) > 0 {
-		// TODO: Implement full options parsing
-		// For now, preserve from state to avoid drift
+	// Convert schedule from JSON to state
+	if len(job.Schedule) > 0 {
+		cronStr, err := convertScheduleObjectToCron(job.Schedule)
+		if err == nil {
+			state.Schedule = types.StringValue(cronStr)
+		}
 	}
 
-	// Parse notifications
-	if job.Notification != nil && len(job.Notification) > 0 {
-		// TODO: Implement full notification parsing
-		// For now, preserve from state to avoid drift
+	// Convert orchestrator from JSON to state
+	if len(job.Orchestrator) > 0 {
+		orchestratorList, diags := convertOrchestratorFromJSON(ctx, job.Orchestrator)
+		if !diags.HasError() {
+			state.Orchestrator = orchestratorList
+		}
+	}
+
+	// Convert log_limit from JSON to state
+	if job.LogLimit != nil && *job.LogLimit != "" {
+		logLimitList, diags := convertLogLimitFromJSON(ctx, job.LogLimit, job.LogLimitAction, job.LogLimitStatus)
+		if !diags.HasError() {
+			state.LogLimit = logLimitList
+		}
+	}
+
+	// Convert notifications from JSON to state
+	if len(job.Notification) > 0 {
+		notificationsList, diags := convertNotificationsFromJSON(ctx, job.Notification)
+		if !diags.HasError() {
+			state.Notification = notificationsList
+		}
+	}
+
+	// Convert options from JSON to state
+	if len(job.Options) > 0 {
+		// Convert []map[string]interface{} to []interface{}
+		optionsInterface := make([]interface{}, len(job.Options))
+		for i, opt := range job.Options {
+			optionsInterface[i] = opt
+		}
+		optionsList, diags := convertOptionsFromJSON(ctx, optionsInterface)
+		if !diags.HasError() {
+			state.Option = optionsList
+		}
 	}
 
 	return nil

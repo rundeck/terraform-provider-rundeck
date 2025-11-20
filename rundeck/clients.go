@@ -18,4 +18,3 @@ type RundeckClients struct {
 	APIVersion string
 	ctx        context.Context
 }
-
