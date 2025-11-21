@@ -67,7 +67,12 @@ This release modernizes the Terraform Provider to use the Terraform Plugin Frame
   - Fixed `require_predefined_choice` inference from values presence
   - Fixed boolean field handling (null vs false)
 - **Commands:**
-  - Implemented FROM JSON converters for complete round-trip support
+  - Fixed script interpreter configuration (args_quoted, invocation_string)
+  - Fixed script file arguments field mapping
+  - Fixed step plugins and node step plugins structure
+  - Fixed job reference configuration including node_step and dispatch options
+  - Implemented complete round-trip JSON conversion for all command types
+  - Added comprehensive test coverage for all command configurations
 - **Orchestrator, Log Limit, Global Log Filter:**
   - Implemented TO/FROM JSON converters (were silently dropped before)
 
@@ -77,16 +82,14 @@ This release modernizes the Terraform Provider to use the Terraform Plugin Frame
 ### Testing
 
 #### Test Coverage
-- **26 passing acceptance tests** (100% pass rate)
-  - 15 job tests (including 2 new integration tests)
+- **38 passing acceptance tests** (100% pass rate)
+  - 21 job tests (including integration and comprehensive tests)
   - 3 orchestrator tests
-  - 8 other resource tests
-- **Comprehensive enterprise test** - All 10 resources validated
+  - 5 runner tests (enterprise)
+  - 9 other resource tests
 - **Integration tests with API validation** - Direct API queries verify actual Rundeck storage
+- **Comprehensive command type tests** - Validates all script, plugin, and job reference configurations
 
-#### New Integration Tests
-- `TestAccJob_ComplexIntegration` - Validates orchestrator, log limit, schedule, options, notifications via API
-- `TestAccJob_NotificationIntegration` - Validates email and webhook notification structure via API
 
 ### Important Notes
 
