@@ -106,44 +106,80 @@ func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]inte
 				if project, ok := jobAttrs["project_name"].(types.String); ok && !project.IsNull() {
 					jobMap["project"] = project.ValueString()
 				}
-				if rfn, ok := jobAttrs["run_for_each_node"].(types.Bool); ok && !rfn.IsNull() {
-					jobMap["runForEachNode"] = rfn.ValueBool()
+			if rfn, ok := jobAttrs["run_for_each_node"].(types.Bool); ok && !rfn.IsNull() {
+				jobMap["runForEachNode"] = rfn.ValueBool()
+			}
+			if ns, ok := jobAttrs["node_step"].(types.Bool); ok && !ns.IsNull() {
+				// API expects string "true" or "false" for nodeStep
+				if ns.ValueBool() {
+					jobMap["nodeStep"] = "true"
+				} else {
+					jobMap["nodeStep"] = "false"
 				}
-				if args, ok := jobAttrs["args"].(types.String); ok && !args.IsNull() {
-					jobMap["args"] = args.ValueString()
-				}
-				if io, ok := jobAttrs["import_options"].(types.Bool); ok && !io.IsNull() {
-					jobMap["importOptions"] = io.ValueBool()
-				}
-				if cn, ok := jobAttrs["child_nodes"].(types.Bool); ok && !cn.IsNull() {
-					jobMap["childNodes"] = cn.ValueBool()
-				}
-				if fod, ok := jobAttrs["fail_on_disable"].(types.Bool); ok && !fod.IsNull() {
-					jobMap["failOnDisable"] = fod.ValueBool()
-				}
-				if ign, ok := jobAttrs["ignore_notifications"].(types.Bool); ok && !ign.IsNull() {
-					jobMap["ignoreNotifications"] = ign.ValueBool()
-				}
+			}
+			if args, ok := jobAttrs["args"].(types.String); ok && !args.IsNull() {
+				jobMap["args"] = args.ValueString()
+			}
+			if io, ok := jobAttrs["import_options"].(types.Bool); ok && !io.IsNull() {
+				jobMap["importOptions"] = io.ValueBool()
+			}
+			if cn, ok := jobAttrs["child_nodes"].(types.Bool); ok && !cn.IsNull() {
+				jobMap["childNodes"] = cn.ValueBool()
+			}
+			if fod, ok := jobAttrs["fail_on_disable"].(types.Bool); ok && !fod.IsNull() {
+				jobMap["failOnDisable"] = fod.ValueBool()
+			}
+			if ign, ok := jobAttrs["ignore_notifications"].(types.Bool); ok && !ign.IsNull() {
+				jobMap["ignoreNotifications"] = ign.ValueBool()
+			}
 
-				// Handle node_filters if present
-				if nf, ok := jobAttrs["node_filters"].(types.List); ok && !nf.IsNull() && !nf.IsUnknown() {
-					var nodeFilters []types.Object
-					diags.Append(nf.ElementsAs(ctx, &nodeFilters, false)...)
-					if len(nodeFilters) > 0 {
-						nfAttrs := nodeFilters[0].Attributes()
-						nfMap := make(map[string]interface{})
-						if filter, ok := nfAttrs["filter"].(types.String); ok && !filter.IsNull() {
-							nfMap["filter"] = filter.ValueString()
-						}
-						if exclude, ok := nfAttrs["exclude_filter"].(types.String); ok && !exclude.IsNull() {
-							nfMap["excludeFilter"] = exclude.ValueString()
-						}
-						if prec, ok := nfAttrs["exclude_precedence"].(types.Bool); ok && !prec.IsNull() {
-							nfMap["excludePrecedence"] = prec.ValueBool()
-						}
-						jobMap["nodefilters"] = nfMap
+			// Handle node_filters if present
+			if nf, ok := jobAttrs["node_filters"].(types.List); ok && !nf.IsNull() && !nf.IsUnknown() {
+				var nodeFilters []types.Object
+				diags.Append(nf.ElementsAs(ctx, &nodeFilters, false)...)
+				if len(nodeFilters) > 0 {
+					nfAttrs := nodeFilters[0].Attributes()
+					nfMap := make(map[string]interface{})
+					if filter, ok := nfAttrs["filter"].(types.String); ok && !filter.IsNull() {
+						nfMap["filter"] = filter.ValueString()
 					}
+					if exclude, ok := nfAttrs["exclude_filter"].(types.String); ok && !exclude.IsNull() {
+						nfMap["excludeFilter"] = exclude.ValueString()
+					}
+					if prec, ok := nfAttrs["exclude_precedence"].(types.Bool); ok && !prec.IsNull() {
+						nfMap["excludePrecedence"] = prec.ValueBool()
+					}
+					
+					// Handle dispatch configuration
+					if disp, ok := nfAttrs["dispatch"].(types.List); ok && !disp.IsNull() && !disp.IsUnknown() {
+						var dispatches []types.Object
+						diags.Append(disp.ElementsAs(ctx, &dispatches, false)...)
+						if len(dispatches) > 0 {
+							dispAttrs := dispatches[0].Attributes()
+							dispMap := make(map[string]interface{})
+							
+							if tc, ok := dispAttrs["thread_count"].(types.Int64); ok && !tc.IsNull() {
+								dispMap["threadcount"] = int(tc.ValueInt64())
+							}
+							if kg, ok := dispAttrs["keep_going"].(types.Bool); ok && !kg.IsNull() {
+								dispMap["keepgoing"] = kg.ValueBool()
+							}
+							if ra, ok := dispAttrs["rank_attribute"].(types.String); ok && !ra.IsNull() {
+								dispMap["rankAttribute"] = ra.ValueString()
+							}
+							if ro, ok := dispAttrs["rank_order"].(types.String); ok && !ro.IsNull() {
+								dispMap["rankOrder"] = ro.ValueString()
+							}
+							
+							if len(dispMap) > 0 {
+								nfMap["dispatch"] = dispMap
+							}
+						}
+					}
+					
+					jobMap["nodefilters"] = nfMap
 				}
+			}
 
 				cmdMap["jobref"] = jobMap
 			}
