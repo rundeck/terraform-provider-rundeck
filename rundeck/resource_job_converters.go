@@ -149,47 +149,55 @@ func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]inte
 			}
 		}
 
-		// Handle step_plugin
-		if v, ok := attrs["step_plugin"].(types.List); ok && !v.IsNull() && !v.IsUnknown() {
-			var plugins []types.Object
-			diags.Append(v.ElementsAs(ctx, &plugins, false)...)
-			if len(plugins) > 0 {
-				pluginAttrs := plugins[0].Attributes()
-				pluginMap := make(map[string]interface{})
+	// Handle step_plugin (workflow step)
+	// API expects: type and configuration at command level, nodeStep: false
+	if v, ok := attrs["step_plugin"].(types.List); ok && !v.IsNull() && !v.IsUnknown() {
+		var plugins []types.Object
+		diags.Append(v.ElementsAs(ctx, &plugins, false)...)
+		if len(plugins) > 0 {
+			pluginAttrs := plugins[0].Attributes()
 
-				if ptype, ok := pluginAttrs["type"].(types.String); ok && !ptype.IsNull() {
-					pluginMap["type"] = ptype.ValueString()
-				}
-				if config, ok := pluginAttrs["config"].(types.Map); ok && !config.IsNull() {
-					var configMap map[string]string
-					diags.Append(config.ElementsAs(ctx, &configMap, false)...)
-					pluginMap["config"] = configMap
-				}
-
-				cmdMap["plugin"] = pluginMap
+			// Set type at command level
+			if ptype, ok := pluginAttrs["type"].(types.String); ok && !ptype.IsNull() {
+				cmdMap["type"] = ptype.ValueString()
 			}
-		}
-
-		// Handle node_step_plugin
-		if v, ok := attrs["node_step_plugin"].(types.List); ok && !v.IsNull() && !v.IsUnknown() {
-			var plugins []types.Object
-			diags.Append(v.ElementsAs(ctx, &plugins, false)...)
-			if len(plugins) > 0 {
-				pluginAttrs := plugins[0].Attributes()
-				pluginMap := make(map[string]interface{})
-
-				if ptype, ok := pluginAttrs["type"].(types.String); ok && !ptype.IsNull() {
-					pluginMap["type"] = ptype.ValueString()
-				}
-				if config, ok := pluginAttrs["config"].(types.Map); ok && !config.IsNull() {
-					var configMap map[string]string
-					diags.Append(config.ElementsAs(ctx, &configMap, false)...)
-					pluginMap["config"] = configMap
-				}
-
-				cmdMap["nodeStep"] = pluginMap
+			
+			// Set configuration at command level
+			if config, ok := pluginAttrs["config"].(types.Map); ok && !config.IsNull() {
+				var configMap map[string]string
+				diags.Append(config.ElementsAs(ctx, &configMap, false)...)
+				cmdMap["configuration"] = configMap
 			}
+			
+			// Workflow steps run once (not per node)
+			cmdMap["nodeStep"] = false
 		}
+	}
+
+	// Handle node_step_plugin
+	// API expects: type and configuration at command level, nodeStep: true
+	if v, ok := attrs["node_step_plugin"].(types.List); ok && !v.IsNull() && !v.IsUnknown() {
+		var plugins []types.Object
+		diags.Append(v.ElementsAs(ctx, &plugins, false)...)
+		if len(plugins) > 0 {
+			pluginAttrs := plugins[0].Attributes()
+
+			// Set type at command level
+			if ptype, ok := pluginAttrs["type"].(types.String); ok && !ptype.IsNull() {
+				cmdMap["type"] = ptype.ValueString()
+			}
+			
+			// Set configuration at command level
+			if config, ok := pluginAttrs["config"].(types.Map); ok && !config.IsNull() {
+				var configMap map[string]string
+				diags.Append(config.ElementsAs(ctx, &configMap, false)...)
+				cmdMap["configuration"] = configMap
+			}
+			
+			// Node steps run on each node
+			cmdMap["nodeStep"] = true
+		}
+	}
 
 	// Handle error_handler (simplified - doesn't recurse infinitely)
 	if v, ok := attrs["error_handler"].(types.List); ok && !v.IsNull() && !v.IsUnknown() {
@@ -1761,7 +1769,66 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 		)
 	}
 
-	// TODO: Handle other nested fields (job, plugins, etc.) if needed for import
+	// Handle step_plugin and node_step_plugin
+	// API format: type and configuration at command level, with nodeStep boolean
+	if cmdType, ok := cmd["type"].(string); ok && cmdType != "" {
+		if configuration, ok := cmd["configuration"].(map[string]interface{}); ok {
+			// Check if this is a node step or workflow step
+			isNodeStep := false
+			if ns, ok := cmd["nodeStep"].(bool); ok {
+				isNodeStep = ns
+			}
+			
+			// Build plugin attributes
+			pluginAttrs := map[string]attr.Value{
+				"type":   types.StringValue(cmdType),
+				"config": types.MapNull(types.StringType),
+			}
+			
+			// Convert configuration map
+			if len(configuration) > 0 {
+				configMap := make(map[string]attr.Value)
+				for k, v := range configuration {
+					if strVal, ok := v.(string); ok {
+						configMap[k] = types.StringValue(strVal)
+					}
+				}
+				if len(configMap) > 0 {
+					pluginAttrs["config"] = types.MapValueMust(types.StringType, configMap)
+				}
+			}
+			
+			pluginObj, pluginDiags := types.ObjectValue(
+				map[string]attr.Type{
+					"type":   types.StringType,
+					"config": types.MapType{ElemType: types.StringType},
+				},
+				pluginAttrs,
+			)
+			diags.Append(pluginDiags...)
+			
+			// Set as step_plugin or node_step_plugin based on nodeStep flag
+			if isNodeStep {
+				cmdAttrs["node_step_plugin"] = types.ListValueMust(
+					types.ObjectType{AttrTypes: map[string]attr.Type{
+						"type":   types.StringType,
+						"config": types.MapType{ElemType: types.StringType},
+					}},
+					[]attr.Value{pluginObj},
+				)
+			} else {
+				cmdAttrs["step_plugin"] = types.ListValueMust(
+					types.ObjectType{AttrTypes: map[string]attr.Type{
+						"type":   types.StringType,
+						"config": types.MapType{ElemType: types.StringType},
+					}},
+					[]attr.Value{pluginObj},
+				)
+			}
+		}
+	}
+
+	// TODO: Handle other nested fields (job references, etc.) if needed for import
 	
 	// Initialize any missing nested block fields as null to match schema
 		// We need to use the exact types from commandObjectType to avoid type mismatch errors
