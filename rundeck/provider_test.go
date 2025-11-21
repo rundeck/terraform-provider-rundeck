@@ -109,7 +109,7 @@ func getTestClients() (*RundeckClients, error) {
 
 	apiVersion := os.Getenv("RUNDECK_API_VERSION")
 	if apiVersion == "" {
-		apiVersion = "46" // Default to v46 (Rundeck 5.0.0+) to support JSON
+		apiVersion = "56" // Default to v56 (Rundeck 5.17.0+) for full feature support including runners
 	}
 
 	token := os.Getenv("RUNDECK_AUTH_TOKEN")

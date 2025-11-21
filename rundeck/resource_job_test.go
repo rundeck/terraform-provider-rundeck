@@ -445,6 +445,101 @@ resource "rundeck_job" "test" {
 }
 `
 
+// TestAccJob_scriptInterpreter validates that script_interpreter is properly
+// round-tripped through the API. This test was added to verify the fix for
+// Luis's bug report where script_interpreter was incorrectly stored as an array.
+func TestAccJob_scriptInterpreter(t *testing.T) {
+	var jobID string
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		CheckDestroy:             testAccJobCheckDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_script,
+				Check: resource.ComposeTestCheckFunc(
+					// Capture job ID for API validation
+					testAccJobGetID("rundeck_job.test", &jobID),
+
+					// Standard Terraform state checks
+					resource.TestCheckResourceAttr("rundeck_job.test", "name", "script-job"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "description", "A job using script with interpreter"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "command.0.description", "runs a script from a URL"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "command.0.script_url", "https://raw.githubusercontent.com/fleschutz/PowerShell/refs/heads/main/scripts/check-file.ps1"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "command.0.script_file_args", "/tmp/terraform-acc-tests.yaml"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "command.0.file_extension", ".ps1"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "command.0.expand_token_in_script_file", "true"),
+
+					// Validate script_interpreter block in Terraform state
+					resource.TestCheckResourceAttr("rundeck_job.test", "command.0.script_interpreter.0.invocation_string", "pwsh -f ${scriptfile}"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "command.0.script_interpreter.0.args_quoted", "false"),
+
+				// API validation - verify scriptInterpreter and interpreterArgsQuoted
+				// The Rundeck API stores these as TWO separate fields:
+				// 1. scriptInterpreter (string) - the invocation command
+				// 2. interpreterArgsQuoted (boolean) - whether to quote args
+				testAccJobValidateAPI(&jobID, func(jobData map[string]interface{}) error {
+					// Get sequence commands
+					sequence, ok := jobData["sequence"].(map[string]interface{})
+					if !ok {
+						return fmt.Errorf("Sequence not found in API response")
+					}
+
+					commands, ok := sequence["commands"].([]interface{})
+					if !ok || len(commands) == 0 {
+						return fmt.Errorf("Commands not found in sequence")
+					}
+
+					// Get first command
+					cmd, ok := commands[0].(map[string]interface{})
+					if !ok {
+						return fmt.Errorf("Command is not a map")
+					}
+
+					// Validate scriptInterpreter (should be a string)
+					scriptInterp, ok := cmd["scriptInterpreter"].(string)
+					if !ok {
+						return fmt.Errorf("scriptInterpreter not found or not a string, got: %v (type: %T)", cmd["scriptInterpreter"], cmd["scriptInterpreter"])
+					}
+					if scriptInterp != "pwsh -f ${scriptfile}" {
+						return fmt.Errorf("scriptInterpreter incorrect: expected 'pwsh -f ${scriptfile}', got '%s'", scriptInterp)
+					}
+
+					// Validate interpreterArgsQuoted (should be a boolean)
+					argsQuoted, ok := cmd["interpreterArgsQuoted"].(bool)
+					if !ok {
+						return fmt.Errorf("interpreterArgsQuoted not found or not a boolean, got: %v (type: %T)", cmd["interpreterArgsQuoted"], cmd["interpreterArgsQuoted"])
+					}
+					if argsQuoted != false {
+						return fmt.Errorf("interpreterArgsQuoted incorrect: expected false, got %v", argsQuoted)
+					}
+
+					// Validate args field (script_file_args)
+					args, ok := cmd["args"].(string)
+					if !ok {
+						return fmt.Errorf("args not found or not a string, got: %v (type: %T)", cmd["args"], cmd["args"])
+					}
+					if args != "/tmp/terraform-acc-tests.yaml" {
+						return fmt.Errorf("args incorrect: expected '/tmp/terraform-acc-tests.yaml', got '%s'", args)
+					}
+
+					return nil
+				}),
+				),
+			},
+			// Second step: Re-apply the same config to ensure no drift
+			{
+				Config: testAccJobConfig_script,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("rundeck_job.test", "command.0.script_interpreter.0.invocation_string", "pwsh -f ${scriptfile}"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "command.0.script_interpreter.0.args_quoted", "false"),
+				),
+			},
+		},
+	})
+}
+
 const testAccJobConfig_script = `
 resource "rundeck_project" "test" {
   name = "terraform-acc-test-job"
@@ -461,13 +556,7 @@ resource "rundeck_project" "test" {
 resource "rundeck_job" "test" {
   project_name = "${rundeck_project.test.name}"
   name = "script-job"
-  description = "A job using script"
-
-  option {
-    name = "foo"
-	default_value = "bar"
-	value_choices = ["", "foo"]
-  }
+  description = "A job using script with interpreter"
 
   command {
     description = "runs a script from a URL"

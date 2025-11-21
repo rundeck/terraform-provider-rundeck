@@ -1256,10 +1256,10 @@ func (r *jobResource) jobJSONAPIToState(ctx context.Context, job *JobJSON, state
 	// Parse commands from sequence
 	if job.Sequence != nil {
 		if cmds, ok := job.Sequence["commands"].([]interface{}); ok && len(cmds) > 0 {
-			// TODO: Implement full command parsing
-			// This is complex due to the variety of command types (shell, script, job, plugin)
-			// For now, import will require manual adjustment of command blocks
-			// Or re-import from Terraform config
+			commandsList, diags := convertCommandsFromJSON(ctx, cmds)
+			if !diags.HasError() {
+				state.Command = commandsList
+			}
 		}
 	}
 

@@ -167,35 +167,39 @@ func jobCommandNestedBlock() schema.ListNestedBlock {
 						},
 					},
 				},
-				"error_handler": schema.ListNestedBlock{
-					Description: "Error handler for this command",
-					NestedObject: schema.NestedBlockObject{
-						Attributes: map[string]schema.Attribute{
-							"description": schema.StringAttribute{
-								Optional: true,
-							},
-							"shell_command": schema.StringAttribute{
-								Optional: true,
-							},
-							"inline_script": schema.StringAttribute{
-								Optional: true,
-							},
-							"script_url": schema.StringAttribute{
-								Optional: true,
-							},
-							"script_file": schema.StringAttribute{
-								Optional: true,
-							},
-							"script_file_args": schema.StringAttribute{
-								Optional: true,
-							},
-							"expand_token_in_script_file": schema.BoolAttribute{
-								Optional: true,
-							},
-							"file_extension": schema.StringAttribute{
-								Optional: true,
-							},
+			"error_handler": schema.ListNestedBlock{
+				Description: "Error handler for this command",
+				NestedObject: schema.NestedBlockObject{
+					Attributes: map[string]schema.Attribute{
+						"description": schema.StringAttribute{
+							Optional: true,
 						},
+						"shell_command": schema.StringAttribute{
+							Optional: true,
+						},
+						"inline_script": schema.StringAttribute{
+							Optional: true,
+						},
+						"script_url": schema.StringAttribute{
+							Optional: true,
+						},
+						"script_file": schema.StringAttribute{
+							Optional: true,
+						},
+						"script_file_args": schema.StringAttribute{
+							Optional: true,
+						},
+						"expand_token_in_script_file": schema.BoolAttribute{
+							Optional: true,
+						},
+						"file_extension": schema.StringAttribute{
+							Optional: true,
+						},
+						"keep_going_on_success": schema.BoolAttribute{
+							Optional:    true,
+							Description: "Continue workflow even if error handler succeeds",
+						},
+					},
 						Blocks: map[string]schema.Block{
 							"script_interpreter": schema.ListNestedBlock{
 								NestedObject: schema.NestedBlockObject{
