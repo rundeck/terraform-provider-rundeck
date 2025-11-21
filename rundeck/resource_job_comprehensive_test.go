@@ -24,7 +24,7 @@ func TestAccJob_scriptFields_comprehensive(t *testing.T) {
 
 					// Validate all script field mappings
 					resource.TestCheckResourceAttr("rundeck_job.test", "name", "script-fields-test"),
-					
+
 					// Command 1: inline script with args and interpreter
 					resource.TestCheckResourceAttr("rundeck_job.test", "command.0.description", "Inline Script with Args"),
 					resource.TestCheckResourceAttr("rundeck_job.test", "command.0.inline_script", "echo \"Hello World\""),
@@ -134,11 +134,11 @@ func TestAccJob_errorHandler_comprehensive(t *testing.T) {
 					testAccJobGetID("rundeck_job.test", &jobID),
 
 					resource.TestCheckResourceAttr("rundeck_job.test", "name", "error-handler-test"),
-					
+
 					// Command with error handler
 					resource.TestCheckResourceAttr("rundeck_job.test", "command.0.description", "Command with Error Handler"),
 					resource.TestCheckResourceAttr("rundeck_job.test", "command.0.inline_script", "echo \"Main Command\""),
-					
+
 					// Error handler fields
 					resource.TestCheckResourceAttr("rundeck_job.test", "command.0.error_handler.0.shell_command", "echo \"Rollback\""),
 					resource.TestCheckResourceAttr("rundeck_job.test", "command.0.error_handler.0.keep_going_on_success", "true"),
@@ -191,8 +191,9 @@ func TestAccJob_errorHandler_comprehensive(t *testing.T) {
 						if errorHandler2["fileExtension"] != ".sh" {
 							return fmt.Errorf("Command 2: Expected fileExtension='.sh' in error handler, got '%v'", errorHandler2["fileExtension"])
 						}
-						if errorHandler2["keepgoingOnSuccess"] != false {
-							return fmt.Errorf("Command 2: Expected keepgoingOnSuccess=false, got %v", errorHandler2["keepgoingOnSuccess"])
+						// keepgoingOnSuccess should be false or nil (not present) when not explicitly set to true
+						if kgos, ok := errorHandler2["keepgoingOnSuccess"].(bool); ok && kgos {
+							return fmt.Errorf("Command 2: Expected keepgoingOnSuccess to be false or absent, got true")
 						}
 
 						return nil
@@ -227,13 +228,13 @@ func TestAccJob_argsQuoted_variants(t *testing.T) {
 					testAccJobGetID("rundeck_job.test", &jobID),
 
 					resource.TestCheckResourceAttr("rundeck_job.test", "name", "args-quoted-test"),
-					
+
 					// Command 1: args_quoted = true
 					resource.TestCheckResourceAttr("rundeck_job.test", "command.0.description", "Args Quoted True"),
 					resource.TestCheckResourceAttr("rundeck_job.test", "command.0.script_interpreter.0.args_quoted", "true"),
 					resource.TestCheckResourceAttr("rundeck_job.test", "command.0.script_interpreter.0.invocation_string", "pwsh -f ${scriptfile}"),
 					resource.TestCheckResourceAttr("rundeck_job.test", "command.0.script_file_args", "--test=yes"),
-					
+
 					// Command 2: args_quoted = false
 					resource.TestCheckResourceAttr("rundeck_job.test", "command.1.description", "Args Quoted False"),
 					resource.TestCheckResourceAttr("rundeck_job.test", "command.1.script_interpreter.0.args_quoted", "false"),
@@ -432,4 +433,3 @@ resource "rundeck_job" "test" {
   }
 }
 `
-

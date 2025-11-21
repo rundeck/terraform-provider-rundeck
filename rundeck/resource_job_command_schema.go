@@ -81,83 +81,84 @@ func jobCommandNestedBlock() schema.ListNestedBlock {
 						},
 					},
 				},
-			"job": schema.ListNestedBlock{
-				Description: "Reference to another job to execute. Either uuid or name must be specified.",
-				NestedObject: schema.NestedBlockObject{
-					Attributes: map[string]schema.Attribute{
-						"uuid": schema.StringAttribute{
-							Optional:    true,
-							Description: "UUID of the job to reference (immutable, preferred). Can reference another rundeck_job's id attribute.",
+				"job": schema.ListNestedBlock{
+					Description: "Reference to another job to execute. Either uuid or name must be specified.",
+					NestedObject: schema.NestedBlockObject{
+						Attributes: map[string]schema.Attribute{
+							"uuid": schema.StringAttribute{
+								Optional:    true,
+								Description: "UUID of the job to reference (immutable, preferred). Can reference another rundeck_job's id attribute.",
+							},
+							"name": schema.StringAttribute{
+								Optional:    true,
+								Description: "Name of the job to reference. Required if uuid is not specified.",
+							},
+							"group_name": schema.StringAttribute{
+								Optional:    true,
+								Description: "Group path of the job. Used with name-based references.",
+							},
+							"project_name": schema.StringAttribute{
+								Optional:    true,
+								Description: "Project containing the job. Used with name-based references.",
+							},
+							"run_for_each_node": schema.BoolAttribute{
+								Optional: true,
+							},
+							"node_step": schema.BoolAttribute{
+								Optional:    true,
+								Description: "Run the referenced job as a node step (once per node)",
+							},
+							"args": schema.StringAttribute{
+								Optional: true,
+							},
+							"import_options": schema.BoolAttribute{
+								Optional: true,
+							},
+							"child_nodes": schema.BoolAttribute{
+								Optional: true,
+							},
+							"fail_on_disable": schema.BoolAttribute{
+								Optional: true,
+							},
+							"ignore_notifications": schema.BoolAttribute{
+								Optional: true,
+							},
 						},
-						"name": schema.StringAttribute{
-							Optional:    true,
-							Description: "Name of the job to reference. Required if uuid is not specified.",
-						},
-						"group_name": schema.StringAttribute{
-							Optional:    true,
-							Description: "Group path of the job. Used with name-based references.",
-						},
-						"project_name": schema.StringAttribute{
-							Optional:    true,
-							Description: "Project containing the job. Used with name-based references.",
-						},
-						"run_for_each_node": schema.BoolAttribute{
-							Optional: true,
-						},
-						"node_step": schema.BoolAttribute{
-							Optional:    true,
-							Description: "Run the referenced job as a node step (once per node)",
-						},
-						"args": schema.StringAttribute{
-							Optional: true,
-						},
-						"import_options": schema.BoolAttribute{
-							Optional: true,
-						},
-						"child_nodes": schema.BoolAttribute{
-							Optional: true,
-						},
-						"fail_on_disable": schema.BoolAttribute{
-							Optional: true,
-						},
-						"ignore_notifications": schema.BoolAttribute{
-							Optional: true,
-						},
-					},
-					Blocks: map[string]schema.Block{
-						"node_filters": schema.ListNestedBlock{
-							NestedObject: schema.NestedBlockObject{
-								Attributes: map[string]schema.Attribute{
-									"filter": schema.StringAttribute{
-										Optional: true,
+						Blocks: map[string]schema.Block{
+							"node_filters": schema.ListNestedBlock{
+								NestedObject: schema.NestedBlockObject{
+									Attributes: map[string]schema.Attribute{
+										"filter": schema.StringAttribute{
+											Optional: true,
+										},
+										"exclude_filter": schema.StringAttribute{
+											Optional: true,
+										},
+										"exclude_precedence": schema.BoolAttribute{
+											Optional: true,
+										},
 									},
-									"exclude_filter": schema.StringAttribute{
-										Optional: true,
-									},
-									"exclude_precedence": schema.BoolAttribute{
-										Optional: true,
-									},
-								},
-								Blocks: map[string]schema.Block{
-									"dispatch": schema.ListNestedBlock{
-										Description: "Dispatch configuration for node execution",
-										NestedObject: schema.NestedBlockObject{
-											Attributes: map[string]schema.Attribute{
-												"thread_count": schema.Int64Attribute{
-													Optional:    true,
-													Description: "Number of threads to use for parallel execution",
-												},
-												"keep_going": schema.BoolAttribute{
-													Optional:    true,
-													Description: "Continue execution on remaining nodes after a failure",
-												},
-												"rank_attribute": schema.StringAttribute{
-													Optional:    true,
-													Description: "Node attribute to use for ranking",
-												},
-												"rank_order": schema.StringAttribute{
-													Optional:    true,
-													Description: "Rank order: ascending or descending",
+									Blocks: map[string]schema.Block{
+										"dispatch": schema.ListNestedBlock{
+											Description: "Dispatch configuration for node execution",
+											NestedObject: schema.NestedBlockObject{
+												Attributes: map[string]schema.Attribute{
+													"thread_count": schema.Int64Attribute{
+														Optional:    true,
+														Description: "Number of threads to use for parallel execution",
+													},
+													"keep_going": schema.BoolAttribute{
+														Optional:    true,
+														Description: "Continue execution on remaining nodes after a failure",
+													},
+													"rank_attribute": schema.StringAttribute{
+														Optional:    true,
+														Description: "Node attribute to use for ranking",
+													},
+													"rank_order": schema.StringAttribute{
+														Optional:    true,
+														Description: "Rank order: ascending or descending",
+													},
 												},
 											},
 										},
@@ -167,7 +168,6 @@ func jobCommandNestedBlock() schema.ListNestedBlock {
 						},
 					},
 				},
-			},
 				"step_plugin": schema.ListNestedBlock{
 					Description: "Workflow step plugin",
 					NestedObject: schema.NestedBlockObject{
@@ -196,39 +196,39 @@ func jobCommandNestedBlock() schema.ListNestedBlock {
 						},
 					},
 				},
-			"error_handler": schema.ListNestedBlock{
-				Description: "Error handler for this command",
-				NestedObject: schema.NestedBlockObject{
-					Attributes: map[string]schema.Attribute{
-						"description": schema.StringAttribute{
-							Optional: true,
+				"error_handler": schema.ListNestedBlock{
+					Description: "Error handler for this command",
+					NestedObject: schema.NestedBlockObject{
+						Attributes: map[string]schema.Attribute{
+							"description": schema.StringAttribute{
+								Optional: true,
+							},
+							"shell_command": schema.StringAttribute{
+								Optional: true,
+							},
+							"inline_script": schema.StringAttribute{
+								Optional: true,
+							},
+							"script_url": schema.StringAttribute{
+								Optional: true,
+							},
+							"script_file": schema.StringAttribute{
+								Optional: true,
+							},
+							"script_file_args": schema.StringAttribute{
+								Optional: true,
+							},
+							"expand_token_in_script_file": schema.BoolAttribute{
+								Optional: true,
+							},
+							"file_extension": schema.StringAttribute{
+								Optional: true,
+							},
+							"keep_going_on_success": schema.BoolAttribute{
+								Optional:    true,
+								Description: "Continue workflow even if error handler succeeds",
+							},
 						},
-						"shell_command": schema.StringAttribute{
-							Optional: true,
-						},
-						"inline_script": schema.StringAttribute{
-							Optional: true,
-						},
-						"script_url": schema.StringAttribute{
-							Optional: true,
-						},
-						"script_file": schema.StringAttribute{
-							Optional: true,
-						},
-						"script_file_args": schema.StringAttribute{
-							Optional: true,
-						},
-						"expand_token_in_script_file": schema.BoolAttribute{
-							Optional: true,
-						},
-						"file_extension": schema.StringAttribute{
-							Optional: true,
-						},
-						"keep_going_on_success": schema.BoolAttribute{
-							Optional:    true,
-							Description: "Continue workflow even if error handler succeeds",
-						},
-					},
 						Blocks: map[string]schema.Block{
 							"script_interpreter": schema.ListNestedBlock{
 								NestedObject: schema.NestedBlockObject{

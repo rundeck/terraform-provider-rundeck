@@ -475,57 +475,57 @@ func TestAccJob_scriptInterpreter(t *testing.T) {
 					resource.TestCheckResourceAttr("rundeck_job.test", "command.0.script_interpreter.0.invocation_string", "pwsh -f ${scriptfile}"),
 					resource.TestCheckResourceAttr("rundeck_job.test", "command.0.script_interpreter.0.args_quoted", "false"),
 
-				// API validation - verify scriptInterpreter and interpreterArgsQuoted
-				// The Rundeck API stores these as TWO separate fields:
-				// 1. scriptInterpreter (string) - the invocation command
-				// 2. interpreterArgsQuoted (boolean) - whether to quote args
-				testAccJobValidateAPI(&jobID, func(jobData map[string]interface{}) error {
-					// Get sequence commands
-					sequence, ok := jobData["sequence"].(map[string]interface{})
-					if !ok {
-						return fmt.Errorf("Sequence not found in API response")
-					}
+					// API validation - verify scriptInterpreter and interpreterArgsQuoted
+					// The Rundeck API stores these as TWO separate fields:
+					// 1. scriptInterpreter (string) - the invocation command
+					// 2. interpreterArgsQuoted (boolean) - whether to quote args
+					testAccJobValidateAPI(&jobID, func(jobData map[string]interface{}) error {
+						// Get sequence commands
+						sequence, ok := jobData["sequence"].(map[string]interface{})
+						if !ok {
+							return fmt.Errorf("Sequence not found in API response")
+						}
 
-					commands, ok := sequence["commands"].([]interface{})
-					if !ok || len(commands) == 0 {
-						return fmt.Errorf("Commands not found in sequence")
-					}
+						commands, ok := sequence["commands"].([]interface{})
+						if !ok || len(commands) == 0 {
+							return fmt.Errorf("Commands not found in sequence")
+						}
 
-					// Get first command
-					cmd, ok := commands[0].(map[string]interface{})
-					if !ok {
-						return fmt.Errorf("Command is not a map")
-					}
+						// Get first command
+						cmd, ok := commands[0].(map[string]interface{})
+						if !ok {
+							return fmt.Errorf("Command is not a map")
+						}
 
-					// Validate scriptInterpreter (should be a string)
-					scriptInterp, ok := cmd["scriptInterpreter"].(string)
-					if !ok {
-						return fmt.Errorf("scriptInterpreter not found or not a string, got: %v (type: %T)", cmd["scriptInterpreter"], cmd["scriptInterpreter"])
-					}
-					if scriptInterp != "pwsh -f ${scriptfile}" {
-						return fmt.Errorf("scriptInterpreter incorrect: expected 'pwsh -f ${scriptfile}', got '%s'", scriptInterp)
-					}
+						// Validate scriptInterpreter (should be a string)
+						scriptInterp, ok := cmd["scriptInterpreter"].(string)
+						if !ok {
+							return fmt.Errorf("scriptInterpreter not found or not a string, got: %v (type: %T)", cmd["scriptInterpreter"], cmd["scriptInterpreter"])
+						}
+						if scriptInterp != "pwsh -f ${scriptfile}" {
+							return fmt.Errorf("scriptInterpreter incorrect: expected 'pwsh -f ${scriptfile}', got '%s'", scriptInterp)
+						}
 
-					// Validate interpreterArgsQuoted (should be a boolean)
-					argsQuoted, ok := cmd["interpreterArgsQuoted"].(bool)
-					if !ok {
-						return fmt.Errorf("interpreterArgsQuoted not found or not a boolean, got: %v (type: %T)", cmd["interpreterArgsQuoted"], cmd["interpreterArgsQuoted"])
-					}
-					if argsQuoted != false {
-						return fmt.Errorf("interpreterArgsQuoted incorrect: expected false, got %v", argsQuoted)
-					}
+						// Validate interpreterArgsQuoted (should be a boolean)
+						argsQuoted, ok := cmd["interpreterArgsQuoted"].(bool)
+						if !ok {
+							return fmt.Errorf("interpreterArgsQuoted not found or not a boolean, got: %v (type: %T)", cmd["interpreterArgsQuoted"], cmd["interpreterArgsQuoted"])
+						}
+						if argsQuoted != false {
+							return fmt.Errorf("interpreterArgsQuoted incorrect: expected false, got %v", argsQuoted)
+						}
 
-					// Validate args field (script_file_args)
-					args, ok := cmd["args"].(string)
-					if !ok {
-						return fmt.Errorf("args not found or not a string, got: %v (type: %T)", cmd["args"], cmd["args"])
-					}
-					if args != "/tmp/terraform-acc-tests.yaml" {
-						return fmt.Errorf("args incorrect: expected '/tmp/terraform-acc-tests.yaml', got '%s'", args)
-					}
+						// Validate args field (script_file_args)
+						args, ok := cmd["args"].(string)
+						if !ok {
+							return fmt.Errorf("args not found or not a string, got: %v (type: %T)", cmd["args"], cmd["args"])
+						}
+						if args != "/tmp/terraform-acc-tests.yaml" {
+							return fmt.Errorf("args incorrect: expected '/tmp/terraform-acc-tests.yaml', got '%s'", args)
+						}
 
-					return nil
-				}),
+						return nil
+					}),
 				),
 			},
 			// Second step: Re-apply the same config to ensure no drift
