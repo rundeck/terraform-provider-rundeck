@@ -1864,7 +1864,243 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 		}
 	}
 
-	// TODO: Handle other nested fields (job references, etc.) if needed for import
+	// Handle job references
+	if jobref, ok := cmd["jobref"].(map[string]interface{}); ok {
+		jobAttrs := map[string]attr.Value{
+			"uuid":                 types.StringNull(),
+			"name":                 types.StringNull(),
+			"group_name":           types.StringNull(),
+			"project_name":         types.StringNull(),
+			"run_for_each_node":    types.BoolNull(),
+			"node_step":            types.BoolNull(),
+			"args":                 types.StringNull(),
+			"import_options":       types.BoolNull(),
+			"child_nodes":          types.BoolNull(),
+			"fail_on_disable":      types.BoolNull(),
+			"ignore_notifications": types.BoolNull(),
+		}
+		
+		// String fields
+		if uuid, ok := jobref["uuid"].(string); ok && uuid != "" {
+			jobAttrs["uuid"] = types.StringValue(uuid)
+		}
+		if name, ok := jobref["name"].(string); ok && name != "" {
+			jobAttrs["name"] = types.StringValue(name)
+		}
+		if group, ok := jobref["group"].(string); ok && group != "" {
+			jobAttrs["group_name"] = types.StringValue(group)
+		}
+		if project, ok := jobref["project"].(string); ok && project != "" {
+			jobAttrs["project_name"] = types.StringValue(project)
+		}
+		if args, ok := jobref["args"].(string); ok && args != "" {
+			jobAttrs["args"] = types.StringValue(args)
+		}
+		
+		// Boolean fields
+		if rfn, ok := jobref["runForEachNode"].(bool); ok {
+			jobAttrs["run_for_each_node"] = types.BoolValue(rfn)
+		}
+		if io, ok := jobref["importOptions"].(bool); ok {
+			jobAttrs["import_options"] = types.BoolValue(io)
+		}
+		if cn, ok := jobref["childNodes"].(bool); ok {
+			jobAttrs["child_nodes"] = types.BoolValue(cn)
+		}
+		if fod, ok := jobref["failOnDisable"].(bool); ok {
+			jobAttrs["fail_on_disable"] = types.BoolValue(fod)
+		}
+		if ign, ok := jobref["ignoreNotifications"].(bool); ok {
+			jobAttrs["ignore_notifications"] = types.BoolValue(ign)
+		}
+		
+		// nodeStep field (API uses string "true"/"false")
+		if ns, ok := jobref["nodeStep"].(string); ok && ns != "" {
+			jobAttrs["node_step"] = types.BoolValue(ns == "true")
+		}
+		
+		// Handle node_filters if present
+		if nodefilters, ok := jobref["nodefilters"].(map[string]interface{}); ok {
+			nfAttrs := map[string]attr.Value{
+				"filter":             types.StringNull(),
+				"exclude_filter":     types.StringNull(),
+				"exclude_precedence": types.BoolNull(),
+			}
+			
+			if filter, ok := nodefilters["filter"].(string); ok && filter != "" {
+				nfAttrs["filter"] = types.StringValue(filter)
+			}
+			if exclude, ok := nodefilters["excludeFilter"].(string); ok && exclude != "" {
+				nfAttrs["exclude_filter"] = types.StringValue(exclude)
+			}
+			if prec, ok := nodefilters["excludePrecedence"].(bool); ok {
+				nfAttrs["exclude_precedence"] = types.BoolValue(prec)
+			}
+			
+			// Handle dispatch configuration
+			if dispatch, ok := nodefilters["dispatch"].(map[string]interface{}); ok {
+				dispAttrs := map[string]attr.Value{
+					"thread_count":   types.Int64Null(),
+					"keep_going":     types.BoolNull(),
+					"rank_attribute": types.StringNull(),
+					"rank_order":     types.StringNull(),
+				}
+				
+				// threadcount can be int or float64 from JSON
+				if tc, ok := dispatch["threadcount"].(float64); ok {
+					dispAttrs["thread_count"] = types.Int64Value(int64(tc))
+				} else if tc, ok := dispatch["threadcount"].(int); ok {
+					dispAttrs["thread_count"] = types.Int64Value(int64(tc))
+				}
+				
+				if kg, ok := dispatch["keepgoing"].(bool); ok {
+					dispAttrs["keep_going"] = types.BoolValue(kg)
+				}
+				if ra, ok := dispatch["rankAttribute"].(string); ok && ra != "" {
+					dispAttrs["rank_attribute"] = types.StringValue(ra)
+				}
+				if ro, ok := dispatch["rankOrder"].(string); ok && ro != "" {
+					dispAttrs["rank_order"] = types.StringValue(ro)
+				}
+				
+				dispObj, dispDiags := types.ObjectValue(
+					map[string]attr.Type{
+						"thread_count":   types.Int64Type,
+						"keep_going":     types.BoolType,
+						"rank_attribute": types.StringType,
+						"rank_order":     types.StringType,
+					},
+					dispAttrs,
+				)
+				diags.Append(dispDiags...)
+				
+				nfAttrs["dispatch"] = types.ListValueMust(
+					types.ObjectType{AttrTypes: map[string]attr.Type{
+						"thread_count":   types.Int64Type,
+						"keep_going":     types.BoolType,
+						"rank_attribute": types.StringType,
+						"rank_order":     types.StringType,
+					}},
+					[]attr.Value{dispObj},
+				)
+			} else {
+				// No dispatch config
+				nfAttrs["dispatch"] = types.ListNull(
+					types.ObjectType{AttrTypes: map[string]attr.Type{
+						"thread_count":   types.Int64Type,
+						"keep_going":     types.BoolType,
+						"rank_attribute": types.StringType,
+						"rank_order":     types.StringType,
+					}},
+				)
+			}
+			
+			nfObj, nfDiags := types.ObjectValue(
+				map[string]attr.Type{
+					"filter":             types.StringType,
+					"exclude_filter":     types.StringType,
+					"exclude_precedence": types.BoolType,
+					"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
+						"thread_count":   types.Int64Type,
+						"keep_going":     types.BoolType,
+						"rank_attribute": types.StringType,
+						"rank_order":     types.StringType,
+					}}},
+				},
+				nfAttrs,
+			)
+			diags.Append(nfDiags...)
+			
+			jobAttrs["node_filters"] = types.ListValueMust(
+				types.ObjectType{AttrTypes: map[string]attr.Type{
+					"filter":             types.StringType,
+					"exclude_filter":     types.StringType,
+					"exclude_precedence": types.BoolType,
+					"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
+						"thread_count":   types.Int64Type,
+						"keep_going":     types.BoolType,
+						"rank_attribute": types.StringType,
+						"rank_order":     types.StringType,
+					}}},
+				}},
+				[]attr.Value{nfObj},
+			)
+		} else {
+			// No node_filters
+			jobAttrs["node_filters"] = types.ListNull(
+				types.ObjectType{AttrTypes: map[string]attr.Type{
+					"filter":             types.StringType,
+					"exclude_filter":     types.StringType,
+					"exclude_precedence": types.BoolType,
+					"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
+						"thread_count":   types.Int64Type,
+						"keep_going":     types.BoolType,
+						"rank_attribute": types.StringType,
+						"rank_order":     types.StringType,
+					}}},
+				}},
+			)
+		}
+		
+		jobObj, jobDiags := types.ObjectValue(
+			map[string]attr.Type{
+				"uuid":                 types.StringType,
+				"name":                 types.StringType,
+				"group_name":           types.StringType,
+				"project_name":         types.StringType,
+				"run_for_each_node":    types.BoolType,
+				"node_step":            types.BoolType,
+				"args":                 types.StringType,
+				"import_options":       types.BoolType,
+				"child_nodes":          types.BoolType,
+				"fail_on_disable":      types.BoolType,
+				"ignore_notifications": types.BoolType,
+				"node_filters": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
+					"filter":             types.StringType,
+					"exclude_filter":     types.StringType,
+					"exclude_precedence": types.BoolType,
+					"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
+						"thread_count":   types.Int64Type,
+						"keep_going":     types.BoolType,
+						"rank_attribute": types.StringType,
+						"rank_order":     types.StringType,
+					}}},
+				}}},
+			},
+			jobAttrs,
+		)
+		diags.Append(jobDiags...)
+		
+		cmdAttrs["job"] = types.ListValueMust(
+			types.ObjectType{AttrTypes: map[string]attr.Type{
+				"uuid":                 types.StringType,
+				"name":                 types.StringType,
+				"group_name":           types.StringType,
+				"project_name":         types.StringType,
+				"run_for_each_node":    types.BoolType,
+				"node_step":            types.BoolType,
+				"args":                 types.StringType,
+				"import_options":       types.BoolType,
+				"child_nodes":          types.BoolType,
+				"fail_on_disable":      types.BoolType,
+				"ignore_notifications": types.BoolType,
+				"node_filters": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
+					"filter":             types.StringType,
+					"exclude_filter":     types.StringType,
+					"exclude_precedence": types.BoolType,
+					"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
+						"thread_count":   types.Int64Type,
+						"keep_going":     types.BoolType,
+						"rank_attribute": types.StringType,
+						"rank_order":     types.StringType,
+					}}},
+				}}},
+			}},
+			[]attr.Value{jobObj},
+		)
+	}
+
+	// TODO: Handle other nested fields (plugins, etc.) if needed for import
 	
 	// Initialize any missing nested block fields as null to match schema
 		// We need to use the exact types from commandObjectType to avoid type mismatch errors
@@ -1886,27 +2122,34 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 				}},
 			)
 		}
-		if _, exists := cmdAttrs["job"]; !exists {
-			cmdAttrs["job"] = types.ListNull(
-				types.ObjectType{AttrTypes: map[string]attr.Type{
-					"name": types.StringType,
-					"group_name": types.StringType,
-					"project_name": types.StringType,
-					"uuid": types.StringType,
-					"args": types.StringType,
-					"run_for_each_node": types.BoolType,
-					"child_nodes": types.BoolType,
-					"import_options": types.BoolType,
-					"fail_on_disable": types.BoolType,
-					"ignore_notifications": types.BoolType,
-					"node_filters": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-						"filter": types.StringType,
-						"exclude_filter": types.StringType,
-						"exclude_precedence": types.BoolType,
+	if _, exists := cmdAttrs["job"]; !exists {
+		cmdAttrs["job"] = types.ListNull(
+			types.ObjectType{AttrTypes: map[string]attr.Type{
+				"name":                 types.StringType,
+				"group_name":           types.StringType,
+				"project_name":         types.StringType,
+				"uuid":                 types.StringType,
+				"args":                 types.StringType,
+				"run_for_each_node":    types.BoolType,
+				"node_step":            types.BoolType,
+				"child_nodes":          types.BoolType,
+				"import_options":       types.BoolType,
+				"fail_on_disable":      types.BoolType,
+				"ignore_notifications": types.BoolType,
+				"node_filters": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
+					"filter":             types.StringType,
+					"exclude_filter":     types.StringType,
+					"exclude_precedence": types.BoolType,
+					"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
+						"thread_count":   types.Int64Type,
+						"keep_going":     types.BoolType,
+						"rank_attribute": types.StringType,
+						"rank_order":     types.StringType,
 					}}},
-				}},
-			)
-		}
+				}}},
+			}},
+		)
+	}
 		if _, exists := cmdAttrs["step_plugin"]; !exists {
 			cmdAttrs["step_plugin"] = types.ListNull(
 				types.ObjectType{AttrTypes: map[string]attr.Type{
