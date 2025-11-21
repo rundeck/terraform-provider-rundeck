@@ -188,12 +188,13 @@ func TestAccJob_errorHandler_comprehensive(t *testing.T) {
 						if errorHandler2["args"] != "--recover" {
 							return fmt.Errorf("Command 2: Expected args='--recover' in error handler, got '%v'", errorHandler2["args"])
 						}
-						if errorHandler2["fileExtension"] != ".sh" {
-							return fmt.Errorf("Command 2: Expected fileExtension='.sh' in error handler, got '%v'", errorHandler2["fileExtension"])
-						}
-						if errorHandler2["keepgoingOnSuccess"] != false {
-							return fmt.Errorf("Command 2: Expected keepgoingOnSuccess=false, got %v", errorHandler2["keepgoingOnSuccess"])
-						}
+					if errorHandler2["fileExtension"] != ".sh" {
+						return fmt.Errorf("Command 2: Expected fileExtension='.sh' in error handler, got '%v'", errorHandler2["fileExtension"])
+					}
+					// keepgoingOnSuccess should be false or nil (not present) when not explicitly set to true
+					if kgos, ok := errorHandler2["keepgoingOnSuccess"].(bool); ok && kgos {
+						return fmt.Errorf("Command 2: Expected keepgoingOnSuccess to be false or absent, got true")
+					}
 
 						return nil
 					}),

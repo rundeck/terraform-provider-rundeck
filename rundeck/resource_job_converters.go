@@ -47,9 +47,9 @@ func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]inte
 		if v, ok := attrs["script_file"].(types.String); ok && !v.IsNull() {
 			cmdMap["scriptfile"] = v.ValueString()
 		}
-	if v, ok := attrs["script_file_args"].(types.String); ok && !v.IsNull() {
-		cmdMap["args"] = v.ValueString()
-	}
+		if v, ok := attrs["script_file_args"].(types.String); ok && !v.IsNull() {
+			cmdMap["args"] = v.ValueString()
+		}
 		if v, ok := attrs["file_extension"].(types.String); ok && !v.IsNull() {
 			cmdMap["fileExtension"] = v.ValueString()
 		}
@@ -71,12 +71,12 @@ func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]inte
 			diags.Append(v.ElementsAs(ctx, &interpreters, false)...)
 			if len(interpreters) > 0 {
 				interpAttrs := interpreters[0].Attributes()
-				
+
 				// Set interpreterArgsQuoted as a boolean at command level
 				if aq, ok := interpAttrs["args_quoted"].(types.Bool); ok && !aq.IsNull() {
 					cmdMap["interpreterArgsQuoted"] = aq.ValueBool()
 				}
-				
+
 				// Set scriptInterpreter as a string (just the invocation) at command level
 				if inv, ok := interpAttrs["invocation_string"].(types.String); ok && !inv.IsNull() {
 					cmdMap["scriptInterpreter"] = inv.ValueString()
@@ -106,177 +106,177 @@ func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]inte
 				if project, ok := jobAttrs["project_name"].(types.String); ok && !project.IsNull() {
 					jobMap["project"] = project.ValueString()
 				}
-			if rfn, ok := jobAttrs["run_for_each_node"].(types.Bool); ok && !rfn.IsNull() {
-				jobMap["runForEachNode"] = rfn.ValueBool()
-			}
-			if ns, ok := jobAttrs["node_step"].(types.Bool); ok && !ns.IsNull() {
-				// API expects string "true" or "false" for nodeStep
-				if ns.ValueBool() {
-					jobMap["nodeStep"] = "true"
-				} else {
-					jobMap["nodeStep"] = "false"
+				if rfn, ok := jobAttrs["run_for_each_node"].(types.Bool); ok && !rfn.IsNull() {
+					jobMap["runForEachNode"] = rfn.ValueBool()
 				}
-			}
-			if args, ok := jobAttrs["args"].(types.String); ok && !args.IsNull() {
-				jobMap["args"] = args.ValueString()
-			}
-			if io, ok := jobAttrs["import_options"].(types.Bool); ok && !io.IsNull() {
-				jobMap["importOptions"] = io.ValueBool()
-			}
-			if cn, ok := jobAttrs["child_nodes"].(types.Bool); ok && !cn.IsNull() {
-				jobMap["childNodes"] = cn.ValueBool()
-			}
-			if fod, ok := jobAttrs["fail_on_disable"].(types.Bool); ok && !fod.IsNull() {
-				jobMap["failOnDisable"] = fod.ValueBool()
-			}
-			if ign, ok := jobAttrs["ignore_notifications"].(types.Bool); ok && !ign.IsNull() {
-				jobMap["ignoreNotifications"] = ign.ValueBool()
-			}
+				if ns, ok := jobAttrs["node_step"].(types.Bool); ok && !ns.IsNull() {
+					// API expects string "true" or "false" for nodeStep
+					if ns.ValueBool() {
+						jobMap["nodeStep"] = "true"
+					} else {
+						jobMap["nodeStep"] = "false"
+					}
+				}
+				if args, ok := jobAttrs["args"].(types.String); ok && !args.IsNull() {
+					jobMap["args"] = args.ValueString()
+				}
+				if io, ok := jobAttrs["import_options"].(types.Bool); ok && !io.IsNull() {
+					jobMap["importOptions"] = io.ValueBool()
+				}
+				if cn, ok := jobAttrs["child_nodes"].(types.Bool); ok && !cn.IsNull() {
+					jobMap["childNodes"] = cn.ValueBool()
+				}
+				if fod, ok := jobAttrs["fail_on_disable"].(types.Bool); ok && !fod.IsNull() {
+					jobMap["failOnDisable"] = fod.ValueBool()
+				}
+				if ign, ok := jobAttrs["ignore_notifications"].(types.Bool); ok && !ign.IsNull() {
+					jobMap["ignoreNotifications"] = ign.ValueBool()
+				}
 
-			// Handle node_filters if present
-			if nf, ok := jobAttrs["node_filters"].(types.List); ok && !nf.IsNull() && !nf.IsUnknown() {
-				var nodeFilters []types.Object
-				diags.Append(nf.ElementsAs(ctx, &nodeFilters, false)...)
-				if len(nodeFilters) > 0 {
-					nfAttrs := nodeFilters[0].Attributes()
-					nfMap := make(map[string]interface{})
-					if filter, ok := nfAttrs["filter"].(types.String); ok && !filter.IsNull() {
-						nfMap["filter"] = filter.ValueString()
-					}
-					if exclude, ok := nfAttrs["exclude_filter"].(types.String); ok && !exclude.IsNull() {
-						nfMap["excludeFilter"] = exclude.ValueString()
-					}
-					if prec, ok := nfAttrs["exclude_precedence"].(types.Bool); ok && !prec.IsNull() {
-						nfMap["excludePrecedence"] = prec.ValueBool()
-					}
-					
-					// Handle dispatch configuration
-					if disp, ok := nfAttrs["dispatch"].(types.List); ok && !disp.IsNull() && !disp.IsUnknown() {
-						var dispatches []types.Object
-						diags.Append(disp.ElementsAs(ctx, &dispatches, false)...)
-						if len(dispatches) > 0 {
-							dispAttrs := dispatches[0].Attributes()
-							dispMap := make(map[string]interface{})
-							
-							if tc, ok := dispAttrs["thread_count"].(types.Int64); ok && !tc.IsNull() {
-								dispMap["threadcount"] = int(tc.ValueInt64())
-							}
-							if kg, ok := dispAttrs["keep_going"].(types.Bool); ok && !kg.IsNull() {
-								dispMap["keepgoing"] = kg.ValueBool()
-							}
-							if ra, ok := dispAttrs["rank_attribute"].(types.String); ok && !ra.IsNull() {
-								dispMap["rankAttribute"] = ra.ValueString()
-							}
-							if ro, ok := dispAttrs["rank_order"].(types.String); ok && !ro.IsNull() {
-								dispMap["rankOrder"] = ro.ValueString()
-							}
-							
-							if len(dispMap) > 0 {
-								nfMap["dispatch"] = dispMap
+				// Handle node_filters if present
+				if nf, ok := jobAttrs["node_filters"].(types.List); ok && !nf.IsNull() && !nf.IsUnknown() {
+					var nodeFilters []types.Object
+					diags.Append(nf.ElementsAs(ctx, &nodeFilters, false)...)
+					if len(nodeFilters) > 0 {
+						nfAttrs := nodeFilters[0].Attributes()
+						nfMap := make(map[string]interface{})
+						if filter, ok := nfAttrs["filter"].(types.String); ok && !filter.IsNull() {
+							nfMap["filter"] = filter.ValueString()
+						}
+						if exclude, ok := nfAttrs["exclude_filter"].(types.String); ok && !exclude.IsNull() {
+							nfMap["excludeFilter"] = exclude.ValueString()
+						}
+						if prec, ok := nfAttrs["exclude_precedence"].(types.Bool); ok && !prec.IsNull() {
+							nfMap["excludePrecedence"] = prec.ValueBool()
+						}
+
+						// Handle dispatch configuration
+						if disp, ok := nfAttrs["dispatch"].(types.List); ok && !disp.IsNull() && !disp.IsUnknown() {
+							var dispatches []types.Object
+							diags.Append(disp.ElementsAs(ctx, &dispatches, false)...)
+							if len(dispatches) > 0 {
+								dispAttrs := dispatches[0].Attributes()
+								dispMap := make(map[string]interface{})
+
+								if tc, ok := dispAttrs["thread_count"].(types.Int64); ok && !tc.IsNull() {
+									dispMap["threadcount"] = int(tc.ValueInt64())
+								}
+								if kg, ok := dispAttrs["keep_going"].(types.Bool); ok && !kg.IsNull() {
+									dispMap["keepgoing"] = kg.ValueBool()
+								}
+								if ra, ok := dispAttrs["rank_attribute"].(types.String); ok && !ra.IsNull() {
+									dispMap["rankAttribute"] = ra.ValueString()
+								}
+								if ro, ok := dispAttrs["rank_order"].(types.String); ok && !ro.IsNull() {
+									dispMap["rankOrder"] = ro.ValueString()
+								}
+
+								if len(dispMap) > 0 {
+									nfMap["dispatch"] = dispMap
+								}
 							}
 						}
+
+						jobMap["nodefilters"] = nfMap
 					}
-					
-					jobMap["nodefilters"] = nfMap
 				}
-			}
 
 				cmdMap["jobref"] = jobMap
 			}
 		}
 
-	// Handle step_plugin (workflow step)
-	// API expects: type and configuration at command level, nodeStep: false
-	if v, ok := attrs["step_plugin"].(types.List); ok && !v.IsNull() && !v.IsUnknown() {
-		var plugins []types.Object
-		diags.Append(v.ElementsAs(ctx, &plugins, false)...)
-		if len(plugins) > 0 {
-			pluginAttrs := plugins[0].Attributes()
+		// Handle step_plugin (workflow step)
+		// API expects: type and configuration at command level, nodeStep: false
+		if v, ok := attrs["step_plugin"].(types.List); ok && !v.IsNull() && !v.IsUnknown() {
+			var plugins []types.Object
+			diags.Append(v.ElementsAs(ctx, &plugins, false)...)
+			if len(plugins) > 0 {
+				pluginAttrs := plugins[0].Attributes()
 
-			// Set type at command level
-			if ptype, ok := pluginAttrs["type"].(types.String); ok && !ptype.IsNull() {
-				cmdMap["type"] = ptype.ValueString()
+				// Set type at command level
+				if ptype, ok := pluginAttrs["type"].(types.String); ok && !ptype.IsNull() {
+					cmdMap["type"] = ptype.ValueString()
+				}
+
+				// Set configuration at command level
+				if config, ok := pluginAttrs["config"].(types.Map); ok && !config.IsNull() {
+					var configMap map[string]string
+					diags.Append(config.ElementsAs(ctx, &configMap, false)...)
+					cmdMap["configuration"] = configMap
+				}
+
+				// Workflow steps run once (not per node)
+				cmdMap["nodeStep"] = false
 			}
-			
-			// Set configuration at command level
-			if config, ok := pluginAttrs["config"].(types.Map); ok && !config.IsNull() {
-				var configMap map[string]string
-				diags.Append(config.ElementsAs(ctx, &configMap, false)...)
-				cmdMap["configuration"] = configMap
-			}
-			
-			// Workflow steps run once (not per node)
-			cmdMap["nodeStep"] = false
 		}
-	}
 
-	// Handle node_step_plugin
-	// API expects: type and configuration at command level, nodeStep: true
-	if v, ok := attrs["node_step_plugin"].(types.List); ok && !v.IsNull() && !v.IsUnknown() {
-		var plugins []types.Object
-		diags.Append(v.ElementsAs(ctx, &plugins, false)...)
-		if len(plugins) > 0 {
-			pluginAttrs := plugins[0].Attributes()
+		// Handle node_step_plugin
+		// API expects: type and configuration at command level, nodeStep: true
+		if v, ok := attrs["node_step_plugin"].(types.List); ok && !v.IsNull() && !v.IsUnknown() {
+			var plugins []types.Object
+			diags.Append(v.ElementsAs(ctx, &plugins, false)...)
+			if len(plugins) > 0 {
+				pluginAttrs := plugins[0].Attributes()
 
-			// Set type at command level
-			if ptype, ok := pluginAttrs["type"].(types.String); ok && !ptype.IsNull() {
-				cmdMap["type"] = ptype.ValueString()
+				// Set type at command level
+				if ptype, ok := pluginAttrs["type"].(types.String); ok && !ptype.IsNull() {
+					cmdMap["type"] = ptype.ValueString()
+				}
+
+				// Set configuration at command level
+				if config, ok := pluginAttrs["config"].(types.Map); ok && !config.IsNull() {
+					var configMap map[string]string
+					diags.Append(config.ElementsAs(ctx, &configMap, false)...)
+					cmdMap["configuration"] = configMap
+				}
+
+				// Node steps run on each node
+				cmdMap["nodeStep"] = true
 			}
-			
-			// Set configuration at command level
-			if config, ok := pluginAttrs["config"].(types.Map); ok && !config.IsNull() {
-				var configMap map[string]string
-				diags.Append(config.ElementsAs(ctx, &configMap, false)...)
-				cmdMap["configuration"] = configMap
-			}
-			
-			// Node steps run on each node
-			cmdMap["nodeStep"] = true
 		}
-	}
 
-	// Handle error_handler (simplified - doesn't recurse infinitely)
-	if v, ok := attrs["error_handler"].(types.List); ok && !v.IsNull() && !v.IsUnknown() {
-		var handlers []types.Object
-		diags.Append(v.ElementsAs(ctx, &handlers, false)...)
-		if len(handlers) > 0 {
-			handlerAttrs := handlers[0].Attributes()
-			handlerMap := make(map[string]interface{})
+		// Handle error_handler (simplified - doesn't recurse infinitely)
+		if v, ok := attrs["error_handler"].(types.List); ok && !v.IsNull() && !v.IsUnknown() {
+			var handlers []types.Object
+			diags.Append(v.ElementsAs(ctx, &handlers, false)...)
+			if len(handlers) > 0 {
+				handlerAttrs := handlers[0].Attributes()
+				handlerMap := make(map[string]interface{})
 
-			// String fields
-			if desc, ok := handlerAttrs["description"].(types.String); ok && !desc.IsNull() {
-				handlerMap["description"] = desc.ValueString()
-			}
-			if sc, ok := handlerAttrs["shell_command"].(types.String); ok && !sc.IsNull() {
-				handlerMap["exec"] = sc.ValueString()
-			}
-			if script, ok := handlerAttrs["inline_script"].(types.String); ok && !script.IsNull() {
-				handlerMap["script"] = script.ValueString()
-			}
-			if scriptUrl, ok := handlerAttrs["script_url"].(types.String); ok && !scriptUrl.IsNull() {
-				handlerMap["scripturl"] = scriptUrl.ValueString()
-			}
-			if scriptFile, ok := handlerAttrs["script_file"].(types.String); ok && !scriptFile.IsNull() {
-				handlerMap["scriptfile"] = scriptFile.ValueString()
-			}
-			if args, ok := handlerAttrs["script_file_args"].(types.String); ok && !args.IsNull() {
-				handlerMap["args"] = args.ValueString()
-			}
-			if ext, ok := handlerAttrs["file_extension"].(types.String); ok && !ext.IsNull() {
-				handlerMap["fileExtension"] = ext.ValueString()
-			}
-			
-			// Boolean fields
-			if expand, ok := handlerAttrs["expand_token_in_script_file"].(types.Bool); ok && !expand.IsNull() {
-				handlerMap["expandTokenInScriptFile"] = expand.ValueBool()
-			}
-			if keepGoing, ok := handlerAttrs["keep_going_on_success"].(types.Bool); ok && !keepGoing.IsNull() {
-				handlerMap["keepgoingOnSuccess"] = keepGoing.ValueBool()
-			}
+				// String fields
+				if desc, ok := handlerAttrs["description"].(types.String); ok && !desc.IsNull() {
+					handlerMap["description"] = desc.ValueString()
+				}
+				if sc, ok := handlerAttrs["shell_command"].(types.String); ok && !sc.IsNull() {
+					handlerMap["exec"] = sc.ValueString()
+				}
+				if script, ok := handlerAttrs["inline_script"].(types.String); ok && !script.IsNull() {
+					handlerMap["script"] = script.ValueString()
+				}
+				if scriptUrl, ok := handlerAttrs["script_url"].(types.String); ok && !scriptUrl.IsNull() {
+					handlerMap["scripturl"] = scriptUrl.ValueString()
+				}
+				if scriptFile, ok := handlerAttrs["script_file"].(types.String); ok && !scriptFile.IsNull() {
+					handlerMap["scriptfile"] = scriptFile.ValueString()
+				}
+				if args, ok := handlerAttrs["script_file_args"].(types.String); ok && !args.IsNull() {
+					handlerMap["args"] = args.ValueString()
+				}
+				if ext, ok := handlerAttrs["file_extension"].(types.String); ok && !ext.IsNull() {
+					handlerMap["fileExtension"] = ext.ValueString()
+				}
 
-			cmdMap["errorhandler"] = handlerMap
+				// Boolean fields
+				if expand, ok := handlerAttrs["expand_token_in_script_file"].(types.Bool); ok && !expand.IsNull() {
+					handlerMap["expandTokenInScriptFile"] = expand.ValueBool()
+				}
+				if keepGoing, ok := handlerAttrs["keep_going_on_success"].(types.Bool); ok && !keepGoing.IsNull() {
+					handlerMap["keepgoingOnSuccess"] = keepGoing.ValueBool()
+				}
+
+				cmdMap["errorhandler"] = handlerMap
+			}
 		}
-	}
 
 		// Handle command-level plugins (e.g., log_filter_plugin)
 		if v, ok := attrs["plugins"].(types.List); ok && !v.IsNull() && !v.IsUnknown() {
@@ -1668,9 +1668,9 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 		if v, ok := cmd["scriptfile"].(string); ok && v != "" {
 			cmdAttrs["script_file"] = types.StringValue(v)
 		}
-	if v, ok := cmd["args"].(string); ok && v != "" {
-		cmdAttrs["script_file_args"] = types.StringValue(v)
-	}
+		if v, ok := cmd["args"].(string); ok && v != "" {
+			cmdAttrs["script_file_args"] = types.StringValue(v)
+		}
 		if v, ok := cmd["fileExtension"].(string); ok && v != "" {
 			cmdAttrs["file_extension"] = types.StringValue(v)
 		}
@@ -1689,7 +1689,7 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 		// 2. "scriptInterpreter" (string - just the invocation)
 		scriptInterp := cmd["scriptInterpreter"]
 		interpreterArgsQuoted := cmd["interpreterArgsQuoted"]
-		
+
 		if scriptInterp != nil || interpreterArgsQuoted != nil {
 			interpAttrs := map[string]attr.Value{
 				"invocation_string": types.StringNull(),
@@ -1700,7 +1700,7 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 			if interpStr, ok := scriptInterp.(string); ok && interpStr != "" {
 				interpAttrs["invocation_string"] = types.StringValue(interpStr)
 			}
-			
+
 			// Get the args_quoted boolean
 			if aq, ok := interpreterArgsQuoted.(bool); ok {
 				interpAttrs["args_quoted"] = types.BoolValue(aq)
@@ -1729,385 +1729,461 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 			}
 		}
 
-	// Handle error_handler
-	if handler, ok := cmd["errorhandler"].(map[string]interface{}); ok {
-		handlerAttrs := map[string]attr.Value{
-			"description":                 types.StringNull(),
-			"shell_command":               types.StringNull(),
-			"inline_script":               types.StringNull(),
-			"script_url":                  types.StringNull(),
-			"script_file":                 types.StringNull(),
-			"script_file_args":            types.StringNull(),
-			"file_extension":              types.StringNull(),
-			"expand_token_in_script_file": types.BoolNull(),
-			"keep_going_on_success":       types.BoolNull(),
-		}
-		
-		// String fields
-		if v, ok := handler["description"].(string); ok && v != "" {
-			handlerAttrs["description"] = types.StringValue(v)
-		}
-		if v, ok := handler["exec"].(string); ok && v != "" {
-			handlerAttrs["shell_command"] = types.StringValue(v)
-		}
-		if v, ok := handler["script"].(string); ok && v != "" {
-			handlerAttrs["inline_script"] = types.StringValue(v)
-		}
-		if v, ok := handler["scripturl"].(string); ok && v != "" {
-			handlerAttrs["script_url"] = types.StringValue(v)
-		}
-		if v, ok := handler["scriptfile"].(string); ok && v != "" {
-			handlerAttrs["script_file"] = types.StringValue(v)
-		}
-		if v, ok := handler["args"].(string); ok && v != "" {
-			handlerAttrs["script_file_args"] = types.StringValue(v)
-		}
-		if v, ok := handler["fileExtension"].(string); ok && v != "" {
-			handlerAttrs["file_extension"] = types.StringValue(v)
-		}
-		
-		// Boolean fields
-		if v, ok := handler["expandTokenInScriptFile"].(bool); ok {
-			handlerAttrs["expand_token_in_script_file"] = types.BoolValue(v)
-		}
-		if v, ok := handler["keepgoingOnSuccess"].(bool); ok {
-			handlerAttrs["keep_going_on_success"] = types.BoolValue(v)
-		}
-		
-		handlerObj, handlerDiags := types.ObjectValue(
-			map[string]attr.Type{
-				"description":                 types.StringType,
-				"shell_command":               types.StringType,
-				"inline_script":               types.StringType,
-				"script_url":                  types.StringType,
-				"script_file":                 types.StringType,
-				"script_file_args":            types.StringType,
-				"file_extension":              types.StringType,
-				"expand_token_in_script_file": types.BoolType,
-				"keep_going_on_success":       types.BoolType,
-			},
-			handlerAttrs,
-		)
-		diags.Append(handlerDiags...)
-		cmdAttrs["error_handler"] = types.ListValueMust(
-			types.ObjectType{AttrTypes: map[string]attr.Type{
-				"description":                 types.StringType,
-				"shell_command":               types.StringType,
-				"inline_script":               types.StringType,
-				"script_url":                  types.StringType,
-				"script_file":                 types.StringType,
-				"script_file_args":            types.StringType,
-				"file_extension":              types.StringType,
-				"expand_token_in_script_file": types.BoolType,
-				"keep_going_on_success":       types.BoolType,
-			}},
-			[]attr.Value{handlerObj},
-		)
-	}
+		// Handle error_handler
+		if handler, ok := cmd["errorhandler"].(map[string]interface{}); ok {
+			handlerAttrs := map[string]attr.Value{
+				"description":                 types.StringNull(),
+				"shell_command":               types.StringNull(),
+				"inline_script":               types.StringNull(),
+				"script_url":                  types.StringNull(),
+				"script_file":                 types.StringNull(),
+				"script_file_args":            types.StringNull(),
+				"file_extension":              types.StringNull(),
+				"expand_token_in_script_file": types.BoolNull(),
+				"keep_going_on_success":       types.BoolNull(),
+			}
 
-	// Handle step_plugin and node_step_plugin
-	// API format: type and configuration at command level, with nodeStep boolean
-	if cmdType, ok := cmd["type"].(string); ok && cmdType != "" {
-		if configuration, ok := cmd["configuration"].(map[string]interface{}); ok {
-			// Check if this is a node step or workflow step
-			isNodeStep := false
-			if ns, ok := cmd["nodeStep"].(bool); ok {
-				isNodeStep = ns
+			// String fields
+			if v, ok := handler["description"].(string); ok && v != "" {
+				handlerAttrs["description"] = types.StringValue(v)
 			}
-			
-			// Build plugin attributes
-			pluginAttrs := map[string]attr.Value{
-				"type":   types.StringValue(cmdType),
-				"config": types.MapNull(types.StringType),
+			if v, ok := handler["exec"].(string); ok && v != "" {
+				handlerAttrs["shell_command"] = types.StringValue(v)
 			}
-			
-			// Convert configuration map
-			if len(configuration) > 0 {
-				configMap := make(map[string]attr.Value)
-				for k, v := range configuration {
-					if strVal, ok := v.(string); ok {
-						configMap[k] = types.StringValue(strVal)
+			if v, ok := handler["script"].(string); ok && v != "" {
+				handlerAttrs["inline_script"] = types.StringValue(v)
+			}
+			if v, ok := handler["scripturl"].(string); ok && v != "" {
+				handlerAttrs["script_url"] = types.StringValue(v)
+			}
+			if v, ok := handler["scriptfile"].(string); ok && v != "" {
+				handlerAttrs["script_file"] = types.StringValue(v)
+			}
+			if v, ok := handler["args"].(string); ok && v != "" {
+				handlerAttrs["script_file_args"] = types.StringValue(v)
+			}
+			if v, ok := handler["fileExtension"].(string); ok && v != "" {
+				handlerAttrs["file_extension"] = types.StringValue(v)
+			}
+
+			// Boolean fields
+			if v, ok := handler["expandTokenInScriptFile"].(bool); ok {
+				handlerAttrs["expand_token_in_script_file"] = types.BoolValue(v)
+			}
+			if v, ok := handler["keepgoingOnSuccess"].(bool); ok {
+				handlerAttrs["keep_going_on_success"] = types.BoolValue(v)
+			}
+
+			handlerObj, handlerDiags := types.ObjectValue(
+				map[string]attr.Type{
+					"description":                 types.StringType,
+					"shell_command":               types.StringType,
+					"inline_script":               types.StringType,
+					"script_url":                  types.StringType,
+					"script_file":                 types.StringType,
+					"script_file_args":            types.StringType,
+					"file_extension":              types.StringType,
+					"expand_token_in_script_file": types.BoolType,
+					"keep_going_on_success":       types.BoolType,
+				},
+				handlerAttrs,
+			)
+			diags.Append(handlerDiags...)
+			cmdAttrs["error_handler"] = types.ListValueMust(
+				types.ObjectType{AttrTypes: map[string]attr.Type{
+					"description":                 types.StringType,
+					"shell_command":               types.StringType,
+					"inline_script":               types.StringType,
+					"script_url":                  types.StringType,
+					"script_file":                 types.StringType,
+					"script_file_args":            types.StringType,
+					"file_extension":              types.StringType,
+					"expand_token_in_script_file": types.BoolType,
+					"keep_going_on_success":       types.BoolType,
+				}},
+				[]attr.Value{handlerObj},
+			)
+		}
+
+		// Handle step_plugin and node_step_plugin
+		// API format: type and configuration at command level, with nodeStep boolean
+		if cmdType, ok := cmd["type"].(string); ok && cmdType != "" {
+			if configuration, ok := cmd["configuration"].(map[string]interface{}); ok {
+				// Check if this is a node step or workflow step
+				isNodeStep := false
+				if ns, ok := cmd["nodeStep"].(bool); ok {
+					isNodeStep = ns
+				}
+
+				// Build plugin attributes
+				pluginAttrs := map[string]attr.Value{
+					"type":   types.StringValue(cmdType),
+					"config": types.MapNull(types.StringType),
+				}
+
+				// Convert configuration map
+				if len(configuration) > 0 {
+					configMap := make(map[string]attr.Value)
+					for k, v := range configuration {
+						if strVal, ok := v.(string); ok {
+							configMap[k] = types.StringValue(strVal)
+						}
+					}
+					if len(configMap) > 0 {
+						pluginAttrs["config"] = types.MapValueMust(types.StringType, configMap)
 					}
 				}
-				if len(configMap) > 0 {
-					pluginAttrs["config"] = types.MapValueMust(types.StringType, configMap)
-				}
-			}
-			
-			pluginObj, pluginDiags := types.ObjectValue(
-				map[string]attr.Type{
-					"type":   types.StringType,
-					"config": types.MapType{ElemType: types.StringType},
-				},
-				pluginAttrs,
-			)
-			diags.Append(pluginDiags...)
-			
-			// Set as step_plugin or node_step_plugin based on nodeStep flag
-			if isNodeStep {
-				cmdAttrs["node_step_plugin"] = types.ListValueMust(
-					types.ObjectType{AttrTypes: map[string]attr.Type{
-						"type":   types.StringType,
-						"config": types.MapType{ElemType: types.StringType},
-					}},
-					[]attr.Value{pluginObj},
-				)
-			} else {
-				cmdAttrs["step_plugin"] = types.ListValueMust(
-					types.ObjectType{AttrTypes: map[string]attr.Type{
-						"type":   types.StringType,
-						"config": types.MapType{ElemType: types.StringType},
-					}},
-					[]attr.Value{pluginObj},
-				)
-			}
-		}
-	}
 
-	// Handle job references
-	if jobref, ok := cmd["jobref"].(map[string]interface{}); ok {
-		jobAttrs := map[string]attr.Value{
-			"uuid":                 types.StringNull(),
-			"name":                 types.StringNull(),
-			"group_name":           types.StringNull(),
-			"project_name":         types.StringNull(),
-			"run_for_each_node":    types.BoolNull(),
-			"node_step":            types.BoolNull(),
-			"args":                 types.StringNull(),
-			"import_options":       types.BoolNull(),
-			"child_nodes":          types.BoolNull(),
-			"fail_on_disable":      types.BoolNull(),
-			"ignore_notifications": types.BoolNull(),
-		}
-		
-		// String fields
-		if uuid, ok := jobref["uuid"].(string); ok && uuid != "" {
-			jobAttrs["uuid"] = types.StringValue(uuid)
-		}
-		if name, ok := jobref["name"].(string); ok && name != "" {
-			jobAttrs["name"] = types.StringValue(name)
-		}
-		if group, ok := jobref["group"].(string); ok && group != "" {
-			jobAttrs["group_name"] = types.StringValue(group)
-		}
-		if project, ok := jobref["project"].(string); ok && project != "" {
-			jobAttrs["project_name"] = types.StringValue(project)
-		}
-		if args, ok := jobref["args"].(string); ok && args != "" {
-			jobAttrs["args"] = types.StringValue(args)
-		}
-		
-		// Boolean fields
-		if rfn, ok := jobref["runForEachNode"].(bool); ok {
-			jobAttrs["run_for_each_node"] = types.BoolValue(rfn)
-		}
-		if io, ok := jobref["importOptions"].(bool); ok {
-			jobAttrs["import_options"] = types.BoolValue(io)
-		}
-		if cn, ok := jobref["childNodes"].(bool); ok {
-			jobAttrs["child_nodes"] = types.BoolValue(cn)
-		}
-		if fod, ok := jobref["failOnDisable"].(bool); ok {
-			jobAttrs["fail_on_disable"] = types.BoolValue(fod)
-		}
-		if ign, ok := jobref["ignoreNotifications"].(bool); ok {
-			jobAttrs["ignore_notifications"] = types.BoolValue(ign)
-		}
-		
-		// nodeStep field (API uses string "true"/"false")
-		if ns, ok := jobref["nodeStep"].(string); ok && ns != "" {
-			jobAttrs["node_step"] = types.BoolValue(ns == "true")
-		}
-		
-		// Handle node_filters if present
-		if nodefilters, ok := jobref["nodefilters"].(map[string]interface{}); ok {
-			nfAttrs := map[string]attr.Value{
-				"filter":             types.StringNull(),
-				"exclude_filter":     types.StringNull(),
-				"exclude_precedence": types.BoolNull(),
-			}
-			
-			if filter, ok := nodefilters["filter"].(string); ok && filter != "" {
-				nfAttrs["filter"] = types.StringValue(filter)
-			}
-			if exclude, ok := nodefilters["excludeFilter"].(string); ok && exclude != "" {
-				nfAttrs["exclude_filter"] = types.StringValue(exclude)
-			}
-			if prec, ok := nodefilters["excludePrecedence"].(bool); ok {
-				nfAttrs["exclude_precedence"] = types.BoolValue(prec)
-			}
-			
-			// Handle dispatch configuration
-			if dispatch, ok := nodefilters["dispatch"].(map[string]interface{}); ok {
-				dispAttrs := map[string]attr.Value{
-					"thread_count":   types.Int64Null(),
-					"keep_going":     types.BoolNull(),
-					"rank_attribute": types.StringNull(),
-					"rank_order":     types.StringNull(),
-				}
-				
-				// threadcount can be int or float64 from JSON
-				if tc, ok := dispatch["threadcount"].(float64); ok {
-					dispAttrs["thread_count"] = types.Int64Value(int64(tc))
-				} else if tc, ok := dispatch["threadcount"].(int); ok {
-					dispAttrs["thread_count"] = types.Int64Value(int64(tc))
-				}
-				
-				if kg, ok := dispatch["keepgoing"].(bool); ok {
-					dispAttrs["keep_going"] = types.BoolValue(kg)
-				}
-				if ra, ok := dispatch["rankAttribute"].(string); ok && ra != "" {
-					dispAttrs["rank_attribute"] = types.StringValue(ra)
-				}
-				if ro, ok := dispatch["rankOrder"].(string); ok && ro != "" {
-					dispAttrs["rank_order"] = types.StringValue(ro)
-				}
-				
-				dispObj, dispDiags := types.ObjectValue(
+				pluginObj, pluginDiags := types.ObjectValue(
 					map[string]attr.Type{
-						"thread_count":   types.Int64Type,
-						"keep_going":     types.BoolType,
-						"rank_attribute": types.StringType,
-						"rank_order":     types.StringType,
+						"type":   types.StringType,
+						"config": types.MapType{ElemType: types.StringType},
 					},
-					dispAttrs,
+					pluginAttrs,
 				)
-				diags.Append(dispDiags...)
-				
-				nfAttrs["dispatch"] = types.ListValueMust(
+				diags.Append(pluginDiags...)
+
+				// Set as step_plugin or node_step_plugin based on nodeStep flag
+				if isNodeStep {
+					cmdAttrs["node_step_plugin"] = types.ListValueMust(
+						types.ObjectType{AttrTypes: map[string]attr.Type{
+							"type":   types.StringType,
+							"config": types.MapType{ElemType: types.StringType},
+						}},
+						[]attr.Value{pluginObj},
+					)
+				} else {
+					cmdAttrs["step_plugin"] = types.ListValueMust(
+						types.ObjectType{AttrTypes: map[string]attr.Type{
+							"type":   types.StringType,
+							"config": types.MapType{ElemType: types.StringType},
+						}},
+						[]attr.Value{pluginObj},
+					)
+				}
+			}
+		}
+
+		// Handle job references
+		if jobref, ok := cmd["jobref"].(map[string]interface{}); ok {
+			jobAttrs := map[string]attr.Value{
+				"uuid":                 types.StringNull(),
+				"name":                 types.StringNull(),
+				"group_name":           types.StringNull(),
+				"project_name":         types.StringNull(),
+				"run_for_each_node":    types.BoolNull(),
+				"node_step":            types.BoolNull(),
+				"args":                 types.StringNull(),
+				"import_options":       types.BoolNull(),
+				"child_nodes":          types.BoolNull(),
+				"fail_on_disable":      types.BoolNull(),
+				"ignore_notifications": types.BoolNull(),
+			}
+
+			// String fields
+			if uuid, ok := jobref["uuid"].(string); ok && uuid != "" {
+				jobAttrs["uuid"] = types.StringValue(uuid)
+			}
+			if name, ok := jobref["name"].(string); ok && name != "" {
+				jobAttrs["name"] = types.StringValue(name)
+			}
+			if group, ok := jobref["group"].(string); ok && group != "" {
+				jobAttrs["group_name"] = types.StringValue(group)
+			}
+			if project, ok := jobref["project"].(string); ok && project != "" {
+				jobAttrs["project_name"] = types.StringValue(project)
+			}
+			if args, ok := jobref["args"].(string); ok && args != "" {
+				jobAttrs["args"] = types.StringValue(args)
+			}
+
+			// Boolean fields
+			if rfn, ok := jobref["runForEachNode"].(bool); ok {
+				jobAttrs["run_for_each_node"] = types.BoolValue(rfn)
+			}
+			if io, ok := jobref["importOptions"].(bool); ok {
+				jobAttrs["import_options"] = types.BoolValue(io)
+			}
+			if cn, ok := jobref["childNodes"].(bool); ok {
+				jobAttrs["child_nodes"] = types.BoolValue(cn)
+			}
+			if fod, ok := jobref["failOnDisable"].(bool); ok {
+				jobAttrs["fail_on_disable"] = types.BoolValue(fod)
+			}
+			if ign, ok := jobref["ignoreNotifications"].(bool); ok {
+				jobAttrs["ignore_notifications"] = types.BoolValue(ign)
+			}
+
+			// nodeStep field (API uses string "true"/"false")
+			if ns, ok := jobref["nodeStep"].(string); ok && ns != "" {
+				jobAttrs["node_step"] = types.BoolValue(ns == "true")
+			}
+
+			// Handle node_filters if present
+			if nodefilters, ok := jobref["nodefilters"].(map[string]interface{}); ok {
+				nfAttrs := map[string]attr.Value{
+					"filter":             types.StringNull(),
+					"exclude_filter":     types.StringNull(),
+					"exclude_precedence": types.BoolNull(),
+				}
+
+				if filter, ok := nodefilters["filter"].(string); ok && filter != "" {
+					nfAttrs["filter"] = types.StringValue(filter)
+				}
+				if exclude, ok := nodefilters["excludeFilter"].(string); ok && exclude != "" {
+					nfAttrs["exclude_filter"] = types.StringValue(exclude)
+				}
+				if prec, ok := nodefilters["excludePrecedence"].(bool); ok {
+					nfAttrs["exclude_precedence"] = types.BoolValue(prec)
+				}
+
+				// Handle dispatch configuration
+				if dispatch, ok := nodefilters["dispatch"].(map[string]interface{}); ok {
+					dispAttrs := map[string]attr.Value{
+						"thread_count":   types.Int64Null(),
+						"keep_going":     types.BoolNull(),
+						"rank_attribute": types.StringNull(),
+						"rank_order":     types.StringNull(),
+					}
+
+					// threadcount can be int or float64 from JSON
+					if tc, ok := dispatch["threadcount"].(float64); ok {
+						dispAttrs["thread_count"] = types.Int64Value(int64(tc))
+					} else if tc, ok := dispatch["threadcount"].(int); ok {
+						dispAttrs["thread_count"] = types.Int64Value(int64(tc))
+					}
+
+					if kg, ok := dispatch["keepgoing"].(bool); ok {
+						dispAttrs["keep_going"] = types.BoolValue(kg)
+					}
+					if ra, ok := dispatch["rankAttribute"].(string); ok && ra != "" {
+						dispAttrs["rank_attribute"] = types.StringValue(ra)
+					}
+					if ro, ok := dispatch["rankOrder"].(string); ok && ro != "" {
+						dispAttrs["rank_order"] = types.StringValue(ro)
+					}
+
+					dispObj, dispDiags := types.ObjectValue(
+						map[string]attr.Type{
+							"thread_count":   types.Int64Type,
+							"keep_going":     types.BoolType,
+							"rank_attribute": types.StringType,
+							"rank_order":     types.StringType,
+						},
+						dispAttrs,
+					)
+					diags.Append(dispDiags...)
+
+					nfAttrs["dispatch"] = types.ListValueMust(
+						types.ObjectType{AttrTypes: map[string]attr.Type{
+							"thread_count":   types.Int64Type,
+							"keep_going":     types.BoolType,
+							"rank_attribute": types.StringType,
+							"rank_order":     types.StringType,
+						}},
+						[]attr.Value{dispObj},
+					)
+				} else {
+					// No dispatch config
+					nfAttrs["dispatch"] = types.ListNull(
+						types.ObjectType{AttrTypes: map[string]attr.Type{
+							"thread_count":   types.Int64Type,
+							"keep_going":     types.BoolType,
+							"rank_attribute": types.StringType,
+							"rank_order":     types.StringType,
+						}},
+					)
+				}
+
+				nfObj, nfDiags := types.ObjectValue(
+					map[string]attr.Type{
+						"filter":             types.StringType,
+						"exclude_filter":     types.StringType,
+						"exclude_precedence": types.BoolType,
+						"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
+							"thread_count":   types.Int64Type,
+							"keep_going":     types.BoolType,
+							"rank_attribute": types.StringType,
+							"rank_order":     types.StringType,
+						}}},
+					},
+					nfAttrs,
+				)
+				diags.Append(nfDiags...)
+
+				jobAttrs["node_filters"] = types.ListValueMust(
 					types.ObjectType{AttrTypes: map[string]attr.Type{
-						"thread_count":   types.Int64Type,
-						"keep_going":     types.BoolType,
-						"rank_attribute": types.StringType,
-						"rank_order":     types.StringType,
+						"filter":             types.StringType,
+						"exclude_filter":     types.StringType,
+						"exclude_precedence": types.BoolType,
+						"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
+							"thread_count":   types.Int64Type,
+							"keep_going":     types.BoolType,
+							"rank_attribute": types.StringType,
+							"rank_order":     types.StringType,
+						}}},
 					}},
-					[]attr.Value{dispObj},
+					[]attr.Value{nfObj},
 				)
 			} else {
-				// No dispatch config
-				nfAttrs["dispatch"] = types.ListNull(
+				// No node_filters
+				jobAttrs["node_filters"] = types.ListNull(
 					types.ObjectType{AttrTypes: map[string]attr.Type{
-						"thread_count":   types.Int64Type,
-						"keep_going":     types.BoolType,
-						"rank_attribute": types.StringType,
-						"rank_order":     types.StringType,
+						"filter":             types.StringType,
+						"exclude_filter":     types.StringType,
+						"exclude_precedence": types.BoolType,
+						"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
+							"thread_count":   types.Int64Type,
+							"keep_going":     types.BoolType,
+							"rank_attribute": types.StringType,
+							"rank_order":     types.StringType,
+						}}},
 					}},
 				)
 			}
-			
-			nfObj, nfDiags := types.ObjectValue(
+
+			jobObj, jobDiags := types.ObjectValue(
 				map[string]attr.Type{
-					"filter":             types.StringType,
-					"exclude_filter":     types.StringType,
-					"exclude_precedence": types.BoolType,
-					"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-						"thread_count":   types.Int64Type,
-						"keep_going":     types.BoolType,
-						"rank_attribute": types.StringType,
-						"rank_order":     types.StringType,
+					"uuid":                 types.StringType,
+					"name":                 types.StringType,
+					"group_name":           types.StringType,
+					"project_name":         types.StringType,
+					"run_for_each_node":    types.BoolType,
+					"node_step":            types.BoolType,
+					"args":                 types.StringType,
+					"import_options":       types.BoolType,
+					"child_nodes":          types.BoolType,
+					"fail_on_disable":      types.BoolType,
+					"ignore_notifications": types.BoolType,
+					"node_filters": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
+						"filter":             types.StringType,
+						"exclude_filter":     types.StringType,
+						"exclude_precedence": types.BoolType,
+						"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
+							"thread_count":   types.Int64Type,
+							"keep_going":     types.BoolType,
+							"rank_attribute": types.StringType,
+							"rank_order":     types.StringType,
+						}}},
 					}}},
 				},
-				nfAttrs,
+				jobAttrs,
 			)
-			diags.Append(nfDiags...)
-			
-			jobAttrs["node_filters"] = types.ListValueMust(
+			diags.Append(jobDiags...)
+
+			cmdAttrs["job"] = types.ListValueMust(
 				types.ObjectType{AttrTypes: map[string]attr.Type{
-					"filter":             types.StringType,
-					"exclude_filter":     types.StringType,
-					"exclude_precedence": types.BoolType,
-					"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-						"thread_count":   types.Int64Type,
-						"keep_going":     types.BoolType,
-						"rank_attribute": types.StringType,
-						"rank_order":     types.StringType,
+					"uuid":                 types.StringType,
+					"name":                 types.StringType,
+					"group_name":           types.StringType,
+					"project_name":         types.StringType,
+					"run_for_each_node":    types.BoolType,
+					"node_step":            types.BoolType,
+					"args":                 types.StringType,
+					"import_options":       types.BoolType,
+					"child_nodes":          types.BoolType,
+					"fail_on_disable":      types.BoolType,
+					"ignore_notifications": types.BoolType,
+					"node_filters": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
+						"filter":             types.StringType,
+						"exclude_filter":     types.StringType,
+						"exclude_precedence": types.BoolType,
+						"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
+							"thread_count":   types.Int64Type,
+							"keep_going":     types.BoolType,
+							"rank_attribute": types.StringType,
+							"rank_order":     types.StringType,
+						}}},
 					}}},
 				}},
-				[]attr.Value{nfObj},
+				[]attr.Value{jobObj},
 			)
-		} else {
-			// No node_filters
-			jobAttrs["node_filters"] = types.ListNull(
-				types.ObjectType{AttrTypes: map[string]attr.Type{
-					"filter":             types.StringType,
-					"exclude_filter":     types.StringType,
-					"exclude_precedence": types.BoolType,
-					"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-						"thread_count":   types.Int64Type,
-						"keep_going":     types.BoolType,
-						"rank_attribute": types.StringType,
-						"rank_order":     types.StringType,
-					}}},
-				}},
-			)
-		}
-		
-		jobObj, jobDiags := types.ObjectValue(
-			map[string]attr.Type{
-				"uuid":                 types.StringType,
-				"name":                 types.StringType,
-				"group_name":           types.StringType,
-				"project_name":         types.StringType,
-				"run_for_each_node":    types.BoolType,
-				"node_step":            types.BoolType,
-				"args":                 types.StringType,
-				"import_options":       types.BoolType,
-				"child_nodes":          types.BoolType,
-				"fail_on_disable":      types.BoolType,
-				"ignore_notifications": types.BoolType,
-				"node_filters": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-					"filter":             types.StringType,
-					"exclude_filter":     types.StringType,
-					"exclude_precedence": types.BoolType,
-					"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-						"thread_count":   types.Int64Type,
-						"keep_going":     types.BoolType,
-						"rank_attribute": types.StringType,
-						"rank_order":     types.StringType,
-					}}},
-				}}},
-			},
-			jobAttrs,
-		)
-		diags.Append(jobDiags...)
-		
-		cmdAttrs["job"] = types.ListValueMust(
-			types.ObjectType{AttrTypes: map[string]attr.Type{
-				"uuid":                 types.StringType,
-				"name":                 types.StringType,
-				"group_name":           types.StringType,
-				"project_name":         types.StringType,
-				"run_for_each_node":    types.BoolType,
-				"node_step":            types.BoolType,
-				"args":                 types.StringType,
-				"import_options":       types.BoolType,
-				"child_nodes":          types.BoolType,
-				"fail_on_disable":      types.BoolType,
-				"ignore_notifications": types.BoolType,
-				"node_filters": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-					"filter":             types.StringType,
-					"exclude_filter":     types.StringType,
-					"exclude_precedence": types.BoolType,
-					"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-						"thread_count":   types.Int64Type,
-						"keep_going":     types.BoolType,
-						"rank_attribute": types.StringType,
-						"rank_order":     types.StringType,
-					}}},
-				}}},
-			}},
-			[]attr.Value{jobObj},
-		)
 	}
 
-	// TODO: Handle other nested fields (plugins, etc.) if needed for import
+	// Handle command-level plugins (log filters)
+	if plugins, ok := cmd["plugins"].(map[string]interface{}); ok {
+		if logFilters, ok := plugins["LogFilter"].([]interface{}); ok && len(logFilters) > 0 {
+			logFilterValues := make([]attr.Value, 0, len(logFilters))
+			
+			for _, lf := range logFilters {
+				if logFilter, ok := lf.(map[string]interface{}); ok {
+					lfAttrs := map[string]attr.Value{
+						"type":   types.StringNull(),
+						"config": types.MapNull(types.StringType),
+					}
+					
+					// Get type
+					if lfType, ok := logFilter["type"].(string); ok && lfType != "" {
+						lfAttrs["type"] = types.StringValue(lfType)
+					}
+					
+					// Get config
+					if config, ok := logFilter["config"].(map[string]interface{}); ok && len(config) > 0 {
+						configMap := make(map[string]attr.Value)
+						for k, v := range config {
+							if strVal, ok := v.(string); ok {
+								configMap[k] = types.StringValue(strVal)
+							}
+						}
+						if len(configMap) > 0 {
+							lfAttrs["config"] = types.MapValueMust(types.StringType, configMap)
+						}
+					}
+					
+					lfObj, lfDiags := types.ObjectValue(
+						map[string]attr.Type{
+							"type":   types.StringType,
+							"config": types.MapType{ElemType: types.StringType},
+						},
+						lfAttrs,
+					)
+					diags.Append(lfDiags...)
+					logFilterValues = append(logFilterValues, lfObj)
+				}
+			}
+			
+			if len(logFilterValues) > 0 {
+				// Create the plugins block with log_filter_plugin list
+				pluginsAttrs := map[string]attr.Value{
+					"log_filter_plugin": types.ListValueMust(
+						types.ObjectType{AttrTypes: map[string]attr.Type{
+							"type":   types.StringType,
+							"config": types.MapType{ElemType: types.StringType},
+						}},
+						logFilterValues,
+					),
+				}
+				
+				pluginsObj, pluginsDiags := types.ObjectValue(
+					map[string]attr.Type{
+						"log_filter_plugin": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
+							"type":   types.StringType,
+							"config": types.MapType{ElemType: types.StringType},
+						}}},
+					},
+					pluginsAttrs,
+				)
+				diags.Append(pluginsDiags...)
+				
+				cmdAttrs["plugins"] = types.ListValueMust(
+					types.ObjectType{AttrTypes: map[string]attr.Type{
+						"log_filter_plugin": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
+							"type":   types.StringType,
+							"config": types.MapType{ElemType: types.StringType},
+						}}},
+					}},
+					[]attr.Value{pluginsObj},
+				)
+			}
+		}
+	}
 	
 	// Initialize any missing nested block fields as null to match schema
 		// We need to use the exact types from commandObjectType to avoid type mismatch errors
 		if _, exists := cmdAttrs["script_interpreter"]; !exists {
 			cmdAttrs["script_interpreter"] = types.ListNull(
 				types.ObjectType{AttrTypes: map[string]attr.Type{
-					"args_quoted": types.BoolType,
+					"args_quoted":       types.BoolType,
 					"invocation_string": types.StringType,
 				}},
 			)
@@ -2122,34 +2198,34 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 				}},
 			)
 		}
-	if _, exists := cmdAttrs["job"]; !exists {
-		cmdAttrs["job"] = types.ListNull(
-			types.ObjectType{AttrTypes: map[string]attr.Type{
-				"name":                 types.StringType,
-				"group_name":           types.StringType,
-				"project_name":         types.StringType,
-				"uuid":                 types.StringType,
-				"args":                 types.StringType,
-				"run_for_each_node":    types.BoolType,
-				"node_step":            types.BoolType,
-				"child_nodes":          types.BoolType,
-				"import_options":       types.BoolType,
-				"fail_on_disable":      types.BoolType,
-				"ignore_notifications": types.BoolType,
-				"node_filters": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-					"filter":             types.StringType,
-					"exclude_filter":     types.StringType,
-					"exclude_precedence": types.BoolType,
-					"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-						"thread_count":   types.Int64Type,
-						"keep_going":     types.BoolType,
-						"rank_attribute": types.StringType,
-						"rank_order":     types.StringType,
+		if _, exists := cmdAttrs["job"]; !exists {
+			cmdAttrs["job"] = types.ListNull(
+				types.ObjectType{AttrTypes: map[string]attr.Type{
+					"name":                 types.StringType,
+					"group_name":           types.StringType,
+					"project_name":         types.StringType,
+					"uuid":                 types.StringType,
+					"args":                 types.StringType,
+					"run_for_each_node":    types.BoolType,
+					"node_step":            types.BoolType,
+					"child_nodes":          types.BoolType,
+					"import_options":       types.BoolType,
+					"fail_on_disable":      types.BoolType,
+					"ignore_notifications": types.BoolType,
+					"node_filters": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
+						"filter":             types.StringType,
+						"exclude_filter":     types.StringType,
+						"exclude_precedence": types.BoolType,
+						"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
+							"thread_count":   types.Int64Type,
+							"keep_going":     types.BoolType,
+							"rank_attribute": types.StringType,
+							"rank_order":     types.StringType,
+						}}},
 					}}},
-				}}},
-			}},
-		)
-	}
+				}},
+			)
+		}
 		if _, exists := cmdAttrs["step_plugin"]; !exists {
 			cmdAttrs["step_plugin"] = types.ListNull(
 				types.ObjectType{AttrTypes: map[string]attr.Type{
@@ -2166,26 +2242,26 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 				}},
 			)
 		}
-	if _, exists := cmdAttrs["error_handler"]; !exists {
-		cmdAttrs["error_handler"] = types.ListNull(
-			types.ObjectType{AttrTypes: map[string]attr.Type{
-				"description":                 types.StringType,
-				"shell_command":               types.StringType,
-				"inline_script":               types.StringType,
-				"script_url":                  types.StringType,
-				"script_file":                 types.StringType,
-				"script_file_args":            types.StringType,
-				"file_extension":              types.StringType,
-				"expand_token_in_script_file": types.BoolType,
-				"keep_going_on_success":       types.BoolType,
-				"script_interpreter": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-						"args_quoted": types.BoolType,
+		if _, exists := cmdAttrs["error_handler"]; !exists {
+			cmdAttrs["error_handler"] = types.ListNull(
+				types.ObjectType{AttrTypes: map[string]attr.Type{
+					"description":                 types.StringType,
+					"shell_command":               types.StringType,
+					"inline_script":               types.StringType,
+					"script_url":                  types.StringType,
+					"script_file":                 types.StringType,
+					"script_file_args":            types.StringType,
+					"file_extension":              types.StringType,
+					"expand_token_in_script_file": types.BoolType,
+					"keep_going_on_success":       types.BoolType,
+					"script_interpreter": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
+						"args_quoted":       types.BoolType,
 						"invocation_string": types.StringType,
 					}}},
 					"job": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-						"name": types.StringType,
-						"group_name": types.StringType,
-						"args": types.StringType,
+						"name":              types.StringType,
+						"group_name":        types.StringType,
+						"args":              types.StringType,
 						"run_for_each_node": types.BoolType,
 					}}},
 					"step_plugin": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
