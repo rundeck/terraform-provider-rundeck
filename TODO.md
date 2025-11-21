@@ -27,6 +27,63 @@ Forward-looking tasks for the Rundeck Terraform Provider.
 
 ---
 
+### API Field Mapping Audit - Remaining Command Types
+**Effort**: Medium (1-2 days)  
+**Why Important**: Prevents field mapping bugs like the `scriptargs → args` issue. Validates assumptions against real API responses.
+
+**Completed** ✅:
+- ✅ Script commands (shell, inline_script, script_url, script_file)
+- ✅ Script options (args, file_extension, expand_token_in_script_file)
+- ✅ Script interpreter (scriptInterpreter, interpreterArgsQuoted)
+- ✅ Error handlers with script fields
+- ✅ keep_going_on_success
+
+**Needs Validation** (Create sample jobs in UI, export JSON, validate field mappings):
+
+**High Priority** (commonly used):
+- **Job References** (`command.job` block)
+  - Fields: uuid, name, group_name, project_name, args
+  - Options: run_for_each_node, import_options, child_nodes, fail_on_disable, ignore_notifications
+  - Node filters: filter, exclude_filter, exclude_precedence
+  - Create job that calls another job with various options
+
+- **Log Filter Plugins** (`command.plugins.log_filter_plugin`)
+  - Fields: type, config (map)
+  - Create job with key-value-data, mask-passwords, or other log filters
+  - Validate config map structure
+
+**Medium Priority** (less common):
+- **Step Plugins** (`command.step_plugin`)
+  - Fields: type, config (map)
+  - Create job with workflow step plugin
+  - Validate plugin-specific config
+
+- **Node Step Plugins** (`command.node_step_plugin`)
+  - Fields: type, config (map)
+  - Create job with node step plugin
+  - Validate plugin-specific config
+
+**Validation Process**:
+1. Create job in Rundeck UI with feature
+2. Export job via API: `GET /api/56/job/{id}` or UI Export → JSON
+3. Save to `tmp/sampleJobs/{feature}_sample.json`
+4. Compare Terraform field names vs API field names in converters
+5. Update converters if mismatch found
+6. Add test case to validate round-trip
+
+**Reference**:
+- See `tmp/API_FIELD_MAPPING_AUDIT.md` for methodology
+- Pattern-based assumptions (like `scriptargs`) are risky - always validate!
+
+**You Don't Need To**:
+- Test every possible plugin type (there are hundreds)
+- Test every combination of options
+- Just validate the **structure** and **field mappings** for each major command type
+
+**Files**: `rundeck/resource_job_converters.go`, `tmp/sampleJobs/*.json`
+
+---
+
 ### Documentation Improvements
 **Effort**: Medium (1-2 days)  
 **Status**: Core docs complete, guides deferred  
