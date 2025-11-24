@@ -33,6 +33,12 @@ Manage your Rundeck runbook automation infrastructure as code. The Rundeck provi
 - Rundeck 5.0.0 or later (API v46+)
 - Rundeck Enterprise 5.17.0+ required for runner resources (API v56)
 
+## Upgrading
+
+**Upgrading to v1.0.0?** Version 1.0.0 includes important breaking changes and required configuration updates.
+
+**See the [Upgrade Guide](guides/upgrading.html)** for detailed migration steps, breaking changes, and testing instructions.
+
 ## Configuration
 
 The provider configuration block accepts the following arguments:
