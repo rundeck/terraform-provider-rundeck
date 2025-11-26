@@ -111,13 +111,13 @@ func (r *projectResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Description: "Default node file copier plugin.",
 				Optional:    true,
 				Computed:    true,
-				Default:     stringdefault.StaticString("jsch-scp"),
+				Default:     stringdefault.StaticString("sshj-scp"),
 			},
 			"default_node_executor_plugin": schema.StringAttribute{
 				Description: "Default node executor plugin.",
 				Optional:    true,
 				Computed:    true,
-				Default:     stringdefault.StaticString("jsch-ssh"),
+				Default:     stringdefault.StaticString("sshj-ssh"),
 			},
 			"ssh_authentication_type": schema.StringAttribute{
 				Description: "SSH authentication type.",
