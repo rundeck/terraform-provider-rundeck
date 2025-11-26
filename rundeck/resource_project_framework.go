@@ -38,36 +38,8 @@ var projectConfigAttributes = map[string]string{
 	"project.ssh-keypath-file":              "ssh_key_file_path",
 }
 
-// sshPluginAliases maps legacy SSH plugin names to their current equivalents
-// Rundeck accepts legacy names but normalizes them server-side, causing plan drift
-var sshPluginAliases = map[string]string{
-	"jsch-ssh": "sshj-ssh",
-	"jsch-scp": "sshj-scp",
-}
-
-// resourceSourceTypeAliases maps legacy resource source types to their current equivalents
-var resourceSourceTypeAliases = map[string]string{
-	"file": "local",
-}
-
 func NewProjectResource() resource.Resource {
 	return &projectResource{}
-}
-
-// normalizePluginName returns the normalized plugin name if it's an alias, otherwise returns the original
-func normalizePluginName(pluginName string) string {
-	if normalized, ok := sshPluginAliases[pluginName]; ok {
-		return normalized
-	}
-	return pluginName
-}
-
-// normalizeResourceSourceType returns the normalized resource source type if it's an alias, otherwise returns the original
-func normalizeResourceSourceType(sourceType string) string {
-	if normalized, ok := resourceSourceTypeAliases[sourceType]; ok {
-		return normalized
-	}
-	return sourceType
 }
 
 type projectResource struct {
@@ -139,13 +111,13 @@ func (r *projectResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Description: "Default node file copier plugin.",
 				Optional:    true,
 				Computed:    true,
-				Default:     stringdefault.StaticString("sshj-scp"),
+				Default:     stringdefault.StaticString("jsch-scp"),
 			},
 			"default_node_executor_plugin": schema.StringAttribute{
 				Description: "Default node executor plugin.",
 				Optional:    true,
 				Computed:    true,
-				Default:     stringdefault.StaticString("sshj-ssh"),
+				Default:     stringdefault.StaticString("jsch-ssh"),
 			},
 			"ssh_authentication_type": schema.StringAttribute{
 				Description: "SSH authentication type.",
@@ -335,12 +307,10 @@ func (r *projectResource) updateProjectConfig(ctx context.Context, apiCtx contex
 		updateMap["project.description"] = plan.Description.ValueString()
 	}
 	if !plan.DefaultNodeFileCopierPlugin.IsNull() {
-		// Normalize legacy plugin names (e.g., jsch-scp -> sshj-scp)
-		updateMap["service.FileCopier.default.provider"] = normalizePluginName(plan.DefaultNodeFileCopierPlugin.ValueString())
+		updateMap["service.FileCopier.default.provider"] = plan.DefaultNodeFileCopierPlugin.ValueString()
 	}
 	if !plan.DefaultNodeExecutorPlugin.IsNull() {
-		// Normalize legacy plugin names (e.g., jsch-ssh -> sshj-ssh)
-		updateMap["service.NodeExecutor.default.provider"] = normalizePluginName(plan.DefaultNodeExecutorPlugin.ValueString())
+		updateMap["service.NodeExecutor.default.provider"] = plan.DefaultNodeExecutorPlugin.ValueString()
 	}
 	if !plan.SSHAuthenticationType.IsNull() {
 		updateMap["project.ssh-authentication"] = plan.SSHAuthenticationType.ValueString()
@@ -361,8 +331,6 @@ func (r *projectResource) updateProjectConfig(ctx context.Context, apiCtx contex
 
 	for i, rms := range resourceModelSources {
 		pluginType := rms.Type.ValueString()
-		// Normalize legacy resource source types (e.g., file -> local)
-		pluginType = normalizeResourceSourceType(pluginType)
 		attrKeyPrefix := fmt.Sprintf("resources.source.%v.", i+1)
 		typeKey := attrKeyPrefix + "type"
 		configKeyPrefix := fmt.Sprintf("%vconfig.", attrKeyPrefix)
