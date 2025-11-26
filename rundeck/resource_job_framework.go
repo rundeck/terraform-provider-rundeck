@@ -132,38 +132,6 @@ type jobNodeFilters struct {
 	Dispatch      *jobDispatch `json:"dispatch,omitempty"`
 }
 
-type jobSchedule struct {
-	Time       *jobScheduleTime       `json:"time,omitempty"`
-	Month      *jobScheduleMonth      `json:"month,omitempty"`
-	Year       *jobScheduleYear       `json:"year,omitempty"`
-	Weekday    *jobScheduleWeekday    `json:"weekday,omitempty"`
-	DayOfMonth *jobScheduleDayOfMonth `json:"dayofmonth,omitempty"`
-	Crontab    string                 `json:"crontab,omitempty"`
-}
-
-type jobScheduleTime struct {
-	Hour    string `json:"hour,omitempty"`
-	Minute  string `json:"minute,omitempty"`
-	Seconds string `json:"seconds,omitempty"`
-}
-
-type jobScheduleMonth struct {
-	Month string `json:"month,omitempty"`
-	Day   string `json:"day,omitempty"`
-}
-
-type jobScheduleYear struct {
-	Year string `json:"year,omitempty"`
-}
-
-type jobScheduleWeekday struct {
-	Day string `json:"day,omitempty"`
-}
-
-type jobScheduleDayOfMonth struct {
-	Day string `json:"day,omitempty"`
-}
-
 type jobRunnerSelector struct {
 	Filter     string `json:"filter,omitempty"`
 	FilterMode string `json:"filterMode,omitempty"`

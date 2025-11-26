@@ -35,6 +35,49 @@ func TestAccAclPolicy_basic(t *testing.T) {
 	})
 }
 
+func TestAccAclPolicy_update(t *testing.T) {
+	var aclPolicy string
+
+	initialConfig := fmt.Sprintf(testAccAclPolicyConfig_basic, aclPolicyInitial)
+	updatedConfig := fmt.Sprintf(testAccAclPolicyConfig_basic, aclPolicyUpdated)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		CheckDestroy:             testAccAclPolicyCheckDestroy("TerraformBasicAcl.aclpolicy"),
+		Steps: []resource.TestStep{
+			{
+				Config: initialConfig,
+				Check: resource.ComposeTestCheckFunc(
+					testAccAclPolicyCheckExists("rundeck_acl_policy.test", &aclPolicy),
+					resource.TestCheckResourceAttr("rundeck_acl_policy.test", "id", "TerraformBasicAcl.aclpolicy"),
+					resource.TestCheckResourceAttr("rundeck_acl_policy.test", "name", "TerraformBasicAcl.aclpolicy"),
+					func(s *terraform.State) error {
+						if expected := aclPolicyInitial; aclPolicy != expected {
+							return fmt.Errorf("initial acl policy does not match; expected (%v), got (%v)", expected, aclPolicy)
+						}
+						return nil
+					},
+				),
+			},
+			{
+				Config: updatedConfig,
+				Check: resource.ComposeTestCheckFunc(
+					testAccAclPolicyCheckExists("rundeck_acl_policy.test", &aclPolicy),
+					resource.TestCheckResourceAttr("rundeck_acl_policy.test", "id", "TerraformBasicAcl.aclpolicy"),
+					resource.TestCheckResourceAttr("rundeck_acl_policy.test", "name", "TerraformBasicAcl.aclpolicy"),
+					func(s *terraform.State) error {
+						if expected := aclPolicyUpdated; aclPolicy != expected {
+							return fmt.Errorf("updated acl policy does not match; expected (%v), got (%v)", expected, aclPolicy)
+						}
+						return nil
+					},
+				),
+			},
+		},
+	})
+}
+
 func testAccAclPolicyCheckDestroy(policyName string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		// Create client from environment variables for test verification
@@ -106,6 +149,28 @@ for:
     - allow: [read,run] # allow read/run for nodes
 by:
   group: foo`
+
+const aclPolicyInitial = `description: Initial ACL policy for testing updates.
+context:
+  application: rundeck
+for:
+  resource:
+    - equals:
+        kind: system
+      allow: [read]
+by:
+  group: test-group`
+
+const aclPolicyUpdated = `description: Updated ACL policy with additional permissions.
+context:
+  application: rundeck
+for:
+  resource:
+    - equals:
+        kind: system
+      allow: [read, view_cluster]
+by:
+  group: test-group`
 
 const testAccAclPolicyConfig_basic = `
 resource "rundeck_acl_policy" "test" {

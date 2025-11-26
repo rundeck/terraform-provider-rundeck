@@ -51,6 +51,9 @@ func (r *aclPolicyResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 			"id": schema.StringAttribute{
 				Description: "The ID of the ACL policy (same as name).",
 				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"name": schema.StringAttribute{
 				Description: "Unique name for the ACL policy.",
@@ -193,6 +196,9 @@ func (r *aclPolicyResource) Update(ctx context.Context, req resource.UpdateReque
 		)
 		return
 	}
+
+	// Ensure ID is set (same as name)
+	plan.ID = types.StringValue(name)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)

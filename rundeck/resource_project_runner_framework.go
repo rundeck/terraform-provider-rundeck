@@ -61,6 +61,9 @@ func (r *projectRunnerResource) Schema(_ context.Context, _ resource.SchemaReque
 			"id": schema.StringAttribute{
 				Description: "The ID of the runner.",
 				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"project_name": schema.StringAttribute{
 				Description: "Name of the project where the runner will be created.",

@@ -47,6 +47,9 @@ func (r *passwordResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			"id": schema.StringAttribute{
 				Description: "The ID of the password (same as path).",
 				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"path": schema.StringAttribute{
 				Description: "Path to the key within the key store.",
@@ -175,6 +178,9 @@ func (r *passwordResource) Update(ctx context.Context, req resource.UpdateReques
 		)
 		return
 	}
+
+	// Ensure ID is set (same as path)
+	plan.ID = types.StringValue(path)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
