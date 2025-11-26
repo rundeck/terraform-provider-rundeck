@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"slices"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -1242,7 +1243,7 @@ func testAccJobCheckScheduleExists(expectedScheduleCount int, expectedScheduleNa
 		}
 
 		// Check if schedules field exists (project schedules are at job root level, not inside schedule)
-		if job.Schedules == nil || len(job.Schedules) == 0 {
+		if len(job.Schedules) == 0 {
 			return fmt.Errorf("job schedules array is nil or empty - project schedules not applied in Rundeck")
 		}
 
@@ -1263,14 +1264,7 @@ func testAccJobCheckScheduleExists(expectedScheduleCount int, expectedScheduleNa
 			}
 
 			for _, expectedName := range expectedScheduleNames {
-				found := false
-				for _, foundName := range foundNames {
-					if foundName == expectedName {
-						found = true
-						break
-					}
-				}
-				if !found {
+				if !slices.Contains(foundNames, expectedName) {
 					return fmt.Errorf("expected schedule '%s' not found in Rundeck. Found schedules: %v", expectedName, foundNames)
 				}
 			}
