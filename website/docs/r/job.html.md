@@ -8,11 +8,17 @@ description: |-
 
 # rundeck\_job
 
-The job resource allows Rundeck jobs to be managed by Terraform. In Rundeck a job is a particular
-named set of steps that can be executed against one or more of the nodes configured for its
-associated project.
+Define your runbook automation workflows as code. Jobs represent executable automation tasks with defined steps, scheduling, notifications, and node targeting. By managing jobs through Terraform, you can version control your runbooks, peer review changes, and deploy consistent automation across environments.
 
-Each job belongs to a project. A project can be created with the `rundeck_project` resource.
+**Key capabilities:** Multi-step workflows, parallel execution, retry logic, webhooks, log filtering, project schedules (Enterprise), and execution lifecycle plugins.
+
+## Upgrading to v1.0.0
+
+**If upgrading from a pre-1.0.0 version, please review the [Upgrade Guide](../guides/upgrading.html#upgrading-to-v1-0-0).** Key changes affecting jobs:
+
+1. **Notifications must be alphabetically ordered** by type (see note in notification section below)
+2. **Execution lifecycle plugins** may need to be re-applied (they were silently ignored in previous versions)
+3. **All command types now work correctly** (script interpreter, plugins, job references, error handlers)
 
 ## Example Usage
 
@@ -34,6 +40,56 @@ Each job belongs to a project. A project can be created with the `rundeck_projec
       }
   }
 ```
+
+## Example Usage (Job References - UUID vs Name)
+
+Jobs can reference other jobs in command steps. UUID-based references are immutable and recommended for production:
+
+```hcl
+# Define a reusable job
+resource "rundeck_job" "cleanup" {
+  name         = "cleanup-temp-files"
+  project_name = rundeck_project.main.name
+  description  = "Clean up temporary files"
+  
+  command {
+    shell_command = "find /tmp -type f -mtime +7 -delete"
+  }
+}
+
+# Reference by UUID (recommended - immutable)
+resource "rundeck_job" "deploy_with_cleanup" {
+  name         = "deploy-application"
+  project_name = rundeck_project.main.name
+  description  = "Deploy app and cleanup"
+  
+  command {
+    shell_command = "./deploy.sh"
+  }
+  
+  command {
+    job {
+      uuid = rundeck_job.cleanup.id  # References by UUID - won't break if cleanup job renamed
+    }
+    description = "Run cleanup after deployment"
+  }
+}
+
+# Reference by name (alternative - readable but fragile)
+resource "rundeck_job" "alternative_deploy" {
+  name         = "alternative-deploy"
+  project_name = rundeck_project.main.name
+  
+  command {
+    job {
+      name         = "cleanup-temp-files"
+      project_name = rundeck_project.main.name
+    }
+  }
+}
+```
+
+**UUID vs Name:** UUID references are immutable and survive job renames, making them more reliable for production. Name-based references are more readable and work across different Rundeck instances (dev/staging/prod).
 
 ## Example Usage (Key-Value Data Log filter to pass data between jobs)
 
@@ -60,8 +116,8 @@ Each job belongs to a project. A project can be created with the `rundeck_projec
       }
     command {
       job {
+        uuid              = rundeck_job.git_pull.id  # uuid reference recommended
         args              = "-environment_numbers $${data.environment_numbers}"
-        name              = "git_pull_review_environments"
       }
     }
     option {
@@ -271,7 +327,9 @@ The following arguments are supported:
 
 * `require_predefined_choice`: (Optional) Boolean controlling whether the user is allowed to
   enter values not included in the predefined set of choices (`false`, the default) or whether
-  a predefined choice is required (`true`).
+  a predefined choice is required (`true`). In v1.0.0+, when `value_choices` is set but the API
+  doesn't explicitly return this field, the provider automatically infers `true`. Explicitly setting
+  this value is recommended for clarity.
 
 * `validation_regex`: (Optional) A regular expression that a provided value must match in order
   to be accepted.
@@ -349,11 +407,17 @@ A command's `script_interpreter` block has the following structure:
 
 A command's `job` block has the following structure:
 
-* `name`: (Required) The name of the job to execute. If no specific `project_name` was given the target job should be in the same project as the current job.
+**Job Identification (either uuid or name must be specified):**
 
-* `group_name`: (Optional) The name of the group that the target job belongs to, if any.
+* `uuid`: (Optional) The UUID of the job to execute. **Recommended** for production use as UUIDs are immutable and will not break if the referenced job is renamed. You can reference another `rundeck_job` resource's `id` attribute (e.g., `uuid = rundeck_job.target.id`).
 
-* `project_name` - (Optional) The name of another project that holds the target job.
+* `name`: (Optional) The name of the job to execute. If no specific `project_name` was given the target job should be in the same project as the current job. Note that name-based references can break if the target job is renamed.
+
+* `group_name`: (Optional) The name of the group that the target job belongs to, if any. Used with name-based references.
+
+* `project_name` - (Optional) The name of another project that holds the target job. Used with name-based references.
+
+**Job Execution Options:**
 
 * `run_for_each_node`: (Optional) Boolean controlling whether the job is run only once (`false`,
   the default) or whether it is run once for each node (`true`).
@@ -392,9 +456,22 @@ A command's `log_filter_plugin`, `step_plugin`  or `node_step_plugin` block both
 
 `notification` blocks have the following structure:
 
-* `type`: (Required) The name of the type of notification. Can be of type `on_success`, `on_failure`, `on_start`.
+* `type`: (Required) The name of the type of notification. Can be of type `on_success`, `on_failure`, `on_start`, `on_retryable_failure`, `on_avg_duration`.
 
-* `email`: (Optional) block listed below to send emails as notificiation.
+**REQUIRED: Notification Ordering** - When defining multiple notifications, you **must** arrange them alphabetically by type (i.e., `on_failure`, `on_retryable_failure`, `on_start`, `on_success`) in your Terraform configuration. Rundeck's API returns notifications as an object (not an array), so alphabetical ordering ensures deterministic behavior and prevents plan drift.
+
+```hcl
+# Correct - alphabetical order
+notification { type = "on_failure" ... }
+notification { type = "on_start" ... }
+notification { type = "on_success" ... }
+
+# Wrong - will cause plan drift
+notification { type = "on_success" ... }
+notification { type = "on_failure" ... }
+```
+
+* `email`: (Optional) block listed below to send emails as notification.
 
 * `webhook_urls`: (Optional) A list of urls to send a webhook notification.
 
@@ -419,6 +496,10 @@ A notification's `plugin` block has the following structure:
 * `config` - (Required) Map of arbitrary configuration properties for the selected plugin.
 
 `execution_lifecycle_plugin` blocks have the following structure:
+
+**IMPORTANT for v1.0.0 Upgrade:** If you have jobs with execution lifecycle plugins defined in previous provider versions, those plugins **were not applied correctly** due to an API format bug. After upgrading to v1.0.0:
+1. Run `terraform plan` - you may see drift for these plugins
+2. Run `terraform apply` to properly configure them in Rundeck for the first time
 
 **Note:** Execution Lifecycle Plugins require that the corresponding plugin is installed and available in your Rundeck instance. If the plugin type specified does not exist, Rundeck will return a validation error. These plugins control job execution behavior across different lifecycle phases (e.g., before execution, after execution).
 

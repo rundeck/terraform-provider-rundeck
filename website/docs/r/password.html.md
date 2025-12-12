@@ -8,9 +8,7 @@ description: |-
 
 # rundeck\_password
 
-The password resource allows passwords to be stored into Rundeck's key store.
-The key store is where Rundeck keeps credentials that are needed to access the nodes on which
-it runs commands.
+Securely store passwords for authentication. Passwords in Rundeck's key store enable jobs to authenticate to systems without hardcoding credentials. Password values are hashed in Terraform state, protecting sensitive data while maintaining infrastructure as code practices.
 
 ## Example Usage
 

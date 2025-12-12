@@ -1,0 +1,268 @@
+#!/bin/bash
+set -e
+
+# Cleanup function
+cleanup() {
+    echo "=========================================="
+    echo "Cleaning Up Test Resources"
+    echo "=========================================="
+    
+    # Set up environment if not already set
+    if [ -z "$TF_VAR_rundeck_url" ]; then
+        export TF_VAR_rundeck_url="${RUNDECK_URL:-http://localhost:4440}"
+    fi
+    if [ -z "$TF_VAR_rundeck_token" ]; then
+        export TF_VAR_rundeck_token="$RUNDECK_TOKEN"
+    fi
+    
+    # Set dev overrides if .terraformrc exists
+    if [ -f ".terraformrc" ]; then
+        export TF_CLI_CONFIG_FILE="$PWD/.terraformrc"
+    fi
+    
+    echo "Destroying Terraform resources..."
+    terraform destroy -auto-approve || {
+        echo "⚠️  Terraform destroy failed, trying API cleanup..."
+        if [ -n "$RUNDECK_TOKEN" ] && [ -n "$TF_VAR_rundeck_url" ]; then
+            curl -X DELETE \
+                -H "X-Rundeck-Auth-Token: ${RUNDECK_TOKEN}" \
+                "${TF_VAR_rundeck_url}/api/56/project/comprehensive-test" 2>/dev/null || true
+            echo "   ✓ Deleted project via API"
+        fi
+    }
+    
+    echo "Removing local artifacts..."
+    rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
+    rm -f terraform-provider-rundeck .terraformrc
+    echo "   ✓ Cleanup complete"
+    echo
+}
+
+# Check if running cleanup only
+if [ "$1" = "destroy" ] || [ "$1" = "cleanup" ]; then
+    if [ -z "$RUNDECK_TOKEN" ]; then
+        echo "ERROR: RUNDECK_TOKEN environment variable must be set"
+        exit 1
+    fi
+    RUNDECK_URL="${RUNDECK_URL:-http://localhost:4440}"
+    cleanup
+    exit 0
+fi
+
+# Check for required environment variables
+if [ -z "$RUNDECK_TOKEN" ]; then
+    echo "ERROR: RUNDECK_TOKEN environment variable must be set"
+    echo "Usage: RUNDECK_TOKEN=your-token ./comprehensive.sh"
+    echo "   or: RUNDECK_TOKEN=your-token ./comprehensive.sh --destroy-after"
+    echo "   or: RUNDECK_TOKEN=your-token ./comprehensive.sh destroy  # cleanup only"
+    exit 1
+fi
+
+RUNDECK_URL="${RUNDECK_URL:-http://localhost:4440}"
+DESTROY_AFTER=false
+
+# Check for --destroy-after flag
+if [ "$1" = "--destroy-after" ] || [ "$1" = "-d" ]; then
+    DESTROY_AFTER=true
+fi
+
+echo "=========================================="
+echo "Comprehensive Enterprise Test"
+echo "=========================================="
+echo "Rundeck URL: $RUNDECK_URL"
+echo
+
+# Clean up any previous test state
+echo "1. Cleaning up previous test state..."
+rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
+rm -f terraform-provider-rundeck .terraformrc
+echo "   ✓ Clean"
+echo
+
+# Build the provider and place binary in this test directory
+echo "2. Building provider..."
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+echo "   Building from: $REPO_ROOT"
+cd "$REPO_ROOT"
+go clean -cache
+go build -o "$PWD/test/enterprise/terraform-provider-rundeck"
+cd - > /dev/null  # Return to test directory
+echo "   ✓ Provider built: ./terraform-provider-rundeck"
+echo
+
+# Create dev overrides config (using current directory for portability)
+echo "3. Setting up dev overrides..."
+TEST_DIR="$PWD"
+cat > .terraformrc <<EOF
+provider_installation {
+  dev_overrides {
+    "rundeck/rundeck" = "$TEST_DIR"
+  }
+  direct {}
+}
+EOF
+export TF_CLI_CONFIG_FILE="$PWD/.terraformrc"
+echo "   ✓ Dev overrides configured (pointing to current directory)"
+echo
+
+# Export Terraform variables
+export TF_VAR_rundeck_url="$RUNDECK_URL"
+export TF_VAR_rundeck_token="$RUNDECK_TOKEN"
+
+# Check for project schedule test prerequisites (Enterprise feature)
+echo "4. Checking for Project Schedule test prerequisites..."
+export TF_VAR_test_project_schedules=false
+
+# Check if terraform-schedules-test project exists
+PROJECT_CHECK=$(curl -s -H "X-Rundeck-Auth-Token: ${RUNDECK_TOKEN}" \
+    "${RUNDECK_URL}/api/56/project/terraform-schedules-test" 2>/dev/null || echo "")
+
+if echo "$PROJECT_CHECK" | grep -q '"name":"terraform-schedules-test"'; then
+    echo "   ✓ Found project: terraform-schedules-test"
+    
+    # Check for required schedules
+    REQUIRED_SCHEDULES=("my-schedule" "schedule-1" "schedule-2" "simple-schedule")
+    MISSING_SCHEDULES=()
+    
+    for schedule in "${REQUIRED_SCHEDULES[@]}"; do
+        # Note: Rundeck API doesn't expose project schedules via API, so we'll attempt
+        # to enable the tests and let Terraform validate if schedules exist
+        :
+    done
+    
+    echo "   ✓ Project exists - enabling project schedule tests"
+    echo "   ℹ️  Note: Ensure these schedules exist in the project:"
+    echo "      - my-schedule"
+    echo "      - schedule-1"
+    echo "      - schedule-2"
+    echo "      - simple-schedule"
+    echo "   ℹ️  If schedules are missing, those tests will fail"
+    export TF_VAR_test_project_schedules=true
+else
+    echo "   ℹ️  Project 'terraform-schedules-test' not found - skipping project schedule tests"
+    echo
+    echo "   To enable project schedule tests:"
+    echo "   1. Create project 'terraform-schedules-test' in Rundeck UI"
+    echo "   2. Go to: Project Settings > Edit Configuration > Other > Schedules"
+    echo "   3. Add schedules: my-schedule, schedule-1, schedule-2, simple-schedule"
+    echo "   4. Re-run this test"
+fi
+echo
+
+# Show the plan
+echo "5. Showing Terraform plan..."
+echo "=========================================="
+terraform plan
+echo "=========================================="
+echo
+
+# Apply the configuration
+echo "6. Applying Terraform configuration..."
+echo "=========================================="
+terraform apply -auto-approve
+echo "=========================================="
+echo
+
+# Show the outputs
+echo
+echo "7. Test Summary:"
+echo "=========================================="
+terraform output -raw test_summary
+echo "=========================================="
+echo
+
+# Fetch one of the jobs to verify structure
+echo "8. Verifying nodefilters structure in created job..."
+JOB_ID=$(terraform output -json job_ids | jq -r '.node_dispatch')
+echo "   Job ID: $JOB_ID"
+echo
+curl -s -H "X-Rundeck-Auth-Token: ${RUNDECK_TOKEN}" \
+     -H "Accept: application/json" \
+     "${RUNDECK_URL}/api/56/job/$JOB_ID?format=json" | \
+     jq '.[0] | {name, nodefilters}' | tee /tmp/enterprise_nodefilters_check.json
+echo
+
+if cat /tmp/enterprise_nodefilters_check.json | jq -e '.nodefilters.dispatch' > /dev/null 2>&1; then
+    echo "   ✅ VERIFIED: dispatch is nested inside nodefilters"
+else
+    echo "   ⚠️  WARNING: dispatch structure may be incorrect"
+fi
+echo
+
+# Verify lifecycle plugins
+echo "9. Verifying execution lifecycle plugins structure..."
+PLUGIN_JOB_ID=$(terraform output -json job_ids | jq -r '.lifecycle_plugins')
+echo "   Job ID: $PLUGIN_JOB_ID"
+echo
+curl -s -H "X-Rundeck-Auth-Token: ${RUNDECK_TOKEN}" \
+     -H "Accept: application/json" \
+     "${RUNDECK_URL}/api/56/job/$PLUGIN_JOB_ID?format=json" | \
+     jq '.[0].plugins.ExecutionLifecycle' | tee /tmp/enterprise_plugins_check.json
+echo
+
+PLUGIN_COUNT=$(cat /tmp/enterprise_plugins_check.json | jq 'length')
+echo "   Plugin count: $PLUGIN_COUNT"
+if [ "$PLUGIN_COUNT" -eq 4 ]; then
+    echo "   ✅ VERIFIED: All 4 execution lifecycle plugins present"
+else
+    echo "   ⚠️  WARNING: Expected 4 plugins, found $PLUGIN_COUNT"
+fi
+echo
+
+# Verify project schedule tests if they were enabled
+if [ "$TF_VAR_test_project_schedules" = "true" ]; then
+    echo "10. Verifying project schedule tests..."
+    
+    PS_SINGLE_ID=$(terraform output -json job_ids | jq -r '.project_schedule_single // empty')
+    if [ -n "$PS_SINGLE_ID" ]; then
+        echo "   ✓ Single schedule job created: $PS_SINGLE_ID"
+        
+        # Verify the job has schedules configured
+        SCHEDULES=$(curl -s -H "X-Rundeck-Auth-Token: ${RUNDECK_TOKEN}" \
+            -H "Accept: application/json" \
+            "${RUNDECK_URL}/api/56/job/$PS_SINGLE_ID?format=json" | \
+            jq '.[0].schedules // [] | length')
+        
+        if [ "$SCHEDULES" -gt 0 ]; then
+            echo "   ✅ VERIFIED: Project schedule job has $SCHEDULES schedule(s) configured"
+        else
+            echo "   ⚠️  WARNING: Job created but no schedules found (may need manual verification)"
+        fi
+    else
+        echo "   ⚠️  Project schedule tests were enabled but jobs not created"
+    fi
+    echo
+fi
+
+echo "=========================================="
+echo "Comprehensive Test Complete!"
+echo "=========================================="
+echo
+
+# If --destroy-after flag was set, cleanup now
+if [ "$DESTROY_AFTER" = true ]; then
+    echo "Running automatic cleanup (--destroy-after flag set)..."
+    echo
+    cleanup
+    echo "✅ Test complete and cleaned up!"
+    exit 0
+fi
+
+echo "Next Steps:"
+echo "1. Open Rundeck UI: ${RUNDECK_URL}/project/comprehensive-test"
+echo "2. Review each job to verify settings"
+echo "3. Run a few jobs to test execution"
+echo "4. Test import functionality if desired"
+echo
+echo "To test import:"
+echo "  JOB_ID=\$(terraform output -json job_ids | jq -r '.import_test')"
+echo "  terraform state rm rundeck_job.import_test"
+echo "  terraform import rundeck_job.import_test \$JOB_ID"
+echo "  terraform plan  # Should show no drift"
+echo
+echo "Cleanup:"
+echo "  ./comprehensive.sh destroy"
+echo "  # or manually:"
+echo "  terraform destroy -auto-approve"
+echo "  rm -f terraform-provider-rundeck .terraformrc"
+

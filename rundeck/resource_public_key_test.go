@@ -8,17 +8,17 @@ import (
 
 	"github.com/rundeck/go-rundeck/rundeck"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 func TestAccPublicKey_basic(t *testing.T) {
 	var key rundeck.StorageKeyListResponse
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccPublicKeyCheckDestroy(&key),
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		CheckDestroy:             testAccPublicKeyCheckDestroy(&key),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccPublicKeyConfig_basic,
@@ -49,7 +49,12 @@ func TestAccPublicKey_basic(t *testing.T) {
 
 func testAccPublicKeyCheckDestroy(key *rundeck.StorageKeyListResponse) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		clients := testAccProvider.Meta().(*RundeckClients)
+		// Create client from environment variables for test verification
+		clients, err := getTestClients()
+		if err != nil {
+			return fmt.Errorf("failed to create test client: %s", err)
+		}
+
 		client := clients.V1
 		ctx := context.Background()
 
@@ -77,7 +82,12 @@ func testAccPublicKeyCheckExists(rn string, key *rundeck.StorageKeyListResponse)
 			return fmt.Errorf("key id not set")
 		}
 
-		clients := testAccProvider.Meta().(*RundeckClients)
+		// Create client from environment variables for test verification
+		clients, err := getTestClients()
+		if err != nil {
+			return fmt.Errorf("failed to create test client: %s", err)
+		}
+
 		client := clients.V1
 		ctx := context.Background()
 		gotKey, err := client.StorageKeyGetMetadata(ctx, rs.Primary.ID)

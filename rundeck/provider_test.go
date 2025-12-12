@@ -1,11 +1,18 @@
 package rundeck
 
 import (
+	"context"
+	"fmt"
+	"net/url"
 	"os"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-framework/providerserver"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
+
+	"github.com/rundeck/go-rundeck/rundeck"
+	openapi "github.com/rundeck/go-rundeck/rundeck-v2"
+	"github.com/rundeck/go-rundeck/rundeck/auth"
 )
 
 // To run these acceptance tests, you will need a Rundeck server.
@@ -68,24 +75,13 @@ by:
 // token at http://192.168.50.2:4440/user/profile once you've logged in, and RUNDECK_URL will
 // be http://192.168.50.2:4440/ .
 
-var testAccProviders map[string]terraform.ResourceProvider
-var testAccProvider *schema.Provider
-
-func init() {
-	testAccProvider = Provider().(*schema.Provider)
-	testAccProviders = map[string]terraform.ResourceProvider{
-		"rundeck": testAccProvider,
+func testAccProtoV5ProviderFactories() map[string]func() (tfprotov5.ProviderServer, error) {
+	return map[string]func() (tfprotov5.ProviderServer, error){
+		"rundeck": func() (tfprotov5.ProviderServer, error) {
+			// Use Framework provider directly (SDKv2 removed)
+			return providerserver.NewProtocol5(NewFrameworkProvider("test")())(), nil
+		},
 	}
-}
-
-func TestProvider(t *testing.T) {
-	if err := Provider().(*schema.Provider).InternalValidate(); err != nil {
-		t.Fatalf("err: %s", err)
-	}
-}
-
-func TestProvider_impl(t *testing.T) {
-	var _ terraform.ResourceProvider = Provider()
 }
 
 func testAccPreCheck(t *testing.T) {
@@ -102,5 +98,55 @@ func testAccPreCheck(t *testing.T) {
 		t.Logf("RUNDECK_AUTH_PASSWORD=%s", password)
 		t.Fatal("RUNDECK_AUTH_TOKEN must be set for acceptance tests or RUNDECK_AUTH_USERNAME and RUNDECK_AUTH_PASSWORD")
 	}
+}
 
+// getTestClients creates Rundeck clients from environment variables for test verification
+func getTestClients() (*RundeckClients, error) {
+	urlP := os.Getenv("RUNDECK_URL")
+	if urlP == "" {
+		return nil, fmt.Errorf("RUNDECK_URL must be set")
+	}
+
+	apiVersion := os.Getenv("RUNDECK_API_VERSION")
+	if apiVersion == "" {
+		apiVersion = "56" // Default to v56 (Rundeck 5.17.0+) for full feature support including runners
+	}
+
+	token := os.Getenv("RUNDECK_AUTH_TOKEN")
+	if token == "" {
+		return nil, fmt.Errorf("RUNDECK_AUTH_TOKEN must be set")
+	}
+
+	apiURLString := fmt.Sprintf("%s/api/%s", urlP, apiVersion)
+	apiURL, err := url.Parse(apiURLString)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create the V1 client
+	clientV1 := rundeck.NewRundeckWithBaseURI(apiURL.String())
+	clientV1.Authorizer = &auth.TokenAuthorizer{Token: token}
+
+	// Create the V2 client
+	cfg := openapi.NewConfiguration()
+	cfg.Host = apiURL.Host
+	cfg.Scheme = apiURL.Scheme
+
+	clientV2 := openapi.NewAPIClient(cfg)
+
+	// Create a context with the API token
+	ctx := context.WithValue(context.Background(), openapi.ContextAPIKeys, map[string]openapi.APIKey{
+		"rundeckApiToken": {
+			Key: token,
+		},
+	})
+
+	return &RundeckClients{
+		V1:         &clientV1,
+		V2:         clientV2,
+		Token:      token,
+		BaseURL:    urlP,
+		APIVersion: apiVersion,
+		ctx:        ctx,
+	}, nil
 }

@@ -1,0 +1,14 @@
+# Cursor AI Rules for terraform-provider-rundeck
+
+Please read and follow all instructions from `.github/copilot-instructions.md`.
+
+That file contains comprehensive guidelines for:
+- Architecture and critical patterns
+- Testing requirements (including Enterprise feature flags)
+- Common pitfalls and field mapping issues
+- Code style requirements
+- Documentation standards
+- PR review checklist
+
+When working on this codebase, reference those instructions for detailed guidance.
+

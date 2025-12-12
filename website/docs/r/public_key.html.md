@@ -8,12 +8,7 @@ description: |-
 
 # rundeck\_public\_key
 
-The public key resource allows SSH public keys to be stored into Rundeck's key store.
-The key store is where Rundeck keeps credentials that are needed to access the nodes on which
-it runs commands.
-
-This resource also allows the retrieval of an existing public key from the store, so that it
-may be used in the configuration of other resources such as ``aws_key_pair``.
+Manage SSH public keys for node authentication. Store public keys in Rundeck's key store to enable secure node access. This resource can also retrieve existing keys for use in configuring infrastructure resources like cloud provider keypairs, creating seamless integration between Rundeck and your infrastructure.
 
 ## Example Usage
 

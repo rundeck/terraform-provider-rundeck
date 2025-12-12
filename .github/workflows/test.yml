@@ -71,9 +71,9 @@ jobs:
     
     - name: Start Rundeck
       run: |
-        cd test
+        cd test/oss
         docker compose up -d
-        cd ..
+        cd ../..
     
     - name: Wait for Rundeck to be ready
       run: |
@@ -95,6 +95,6 @@ jobs:
     - name: Stop Rundeck
       if: always()
       run: |
-        cd test
+        cd test/oss
         docker compose down -v
-        cd ..
+        cd ../..

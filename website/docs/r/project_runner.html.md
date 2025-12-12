@@ -10,9 +10,17 @@ description: |-
 
 The project runner resource allows project-specific Enterprise Runners to be managed by Terraform. Project runners are created within the context of a specific project and are typically used for project-scoped execution.
 
+**Requirements:** Requires Rundeck Enterprise 5.17.0+ (API v56). Configure the provider with `api_version = "56"` or higher.
+
 ## Example Usage
 
 ```hcl
+provider "rundeck" {
+  url         = "http://localhost:4440"
+  auth_token  = "your-token"
+  api_version = "56"  # Required for runner resources
+}
+
 # Create a project first
 resource "rundeck_project" "example" {
   name        = "example-project"
@@ -21,8 +29,8 @@ resource "rundeck_project" "example" {
   resource_model_source {
     type = "file"
     config = {
-      format = "resourcexml"
-      file   = "/tmp/example-resources.xml"
+      format = "resourceyaml"
+      file   = "/tmp/example-resources.yaml"
     }
   }
 }
@@ -64,7 +72,7 @@ The following arguments are supported:
 
 * `description` - (Required) The description of the runner.
 
-* `tag_names` - (Optional) Comma-separated tags for the runner.
+* `tag_names` - (Optional) Comma-separated tags for the runner. Rundeck normalizes tags to lowercase and sorts them alphabetically. The provider handles this automatically using semantic equality to prevent plan drift.
 
 * `assigned_projects` - (Optional) Map of assigned projects with their access levels.
 

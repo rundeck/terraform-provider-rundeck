@@ -8,31 +8,63 @@ description: |-
 
 # Rundeck Provider
 
-The Rundeck provider allows Terraform to create and configure Projects, Jobs, ACLs and Keys in [Rundeck](http://www.rundeck.com/). Rundeck is a tool for Runbook Automation and execution of arbitrary management tasks, allowing operators to avoid logging in to individual machines directly.
+Manage your Rundeck runbook automation infrastructure as code. The Rundeck provider enables teams to version control, peer review, and consistently deploy Rundeck projects, jobs, access controls, and credentials across environments using Terraform.
+
+## Key Benefits
+
+**Infrastructure as Code:** Define your entire Rundeck configuration in version-controlled Terraform files. Track changes, roll back mistakes, and maintain consistency across development, staging, and production.
+
+**Repeatable Deployments:** Eliminate manual configuration and human error. Deploy identical Rundeck environments programmatically, ensuring your runbook automation is consistent and reliable.
+
+**Team Collaboration:** Review Rundeck changes through pull requests before deployment. Your runbook automation becomes part of your standard infrastructure workflow.
+
+**Disaster Recovery:** Rebuild your complete Rundeck configuration from code in minutes, not hours. Your automation setup is documented, versioned, and instantly recoverable.
+
+## What You Can Manage
+
+- **Projects:** Create and configure Rundeck projects with resource models and settings
+- **Jobs:** Define job workflows, commands, schedules, and notifications
+- **ACL Policies:** Control access and permissions across your Rundeck instance
+- **Credentials:** Manage SSH keys and passwords in Rundeck's key storage
+- **Runners:** Configure Enterprise runners for distributed job execution (Enterprise only)
+
+## Requirements
+
+- Rundeck 5.0.0 or later (API v46+)
+- Rundeck Enterprise 5.17.0+ required for runner resources (API v56)
+
+## Upgrading
+
+**Upgrading to v1.0.0?** Version 1.0.0 includes important breaking changes and required configuration updates.
+
+**See the [Upgrade Guide](guides/upgrading.html)** for detailed migration steps, breaking changes, and testing instructions.
+
+## Configuration
 
 The provider configuration block accepts the following arguments:
 
-* ``url`` - (Required) The root URL of a Rundeck server. May alternatively be set via the
-  ``RUNDECK_URL`` environment variable.
+* `url` - (Optional) The root URL of a Rundeck server. May alternatively be set via the
+  `RUNDECK_URL` environment variable.
 
-* ``api_version`` - (Optional) The API version of the server. Defaults to `14`, the
-  minium supported version. May alternatively be set via the ``RUNDECK_API_VERSION``
-  environment variable.
+* `api_version` - (Optional) The API version of the server. Defaults to `46` (Rundeck 5.0.0+).
+  May alternatively be set via the `RUNDECK_API_VERSION` environment variable.
 
-* ``auth_token`` - The API auth token to use when making requests. May alternatively
-  be set via the ``RUNDECK_AUTH_TOKEN`` environment variable. (RECOMMENDED)
+### Authentication
 
-**OR**
+**Option 1: API Token (Recommended)**
 
-* ``auth_username`` - Local Login User Name.  
-* ``auth_password`` - Local Login Passwrod.
+* `auth_token` - API token for authentication. May alternatively be set via the 
+  `RUNDECK_AUTH_TOKEN` environment variable.
 
-> Note: Username and Password auth will not work with SSO configured systems.  It relies on local Rundeck accounts. Please be sensitive to keeping passwords in your plan files!
+**Option 2: Username and Password**
 
+* `auth_username` - Local Rundeck username. May alternatively be set via the
+  `RUNDECK_AUTH_USERNAME` environment variable.
+* `auth_password` - Local Rundeck password. May alternatively be set via the
+  `RUNDECK_AUTH_PASSWORD` environment variable.
 
-The following configuration is also required on versions 4.x and 5.x.
-`rundeck.feature.legacyXml.enabled=true`  This can be set in framework.properties or System Configuration GUI (5.x and higher)
-
+> **Note:** Username/password authentication only works with local Rundeck accounts, not SSO. 
+> API tokens are recommended for better security and to avoid storing passwords in plan files.
 
 Use the navigation to the left to read about the available resources.
 
@@ -42,20 +74,47 @@ A full Example Exercise is included on the [Rundeck Learning site](https://docs.
 
 For those familiar with Terraform and Rundeck use the contents below.
 
+### Using API Token (Recommended)
+
 ```hcl
 terraform {
   required_providers {
     rundeck = {
       source  = "rundeck/rundeck"
-      version = "0.4.9"
+      version = "~> 1.0"
     }
   }
 }
 
 provider "rundeck" {
   url         = "http://rundeck.example.com:4440/"
-  api_version = "38"
+  api_version = "46"
   auth_token  = "abcd1234"
+}
+```
+
+### Using Username and Password
+
+```hcl
+provider "rundeck" {
+  url           = "http://rundeck.example.com:4440/"
+  api_version   = "46"
+  auth_username = "admin"
+  auth_password = "admin"
+}
+```
+
+### Using Environment Variables
+
+```bash
+export RUNDECK_URL="http://rundeck.example.com:4440/"
+export RUNDECK_AUTH_TOKEN="abcd1234"
+# api_version defaults to 46 if not specified
+```
+
+```hcl
+provider "rundeck" {
+  # Configuration loaded from environment variables
 }
 
 resource "rundeck_project" "terraform" {
@@ -65,9 +124,9 @@ resource "rundeck_project" "terraform" {
   resource_model_source {
     type = "file"
     config = {
-      format = "resourcexml"
+      format = "resourceyaml"
       # This path is interpreted on the Rundeck server.
-      file = "/home/rundeck/resources.xml"
+      file = "/home/rundeck/resources.yaml"
       writable = "true"
       generateFileAutomatically = "true"
     }

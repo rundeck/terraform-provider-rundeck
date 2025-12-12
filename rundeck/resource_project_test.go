@@ -7,17 +7,17 @@ import (
 
 	"github.com/rundeck/go-rundeck/rundeck"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 func TestAccProject_basic(t *testing.T) {
 	var project rundeck.Project
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccProjectCheckDestroy(&project),
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		CheckDestroy:             testAccProjectCheckDestroy(&project),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccProjectConfig_basic,
@@ -45,7 +45,12 @@ func TestAccProject_basic(t *testing.T) {
 
 func testAccProjectCheckDestroy(project *rundeck.Project) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		clients := testAccProvider.Meta().(*RundeckClients)
+		// Create client from environment variables for test verification
+		clients, err := getTestClients()
+		if err != nil {
+			return fmt.Errorf("failed to create test client: %s", err)
+		}
+
 		client := clients.V1
 		ctx := context.Background()
 		resp, err := client.ProjectGet(ctx, *project.Name)
@@ -71,7 +76,12 @@ func testAccProjectCheckExists(rn string, project *rundeck.Project) resource.Tes
 			return fmt.Errorf("project id not set")
 		}
 
-		clients := testAccProvider.Meta().(*RundeckClients)
+		// Create client from environment variables for test verification
+		clients, err := getTestClients()
+		if err != nil {
+			return fmt.Errorf("failed to create test client: %s", err)
+		}
+
 		client := clients.V1
 		ctx := context.Background()
 		gotProject, err := client.ProjectGet(ctx, rs.Primary.ID)
@@ -93,8 +103,8 @@ resource "rundeck_project" "main" {
   resource_model_source {
     type = "file"
     config = {
-        format = "resourcexml"
-        file = "/tmp/terraform-acc-tests.xml"
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
     }
   }
 

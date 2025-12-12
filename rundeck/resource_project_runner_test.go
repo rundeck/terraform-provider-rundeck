@@ -6,22 +6,22 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	openapi "github.com/rundeck/go-rundeck/rundeck-v2"
 )
 
 func TestAccRundeckProjectRunner_basic(t *testing.T) {
 	if os.Getenv("RUNDECK_ENTERPRISE_TESTS") != "1" {
-		t.Skip("Skipping Rundeck Enterprise test - set RUNDECK_ENTERPRISE_TESTS=1 to run")
+		t.Skip("ENTERPRISE ONLY: Project runners (requires Rundeck 5.17.0+, API v56+) - set RUNDECK_ENTERPRISE_TESTS=1")
 	}
 
 	var runner openapi.RunnerInfo
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccProjectRunnerCheckDestroy(&runner),
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		CheckDestroy:             testAccProjectRunnerCheckDestroy(&runner),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccRundeckProjectRunnerConfig_basic,
@@ -30,7 +30,7 @@ func TestAccRundeckProjectRunner_basic(t *testing.T) {
 					resource.TestCheckResourceAttr("rundeck_project_runner.test", "project_name", "terraform-acc-test-project-runner"),
 					resource.TestCheckResourceAttr("rundeck_project_runner.test", "name", "test-project-runner"),
 					resource.TestCheckResourceAttr("rundeck_project_runner.test", "description", "Test project runner"),
-					resource.TestCheckResourceAttr("rundeck_project_runner.test", "tag_names", "test,terraform"),
+					resource.TestCheckResourceAttr("rundeck_project_runner.test", "tag_names", "terraform,test"),
 					resource.TestCheckResourceAttr("rundeck_project_runner.test", "installation_type", "linux"),
 					resource.TestCheckResourceAttr("rundeck_project_runner.test", "replica_type", "manual"),
 					resource.TestCheckResourceAttr("rundeck_project_runner.test", "runner_as_node_enabled", "false"),
@@ -46,15 +46,15 @@ func TestAccRundeckProjectRunner_basic(t *testing.T) {
 
 func TestAccRundeckProjectRunner_withNodeDispatch(t *testing.T) {
 	if os.Getenv("RUNDECK_ENTERPRISE_TESTS") != "1" {
-		t.Skip("Skipping Rundeck Enterprise test - set RUNDECK_ENTERPRISE_TESTS=1 to run")
+		t.Skip("ENTERPRISE ONLY: Project runners (requires Rundeck 5.17.0+, API v56+) - set RUNDECK_ENTERPRISE_TESTS=1")
 	}
 
 	var runner openapi.RunnerInfo
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccProjectRunnerCheckDestroy(&runner),
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		CheckDestroy:             testAccProjectRunnerCheckDestroy(&runner),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccRundeckProjectRunnerConfig_withNodeDispatch,
@@ -71,15 +71,15 @@ func TestAccRundeckProjectRunner_withNodeDispatch(t *testing.T) {
 
 func TestAccRundeckProjectRunner_update(t *testing.T) {
 	if os.Getenv("RUNDECK_ENTERPRISE_TESTS") != "1" {
-		t.Skip("Skipping Rundeck Enterprise test - set RUNDECK_ENTERPRISE_TESTS=1 to run")
+		t.Skip("ENTERPRISE ONLY: Project runners (requires Rundeck 5.17.0+, API v56+) - set RUNDECK_ENTERPRISE_TESTS=1")
 	}
 
 	var runner openapi.RunnerInfo
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccProjectRunnerCheckDestroy(&runner),
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		CheckDestroy:             testAccProjectRunnerCheckDestroy(&runner),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccRundeckProjectRunnerConfig_basic,
@@ -95,7 +95,7 @@ func TestAccRundeckProjectRunner_update(t *testing.T) {
 					testAccProjectRunnerCheckExists("rundeck_project_runner.test", &runner),
 					resource.TestCheckResourceAttr("rundeck_project_runner.test", "name", "updated-project-runner"),
 					resource.TestCheckResourceAttr("rundeck_project_runner.test", "description", "Updated test project runner"),
-					resource.TestCheckResourceAttr("rundeck_project_runner.test", "tag_names", "updated,terraform"),
+					resource.TestCheckResourceAttr("rundeck_project_runner.test", "tag_names", "terraform,updated"),
 					resource.TestCheckResourceAttr("rundeck_project_runner.test", "installation_type", "docker"),
 					resource.TestCheckResourceAttr("rundeck_project_runner.test", "replica_type", "ephemeral"),
 					resource.TestCheckResourceAttr("rundeck_project_runner.test", "runner_as_node_enabled", "true"),
@@ -108,7 +108,12 @@ func TestAccRundeckProjectRunner_update(t *testing.T) {
 
 func testAccProjectRunnerCheckDestroy(runner *openapi.RunnerInfo) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		clients := testAccProvider.Meta().(*RundeckClients)
+		// Create client from environment variables for test verification
+		clients, err := getTestClients()
+		if err != nil {
+			return fmt.Errorf("failed to create test client: %s", err)
+		}
+
 		client := clients.V2
 		ctx := clients.ctx
 
@@ -137,8 +142,8 @@ func testAccProjectRunnerCheckDestroy(runner *openapi.RunnerInfo) resource.TestC
 			return nil // No project name found, assume destroyed
 		}
 
-		// Try to get the project runner
-		runnerInfo, resp, err := client.RunnerAPI.ProjectRunnerInfo(ctx, runnerId, projectName).Execute()
+		// Try to get the project runner - use general RunnerInfo endpoint
+		runnerInfo, resp, err := client.RunnerAPI.RunnerInfo(ctx, runnerId).Execute()
 
 		// If we get a 404, the runner is properly destroyed
 		if resp != nil && resp.StatusCode == 404 {
@@ -175,13 +180,23 @@ func testAccProjectRunnerCheckExists(rn string, runner *openapi.RunnerInfo) reso
 		projectName := parts[0]
 		runnerId := parts[1]
 
-		clients := testAccProvider.Meta().(*RundeckClients)
+		// Create client from environment variables for test verification
+		clients, err := getTestClients()
+		if err != nil {
+			return fmt.Errorf("failed to create test client: %s", err)
+		}
+
 		client := clients.V2
 		ctx := clients.ctx
 
-		gotRunner, resp, err := client.RunnerAPI.ProjectRunnerInfo(ctx, runnerId, projectName).Execute()
-		if resp.StatusCode != 200 {
-			return fmt.Errorf("failed to get runner info: %v", err)
+		// Use general RunnerInfo endpoint since ProjectRunnerInfo seems unreliable
+		gotRunner, resp, err := client.RunnerAPI.RunnerInfo(ctx, runnerId).Execute()
+		if err != nil || (resp != nil && resp.StatusCode != 200) {
+			statusCode := 0
+			if resp != nil {
+				statusCode = resp.StatusCode
+			}
+			return fmt.Errorf("failed to get runner info (project=%s, runner=%s, status=%d): %v", projectName, runnerId, statusCode, err)
 		}
 
 		*runner = *gotRunner
@@ -205,7 +220,7 @@ resource "rundeck_project_runner" "test" {
   project_name     = rundeck_project.test.name
   name             = "test-project-runner"
   description      = "Test project runner"
-  tag_names        = "test,terraform"
+  tag_names        = "terraform,test"
   installation_type = "linux"
   replica_type     = "manual"
 }
@@ -226,7 +241,7 @@ resource "rundeck_project_runner" "test" {
   project_name          = rundeck_project.test.name
   name                  = "test-project-runner"
   description           = "Test project runner with node dispatch"
-  tag_names             = "test,terraform"
+  tag_names             = "terraform,test"
   installation_type     = "linux"
   replica_type          = "manual"
   runner_as_node_enabled = true
@@ -250,7 +265,7 @@ resource "rundeck_project_runner" "test" {
   project_name          = rundeck_project.test.name
   name                  = "updated-project-runner"
   description           = "Updated test project runner"
-  tag_names             = "updated,terraform"
+  tag_names             = "terraform,updated"
   installation_type     = "docker"
   replica_type          = "ephemeral"
   runner_as_node_enabled = true

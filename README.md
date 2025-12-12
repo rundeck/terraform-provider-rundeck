@@ -22,7 +22,8 @@ This provider is **community-supported**. While Rundeck/PagerDuty staff review a
 ## Requirements
 
 - [Terraform](https://www.terraform.io/downloads.html) >= 0.13.x
-- [Go](https://golang.org/doc/install) >= 1.19
+- [Go](https://golang.org/doc/install) >= 1.24
+- [Rundeck](https://www.rundeck.com/) >= 5.0.0 (API v46+)
 
 ## Building The Provider
 
@@ -61,9 +62,9 @@ $ make testacc
 For local development, you can use the provided Docker setup:
 
 ```sh
-$ cd test
+$ cd test/oss
 $ docker-compose up -d
-$ cd ..
+$ cd ../..
 $ TF_ACC=1 go test -v ./rundeck -timeout 120m
 ```
 
@@ -123,7 +124,7 @@ env:
 
 #### Test Requirements
 
-- **Go 1.19+** - Required for compatibility with terraform-plugin-sdk v1.1.0
+- **Go 1.24+** - Required for modern Terraform Plugin Framework
+- **Rundeck 5.0.0+** - Minimum supported version (API v46)
 - **Docker** - For local testing environment (optional but recommended)
-- **Rundeck Instance** - Either local Docker or remote server
 - **Rundeck Enterprise** - Only if running Enterprise feature tests

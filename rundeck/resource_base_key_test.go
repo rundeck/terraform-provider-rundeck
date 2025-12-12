@@ -6,13 +6,18 @@ import (
 
 	"github.com/rundeck/go-rundeck/rundeck"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 func testAccBaseKeyCheckDestroy(key *rundeck.StorageKeyListResponse) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		clients := testAccProvider.Meta().(*RundeckClients)
+		// Create client from environment variables for test verification
+		clients, err := getTestClients()
+		if err != nil {
+			return fmt.Errorf("failed to create test client: %s", err)
+		}
+
 		client := clients.V1
 		ctx := context.Background()
 
@@ -40,7 +45,12 @@ func testAccBaseKeyCheckExists(rn string, key *rundeck.StorageKeyListResponse) r
 			return fmt.Errorf("key id not set")
 		}
 
-		clients := testAccProvider.Meta().(*RundeckClients)
+		// Create client from environment variables for test verification
+		clients, err := getTestClients()
+		if err != nil {
+			return fmt.Errorf("failed to create test client: %s", err)
+		}
+
 		client := clients.V1
 		ctx := context.Background()
 		gotKey, err := client.StorageKeyGetMetadata(ctx, rs.Primary.ID)
