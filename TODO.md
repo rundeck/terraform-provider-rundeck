@@ -69,6 +69,58 @@ Forward-looking tasks for the Rundeck Terraform Provider.
 
 ---
 
+### Project-Level ACL Policy Resource
+**Effort**: Medium (1-2 days)  
+**Why Important**: Customers are migrating from system ACLs to project-level ACLs for better isolation and want to manage them via Terraform.  
+**Customer Request**: Received via email - customer managing system ACLs successfully, wants same workflow for project ACLs.
+
+**Current Limitation**:
+- `rundeck_acl_policy` only supports **system-level ACLs** (uses `/api/VERSION/system/acl/` endpoints)
+- Project-level ACLs use different API endpoints: `/api/VERSION/project/[PROJECT]/acl/`
+- Workaround exists (system ACL with project context) but stores in different location
+
+**Proposed Resource**: `rundeck_project_acl_policy`
+
+**Requirements**:
+1. Verify `go-rundeck` SDK v1.2.0+ has `ProjectACLPolicy*` methods (Create, Get, Update, Delete)
+2. Create new resource with schema:
+   - `project` (Required) - Project name for ACL scope
+   - `name` (Required) - ACL policy file name
+   - `policy` (Required) - YAML formatted ACL policy string
+3. Implement CRUD operations using project ACL API endpoints
+4. Add acceptance tests (create, update, import, delete scenarios)
+5. Documentation with examples showing project-level vs system-level ACLs
+6. Update provider resources list
+
+**Example Usage**:
+```hcl
+resource "rundeck_project_acl_policy" "project_admin" {
+  project = "my-project"
+  name    = "ProjectAdmins.aclpolicy"
+  policy  = file("${path.module}/project-admins.aclpolicy")
+}
+
+# Batch management like current system ACLs
+resource "rundeck_project_acl_policy" "policies" {
+  for_each = fileset(path.module, "project-acls/*.aclpolicy")
+  project  = "my-project"
+  name     = each.value
+  policy   = file("${path.module}/project-acls/${each.value}")
+}
+```
+
+**Benefits**:
+- True project-level ACL management (stored in project scope, not system)
+- Maintains Git-based workflow customers already use for system ACLs
+- Consistent with Rundeck best practices (project ACLs for project-specific permissions)
+- Enables per-project ACL versioning and deployment
+
+**Investigation Needed**:
+- Check if `go-rundeck` SDK has the necessary API methods, or if they need to be added
+- Verify API version requirements (likely v14+)
+
+---
+
 ### Project extra_config Merge Behavior
 **Effort**: Small-Medium (1-2 days)  
 **Why Important**: Users want additive configuration changes, not full replacements.  
