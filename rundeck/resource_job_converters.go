@@ -408,8 +408,30 @@ func convertNotificationsToJSON(ctx context.Context, notificationsList types.Lis
 	// Sort notifications alphabetically by type to match the order we read them back
 	// This prevents plan drift when users define notifications in a different order
 	sort.Slice(notifications, func(i, j int) bool {
-		typeI := notifications[i].Attributes()["type"].(types.String).ValueString()
-		typeJ := notifications[j].Attributes()["type"].(types.String).ValueString()
+		var typeI, typeJ string
+
+		// Safely extract type from notification i
+		if attrI, ok := notifications[i].Attributes()["type"]; ok {
+			if s, ok := attrI.(types.String); ok && !s.IsNull() && !s.IsUnknown() {
+				typeI = s.ValueString()
+			}
+		}
+
+		// Safely extract type from notification j
+		if attrJ, ok := notifications[j].Attributes()["type"]; ok {
+			if s, ok := attrJ.(types.String); ok && !s.IsNull() && !s.IsUnknown() {
+				typeJ = s.ValueString()
+			}
+		}
+
+		// Treat notifications with invalid or missing types as last in sort order
+		if typeI == "" {
+			typeI = "\uffff" // Unicode max character - sorts last
+		}
+		if typeJ == "" {
+			typeJ = "\uffff"
+		}
+
 		return typeI < typeJ
 	})
 
