@@ -405,6 +405,14 @@ func convertNotificationsToJSON(ctx context.Context, notificationsList types.Lis
 		return nil, diags
 	}
 
+	// Sort notifications alphabetically by type to match the order we read them back
+	// This prevents plan drift when users define notifications in a different order
+	sort.Slice(notifications, func(i, j int) bool {
+		typeI := notifications[i].Attributes()["type"].(types.String).ValueString()
+		typeJ := notifications[j].Attributes()["type"].(types.String).ValueString()
+		return typeI < typeJ
+	})
+
 	// Rundeck expects: { "onsuccess": [ {...}, {...} ], "onfailure": [ {...} ] }
 	// Each notification type maps to an ARRAY of notification targets
 	result := make(map[string]interface{})

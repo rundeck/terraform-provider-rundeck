@@ -458,18 +458,7 @@ A command's `log_filter_plugin`, `step_plugin`  or `node_step_plugin` block both
 
 * `type`: (Required) The name of the type of notification. Can be of type `on_success`, `on_failure`, `on_start`, `on_retryable_failure`, `on_avg_duration`.
 
-**REQUIRED: Notification Ordering** - When defining multiple notifications, you **must** arrange them alphabetically by type (i.e., `on_failure`, `on_retryable_failure`, `on_start`, `on_success`) in your Terraform configuration. Rundeck's API returns notifications as an object (not an array), so alphabetical ordering ensures deterministic behavior and prevents plan drift.
-
-```hcl
-# Correct - alphabetical order
-notification { type = "on_failure" ... }
-notification { type = "on_start" ... }
-notification { type = "on_success" ... }
-
-# Wrong - will cause plan drift
-notification { type = "on_success" ... }
-notification { type = "on_failure" ... }
-```
+**Note on Notification Ordering (v1.0.1+):** Notifications can be defined in any order in your Terraform configuration. The provider automatically sorts them alphabetically before sending to Rundeck's API, ensuring consistent behavior. In versions prior to v1.0.1, notifications had to be manually arranged in alphabetical order.
 
 * `email`: (Optional) block listed below to send emails as notification.
 

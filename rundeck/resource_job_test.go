@@ -1628,3 +1628,77 @@ resource "rundeck_job" "test" {
   }
 }
 `
+
+// TestAccJobNotification_outOfOrder tests that notifications can be defined in any order
+// Reproduces GitHub Issue #209 - notifications defined as on_success then on_failure
+// should work without "Provider produced inconsistent result" errors
+func TestAccJobNotification_outOfOrder(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		CheckDestroy:             testAccJobCheckDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_notificationOutOfOrder,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "name", "test-notifications"),
+					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "project_name", "terraform-acc-test-notification-order"),
+					// After auto-sort, notifications should be in alphabetical order
+					// on_failure (index 0), on_success (index 1)
+					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "notification.0.type", "on_failure"),
+					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "notification.0.email.0.recipients.0", "foo@example.org"),
+					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "notification.0.email.0.attach_log", "true"),
+					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "notification.1.type", "on_success"),
+					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "notification.1.email.0.recipients.0", "foo@example.org"),
+					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "notification.1.email.0.attach_log", "true"),
+				),
+			},
+		},
+	})
+}
+
+// Test configuration for GitHub Issue #209 - notifications defined in non-alphabetical order
+const testAccJobConfig_notificationOutOfOrder = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-notification-order"
+  description = "Test project for notification ordering"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
+    }
+  }
+}
+
+resource "rundeck_job" "test_notifications" {
+  name         = "test-notifications"
+  project_name = rundeck_project.test.name
+  description  = "Perform a test notification"
+
+  command {
+    shell_command = "echo 'test'"
+  }
+
+  # Intentionally defined in non-alphabetical order (on_success before on_failure)
+  # This reproduces GitHub Issue #209
+  notification {
+    type = "on_success"
+
+    email {
+      recipients = ["foo@example.org"]
+      attach_log = true
+    }
+  }
+
+  notification {
+    type = "on_failure"
+
+    email {
+      recipients = ["foo@example.org"]
+      attach_log = true
+    }
+  }
+}
+`

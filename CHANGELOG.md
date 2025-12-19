@@ -1,3 +1,15 @@
+## 1.0.1
+
+**Bug Fixes**
+
+### Job Resource
+- **Fixed notification ordering requirement** ([#209](https://github.com/rundeck/terraform-provider-rundeck/issues/209)) - Notifications can now be defined in any order in your Terraform configuration. The provider automatically sorts them alphabetically before sending to Rundeck's API, eliminating confusing "Provider produced inconsistent result" errors. Previously, notifications had to be manually arranged in alphabetical order to avoid plan drift.
+
+**Documentation**
+- Updated job resource documentation to reflect that notification ordering is now handled automatically (v1.0.1+)
+
+---
+
 ## 1.0.0
 
 **Major Release - Provider Modernization**
