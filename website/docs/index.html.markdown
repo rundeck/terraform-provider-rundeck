@@ -132,7 +132,7 @@ resource "rundeck_project" "terraform" {
     }
   }
   extra_config = {
-    "project.label" = "Terraform Example"
+    "project/label" = "Terraform Example"
   }
 }
 

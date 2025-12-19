@@ -5,7 +5,8 @@
 ### Job Resource
 - **Fixed notification ordering requirement** ([#209](https://github.com/rundeck/terraform-provider-rundeck/issues/209)) - Notifications can now be defined in any order in your Terraform configuration. The provider automatically sorts them alphabetically before sending to Rundeck's API, eliminating confusing "Provider produced inconsistent result" errors. Previously, notifications had to be manually arranged in alphabetical order to avoid plan drift.
 
-**Documentation**
+### Documentation
+- **Fixed `extra_config` example in project resource** ([#210](https://github.com/rundeck/terraform-provider-rundeck/issues/210)) - Corrected documentation examples to use `"project/label"` instead of `"project.label"`. Rundeck uses forward slashes as separators in project configuration keys, not dots. Using dots causes plan drift as Rundeck normalizes them to forward slashes.
 - Updated job resource documentation to reflect that notification ordering is now handled automatically (v1.0.1+)
 
 ---
