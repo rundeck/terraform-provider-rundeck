@@ -103,15 +103,28 @@ v1.1.0 brings:
 
 ### Required Configuration Changes
 
-#### 1. Notification Syntax Change
+#### 1. Notification Ordering Requirement
 
-**ACTION REQUIRED:** Notifications now use list syntax instead of nested blocks. This is a breaking change from all version previous to v1.1.0.  (including 1.0.0)
+**ACTION REQUIRED:** Notifications must be defined in alphabetical order by type. This requirement exists in v1.0.0 and continues in v1.1.0+. The Rundeck API returns notifications sorted alphabetically, so your Terraform configuration must match this order to prevent plan drift.
+
+**Valid notification types (in alphabetical order):**
+- `on_avg_duration`
+- `on_failure`
+- `on_retryable_failure`
+- `on_start`
+- `on_success`
 
 ```hcl
-# Old syntax (<=v1.0.0 - nested blocks)
+# Correct syntax (v1.0.0+ - alphabetical order)
 resource "rundeck_job" "example" {
   name         = "Example Job"
   project_name = "my-project"
+  
+  # on_failure comes before on_success alphabetically
+  notification {
+    type = "on_failure"
+    webhook_urls = ["https://example.com/webhook"]
+  }
   
   notification {
     type = "on_success"
@@ -121,45 +134,20 @@ resource "rundeck_job" "example" {
     }
   }
   
-  notification {
-    type = "on_failure"
-    webhook_urls = ["https://example.com/webhook"]
-  }
-  
-  command {
-    shell_command = "echo hello"
-  }
-}
-
-# New syntax (v1.1.0+ - list attribute)
-resource "rundeck_job" "example" {
-  name         = "Example Job"
-  project_name = "my-project"
-  
-  notification = [{
-    type = "on_success"
-    email = [{
-      recipients = ["user@example.com"]
-      attach_log = true
-    }]
-  }, {
-    type = "on_failure"
-    webhook_urls = ["https://example.com/webhook"]
-  }]
-  
   command {
     shell_command = "echo hello"
   }
 }
 ```
 
-**Why:** This change enables semantic equality for notification lists, allowing notifications to be defined in any order without plan drift. This restores the behavior that existed in v0.5.0 (SDKv2), where notifications could be defined in any order.
+**Why:** The Rundeck API returns notifications sorted alphabetically by type. If your Terraform configuration defines them in a different order, Terraform will detect plan drift and attempt to reorder them, causing "Provider produced inconsistent result" errors. By defining notifications in alphabetical order, your configuration matches what the API returns, eliminating plan drift.
 
 **Migration Steps:**
-1. Find all `notification {` blocks in your `.tf` files
-2. Convert to `notification = [{` with closing `}]`
-3. Convert nested `email {` and `plugin {` blocks to list syntax (`email = [{...}]`)
-4. Run `terraform plan` to verify no unexpected changes
+1. Review all `notification {` blocks in your `.tf` files
+2. Reorder them alphabetically by `type` (`on_avg_duration`, `on_failure`, `on_retryable_failure`, `on_start`, `on_success`)
+3. Run `terraform plan` to verify no unexpected changes
+
+**Note:** v1.1.0 adds validation to catch ordering issues at plan time with helpful error messages. v1.0.0 will only show the error during apply.
 
 #### 2. Execution Lifecycle Plugins
 
