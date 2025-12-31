@@ -21,8 +21,10 @@ var (
 // NotificationListType is a custom type for notification lists
 // It implements semantic equality so notification lists are considered equal
 // regardless of order (since Rundeck sorts them alphabetically)
+// Uses DynamicType as ElementType to bypass schema validation, then normalizes to ObjectType
 type NotificationListType struct {
 	basetypes.ListType
+	ObjectType types.ObjectType // Target ObjectType for normalization
 }
 
 // String returns a human-readable string of the type name
@@ -32,13 +34,27 @@ func (t NotificationListType) String() string {
 
 // ValueFromList creates a NotificationListValue from a ListValue
 func (t NotificationListType) ValueFromList(ctx context.Context, in basetypes.ListValue) (basetypes.ListValuable, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	// Normalize the list if it's DynamicType
+	if !in.IsNull() && !in.IsUnknown() {
+		normalizedList, normDiags := normalizeNotificationObjectsFromDynamic(ctx, in, t.ObjectType)
+		diags.Append(normDiags...)
+		if !diags.HasError() {
+			return NotificationListValue{
+				ListValue: normalizedList,
+			}, diags
+		}
+	}
+
 	return NotificationListValue{
 		ListValue: in,
-	}, nil
+	}, diags
 }
 
 // ValueFromTerraform creates a value from Terraform data
 func (t NotificationListType) ValueFromTerraform(ctx context.Context, in tftypes.Value) (attr.Value, error) {
+	// First convert from DynamicType (or whatever type Terraform provides)
 	attrValue, err := t.ListType.ValueFromTerraform(ctx, in)
 	if err != nil {
 		return nil, err
@@ -49,12 +65,13 @@ func (t NotificationListType) ValueFromTerraform(ctx context.Context, in tftypes
 		return nil, fmt.Errorf("unexpected value type of %T", attrValue)
 	}
 
-	// Normalize the list to ensure all object attributes are present (fill missing with null)
-	normalizedList, diags := normalizeNotificationObjects(ctx, listValue)
+	// Normalize DynamicType list to ObjectType list with all attributes present
+	normalizedList, diags := normalizeNotificationObjectsFromDynamic(ctx, listValue, t.ObjectType)
 	if diags.HasError() {
 		return nil, fmt.Errorf("error normalizing notification list: %v", diags)
 	}
 
+	// normalizedList is already a ListValue with ObjectType, so we can use it directly
 	return NotificationListValue{
 		ListValue: normalizedList,
 	}, nil
@@ -134,8 +151,138 @@ func (v NotificationListValue) ListSemanticEquals(ctx context.Context, newValuab
 	return oldNormalized.Equal(newNormalized), diags
 }
 
+// normalizeNotificationObjectsFromDynamic converts DynamicType list to ObjectType list
+// Handles both DynamicType (from HCL) and ObjectType (from state) inputs
+func normalizeNotificationObjectsFromDynamic(ctx context.Context, listValue basetypes.ListValue, targetObjectType types.ObjectType) (basetypes.ListValue, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	if listValue.IsNull() || listValue.IsUnknown() {
+		return types.ListNull(targetObjectType), diags
+	}
+
+	// Try to extract as Dynamic values first (from HCL parsing)
+	var dynamicValues []types.Dynamic
+	if err := listValue.ElementsAs(ctx, &dynamicValues, false); err == nil {
+		// Convert Dynamic values to Object values
+		normalizedNotifications := make([]attr.Value, 0, len(dynamicValues))
+		for _, dynVal := range dynamicValues {
+			if dynVal.IsNull() || dynVal.IsUnknown() {
+				continue
+			}
+
+			// Convert Dynamic to Object by converting to tftypes.Value first
+			tfValue, err := dynVal.ToTerraformValue(ctx)
+			if err == nil {
+				// Convert tftypes.Value to Object
+				objType := basetypes.ObjectType{AttrTypes: targetObjectType.AttrTypes}
+				objAttrValue, err := objType.ValueFromTerraform(ctx, tfValue)
+				if err == nil {
+					if objValue, ok := objAttrValue.(types.Object); ok {
+						normalizedObj, objDiags := normalizeNotificationObject(ctx, objValue, targetObjectType)
+						diags.Append(objDiags...)
+						if !diags.HasError() {
+							normalizedNotifications = append(normalizedNotifications, normalizedObj)
+						}
+					}
+				}
+			}
+		}
+
+		if len(normalizedNotifications) == 0 {
+			return types.ListNull(targetObjectType), diags
+		}
+		return types.ListValueMust(targetObjectType, normalizedNotifications), diags
+	}
+
+	// Fallback: try as Object values (from state)
+	var notifications []types.Object
+	diags.Append(listValue.ElementsAs(ctx, &notifications, false)...)
+	if diags.HasError() {
+		return listValue, diags
+	}
+
+	// Normalize each notification object to ensure all attributes are present
+	normalizedNotifications := make([]attr.Value, len(notifications))
+	for i, notif := range notifications {
+		normalizedObj, objDiags := normalizeNotificationObject(ctx, notif, targetObjectType)
+		diags.Append(objDiags...)
+		if diags.HasError() {
+			return listValue, diags
+		}
+		normalizedNotifications[i] = normalizedObj
+	}
+
+	// Create normalized list
+	if len(normalizedNotifications) == 0 {
+		return types.ListNull(targetObjectType), diags
+	}
+	return types.ListValueMust(targetObjectType, normalizedNotifications), diags
+}
+
+// normalizeNotificationObject ensures a notification object has all required attributes
+// Missing attributes are filled with null values
+func normalizeNotificationObject(ctx context.Context, notif types.Object, targetObjectType types.ObjectType) (types.Object, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	attrs := notif.Attributes()
+	normalizedAttrs := make(map[string]attr.Value)
+
+	// Ensure all required attributes are present
+	if typeVal, ok := attrs["type"]; ok {
+		normalizedAttrs["type"] = typeVal
+	} else {
+		normalizedAttrs["type"] = types.StringNull()
+	}
+
+	if webhookUrls, ok := attrs["webhook_urls"]; ok {
+		normalizedAttrs["webhook_urls"] = webhookUrls
+	} else {
+		normalizedAttrs["webhook_urls"] = types.ListNull(types.StringType)
+	}
+
+	if format, ok := attrs["format"]; ok {
+		normalizedAttrs["format"] = format
+	} else {
+		normalizedAttrs["format"] = types.StringNull()
+	}
+
+	if httpMethod, ok := attrs["http_method"]; ok {
+		normalizedAttrs["http_method"] = httpMethod
+	} else {
+		normalizedAttrs["http_method"] = types.StringNull()
+	}
+
+	if email, ok := attrs["email"]; ok {
+		normalizedAttrs["email"] = email
+	} else {
+		normalizedAttrs["email"] = types.ListNull(types.ObjectType{
+			AttrTypes: map[string]attr.Type{
+				"recipients": types.ListType{ElemType: types.StringType},
+				"subject":    types.StringType,
+				"attach_log": types.BoolType,
+			},
+		})
+	}
+
+	if plugin, ok := attrs["plugin"]; ok {
+		normalizedAttrs["plugin"] = plugin
+	} else {
+		normalizedAttrs["plugin"] = types.ListNull(types.ObjectType{
+			AttrTypes: map[string]attr.Type{
+				"type":   types.StringType,
+				"config": types.MapType{ElemType: types.StringType},
+			},
+		})
+	}
+
+	// Create normalized object
+	normalizedObj, objDiags := types.ObjectValue(targetObjectType.AttrTypes, normalizedAttrs)
+	diags.Append(objDiags...)
+	return normalizedObj, diags
+}
+
 // normalizeNotificationObjects ensures all notification objects have all required attributes
 // Missing attributes are filled with null values
+// DEPRECATED: Use normalizeNotificationObjectsFromDynamic instead
 func normalizeNotificationObjects(ctx context.Context, listValue basetypes.ListValue) (basetypes.ListValue, diag.Diagnostics) {
 	var diags diag.Diagnostics
 

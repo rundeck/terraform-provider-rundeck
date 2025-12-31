@@ -1247,8 +1247,11 @@ func convertNotificationsFromJSON(ctx context.Context, notificationsObj interfac
 		},
 	}
 
-	// Create the custom list type
-	notificationListType := NotificationListType{ListType: basetypes.ListType{ElemType: notificationObjectType}}
+	// Create the custom list type with ObjectType for normalization
+	notificationListType := NotificationListType{
+		ListType:   basetypes.ListType{ElemType: types.DynamicType},
+		ObjectType: notificationObjectType,
+	}
 
 	if notificationsObj == nil {
 		listNull := types.ListNull(notificationObjectType)

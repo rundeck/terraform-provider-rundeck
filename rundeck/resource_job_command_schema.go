@@ -431,6 +431,8 @@ func jobOptionNestedBlock() schema.ListNestedBlock {
 // Notification nested block schema
 // Changed to ListAttribute with CustomType for semantic equality support
 // This enables semantic equality so notification order doesn't cause plan drift
+// Uses DynamicType as ElementType to bypass schema validation requiring all ObjectType attributes
+// Normalization in ValueFromTerraform converts DynamicType to proper ObjectType
 func jobNotificationNestedBlock() schema.ListAttribute {
 	// Define the notification object type - must match convertNotificationsFromJSON
 	notificationObjectType := types.ObjectType{
@@ -459,12 +461,16 @@ func jobNotificationNestedBlock() schema.ListAttribute {
 		},
 	}
 
-	// Create custom list type with semantic equality
-	customListType := NotificationListType{ListType: basetypes.ListType{ElemType: notificationObjectType}}
+	// Use DynamicType as ElementType to bypass schema validation
+	// Custom type will normalize DynamicType to ObjectType in ValueFromTerraform
+	customListType := NotificationListType{
+		ListType:   basetypes.ListType{ElemType: types.DynamicType},
+		ObjectType: notificationObjectType, // Store the target ObjectType for normalization
+	}
 
 	return schema.ListAttribute{
 		Description: "Job notifications",
-		ElementType: notificationObjectType,
+		ElementType: types.DynamicType, // Use DynamicType to allow optional attributes
 		Optional:    true,
 		CustomType:  customListType,
 	}
