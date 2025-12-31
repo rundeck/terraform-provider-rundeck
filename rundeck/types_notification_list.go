@@ -49,8 +49,14 @@ func (t NotificationListType) ValueFromTerraform(ctx context.Context, in tftypes
 		return nil, fmt.Errorf("unexpected value type of %T", attrValue)
 	}
 
+	// Normalize the list to ensure all object attributes are present (fill missing with null)
+	normalizedList, diags := normalizeNotificationObjects(ctx, listValue)
+	if diags.HasError() {
+		return nil, fmt.Errorf("error normalizing notification list: %v", diags)
+	}
+
 	return NotificationListValue{
-		ListValue: listValue,
+		ListValue: normalizedList,
 	}, nil
 }
 
@@ -126,6 +132,116 @@ func (v NotificationListValue) ListSemanticEquals(ctx context.Context, newValuab
 
 	// Compare normalized lists (both should be sorted by type)
 	return oldNormalized.Equal(newNormalized), diags
+}
+
+// normalizeNotificationObjects ensures all notification objects have all required attributes
+// Missing attributes are filled with null values
+func normalizeNotificationObjects(ctx context.Context, listValue basetypes.ListValue) (basetypes.ListValue, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	if listValue.IsNull() || listValue.IsUnknown() {
+		return listValue, diags
+	}
+
+	// Define the complete notification object type
+	notificationObjectType := types.ObjectType{
+		AttrTypes: map[string]attr.Type{
+			"type":         types.StringType,
+			"webhook_urls": types.ListType{ElemType: types.StringType},
+			"format":       types.StringType,
+			"http_method":  types.StringType,
+			"email": types.ListType{
+				ElemType: types.ObjectType{
+					AttrTypes: map[string]attr.Type{
+						"recipients": types.ListType{ElemType: types.StringType},
+						"subject":    types.StringType,
+						"attach_log": types.BoolType,
+					},
+				},
+			},
+			"plugin": types.ListType{
+				ElemType: types.ObjectType{
+					AttrTypes: map[string]attr.Type{
+						"type":   types.StringType,
+						"config": types.MapType{ElemType: types.StringType},
+					},
+				},
+			},
+		},
+	}
+
+	var notifications []types.Object
+	diags.Append(listValue.ElementsAs(ctx, &notifications, false)...)
+	if diags.HasError() {
+		return listValue, diags
+	}
+
+	// Normalize each notification object to ensure all attributes are present
+	normalizedNotifications := make([]attr.Value, len(notifications))
+	for i, notif := range notifications {
+		attrs := notif.Attributes()
+		normalizedAttrs := make(map[string]attr.Value)
+
+		// Ensure all required attributes are present
+		if typeVal, ok := attrs["type"]; ok {
+			normalizedAttrs["type"] = typeVal
+		} else {
+			normalizedAttrs["type"] = types.StringNull()
+		}
+
+		if webhookUrls, ok := attrs["webhook_urls"]; ok {
+			normalizedAttrs["webhook_urls"] = webhookUrls
+		} else {
+			normalizedAttrs["webhook_urls"] = types.ListNull(types.StringType)
+		}
+
+		if format, ok := attrs["format"]; ok {
+			normalizedAttrs["format"] = format
+		} else {
+			normalizedAttrs["format"] = types.StringNull()
+		}
+
+		if httpMethod, ok := attrs["http_method"]; ok {
+			normalizedAttrs["http_method"] = httpMethod
+		} else {
+			normalizedAttrs["http_method"] = types.StringNull()
+		}
+
+		if email, ok := attrs["email"]; ok {
+			normalizedAttrs["email"] = email
+		} else {
+			normalizedAttrs["email"] = types.ListNull(types.ObjectType{
+				AttrTypes: map[string]attr.Type{
+					"recipients": types.ListType{ElemType: types.StringType},
+					"subject":    types.StringType,
+					"attach_log": types.BoolType,
+				},
+			})
+		}
+
+		if plugin, ok := attrs["plugin"]; ok {
+			normalizedAttrs["plugin"] = plugin
+		} else {
+			normalizedAttrs["plugin"] = types.ListNull(types.ObjectType{
+				AttrTypes: map[string]attr.Type{
+					"type":   types.StringType,
+					"config": types.MapType{ElemType: types.StringType},
+				},
+			})
+		}
+
+		// Create normalized object
+		normalizedObj, objDiags := types.ObjectValue(notificationObjectType.AttrTypes, normalizedAttrs)
+		diags.Append(objDiags...)
+		if diags.HasError() {
+			return listValue, diags
+		}
+		normalizedNotifications[i] = normalizedObj
+	}
+
+	// Create normalized list
+	normalizedList := types.ListValueMust(notificationObjectType, normalizedNotifications)
+	return normalizedList, diags
 }
 
 // normalizeNotificationList sorts notifications by type for consistent comparison
