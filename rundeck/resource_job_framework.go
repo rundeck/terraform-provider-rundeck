@@ -64,14 +64,14 @@ type jobResourceModel struct {
 	TimeZone                    types.String `tfsdk:"time_zone"`
 
 	// Complex nested structures as lists
-	Command                  types.List `tfsdk:"command"`
-	Option                   types.List `tfsdk:"option"`
-	Notification             types.List `tfsdk:"notification"`
-	LogLimit                 types.List `tfsdk:"log_limit"`
-	Orchestrator             types.List `tfsdk:"orchestrator"`
-	GlobalLogFilter          types.List `tfsdk:"global_log_filter"`
-	ProjectSchedule          types.List `tfsdk:"project_schedule"`
-	ExecutionLifecyclePlugin types.List `tfsdk:"execution_lifecycle_plugin"`
+	Command                  types.List            `tfsdk:"command"`
+	Option                   types.List            `tfsdk:"option"`
+	Notification             NotificationListValue `tfsdk:"notification"` // Uses ListAttribute with CustomType for semantic equality
+	LogLimit                 types.List            `tfsdk:"log_limit"`
+	Orchestrator             types.List            `tfsdk:"orchestrator"`
+	GlobalLogFilter          types.List            `tfsdk:"global_log_filter"`
+	ProjectSchedule          types.List            `tfsdk:"project_schedule"`
+	ExecutionLifecyclePlugin types.List            `tfsdk:"execution_lifecycle_plugin"`
 }
 
 // jobJSON represents the Rundeck Job JSON format (v44+)
@@ -291,11 +291,11 @@ func (r *jobResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 			"time_zone": schema.StringAttribute{
 				Optional: true,
 			},
+			"notification": jobNotificationNestedBlock(), // Uses ListAttribute with CustomType for semantic equality
 		},
 		Blocks: map[string]schema.Block{
 			"command":                    jobCommandNestedBlock(),
 			"option":                     jobOptionNestedBlock(),
-			"notification":               jobNotificationNestedBlock(),
 			"log_limit":                  jobLogLimitNestedBlock(),
 			"orchestrator":               jobOrchestratorNestedBlock(),
 			"global_log_filter":          jobGlobalLogFilterNestedBlock(),
@@ -876,6 +876,7 @@ func (r *jobResource) planToJobJSON(ctx context.Context, plan *jobResourceModel)
 	}
 
 	// Convert notifications
+	// Semantic equality handles ordering, so no need to sort here
 	if !plan.Notification.IsNull() && !plan.Notification.IsUnknown() {
 		notifications, diags := convertNotificationsToJSON(ctx, plan.Notification)
 		if diags.HasError() {
@@ -1069,6 +1070,7 @@ func (r *jobResource) jobJSONToState(ctx context.Context, job *jobJSON, state *j
 	}
 
 	// Convert notifications from JSON to state
+	// Semantic equality handles ordering, so no need to sort here
 	if job.Notification != nil {
 		notificationsList, diags := convertNotificationsFromJSON(ctx, job.Notification)
 		if !diags.HasError() {
