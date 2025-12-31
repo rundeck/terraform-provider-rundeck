@@ -12,13 +12,87 @@ This guide covers important changes and migration steps for major version upgrad
 
 ---
 
-## Upgrading to v1.0.0
+## Upgrading to v1.1.0
 
-Version 1.0.0 is a major release with significant improvements and some breaking changes. **Please review these migration steps before upgrading.**
+Version 1.1.0 includes important bug fixes and a breaking change for notification syntax. **Please review these migration steps before upgrading.**
+
+### Breaking Changes
+
+#### Notification Syntax Change
+
+**ACTION REQUIRED:** Notifications now use list syntax instead of nested blocks. This is a breaking change from v1.0.0.
+
+```hcl
+# Old syntax (v1.0.0 - nested blocks)
+resource "rundeck_job" "example" {
+  name         = "Example Job"
+  project_name = "my-project"
+  
+  notification {
+    type = "on_success"
+    email {
+      recipients = ["user@example.com"]
+      attach_log = true
+    }
+  }
+  
+  notification {
+    type = "on_failure"
+    webhook_urls = ["https://example.com/webhook"]
+  }
+  
+  command {
+    shell_command = "echo hello"
+  }
+}
+
+# New syntax (v1.1.0+ - list attribute)
+resource "rundeck_job" "example" {
+  name         = "Example Job"
+  project_name = "my-project"
+  
+  notification = [{
+    type = "on_success"
+    email = [{
+      recipients = ["user@example.com"]
+      attach_log = true
+    }]
+  }, {
+    type = "on_failure"
+    webhook_urls = ["https://example.com/webhook"]
+  }]
+  
+  command {
+    shell_command = "echo hello"
+  }
+}
+```
+
+**Why:** This change enables semantic equality for notification lists, allowing notifications to be defined in any order without plan drift. This restores the behavior that existed in v0.5.0 (SDKv2), where notifications could be defined in any order.
+
+**Migration Steps:**
+1. Find all `notification {` blocks in your `.tf` files
+2. Convert to `notification = [{` with closing `}]`
+3. Convert nested `email {` and `plugin {` blocks to list syntax (`email = [{...}]`)
+4. Run `terraform plan` to verify no unexpected changes
+
+### Bug Fixes
+
+- **Fixed notification ordering requirement** ([#209](https://github.com/rundeck/terraform-provider-rundeck/issues/209)) - Notifications can now be defined in any order. The provider uses semantic equality to compare lists, preventing plan drift regardless of order.
+- **Fixed lossy job imports** ([#213](https://github.com/rundeck/terraform-provider-rundeck/issues/213)) - Job imports now correctly extract all fields from the Rundeck API.
+- **Added UUID support for error_handler job references** ([#212](https://github.com/rundeck/terraform-provider-rundeck/issues/212)) - Error handler job references now support UUID-based references.
+
+---
+
+## Upgrading to v1.0.0 (Not Recommended)
+
+**Note:** v1.0.0 introduced a notification ordering limitation that was fixed in v1.1.0. **We recommend upgrading directly to v1.1.0 by following the steps above+** to avoid the notification ordering requirement and the subsequent syntax change.
+
+If you plan to upgrade to v1.0.0 and stop there (not upgrading to v1.1.0+), please review these migration steps:
 
 ### Overview
 
-v1.0.0 brings:
+v1.1.0 brings:
 - **Zero plan drift** for all resource types
 - **100% test pass rate** (38 acceptance tests)
 - Plugin Framework migration (SDKv2 removed)
@@ -31,7 +105,7 @@ v1.0.0 brings:
 #### Minimum Versions
 
 - **Rundeck:** 5.0.0+ (API v46+) required
-- **Rundeck Enterprise:** 5.17.0+ (API v56) required for runner resources
+- **Rundeck Enterprise:** 5.17.0+ (API v56) required for Enterprise Runner resources
 - **Go:** 1.24+ required for building from source
 - **Terraform:** 0.12+ (tested through 1.9)
 
@@ -43,32 +117,49 @@ v1.0.0 brings:
 
 ### Required Configuration Changes
 
-#### 1. Notification Ordering
+#### 1. Notification Syntax Change
 
-**ACTION REQUIRED:** Notifications must be ordered alphabetically by type to prevent plan drift.
+**ACTION REQUIRED:** Notifications now use list syntax instead of nested blocks. This is a breaking change from all version previous to v1.1.0.  (including 1.0.0)
 
 ```hcl
-# Correct (alphabetical order)
+# Old syntax (<=v1.0.0 - nested blocks)
 resource "rundeck_job" "example" {
   name         = "Example Job"
   project_name = "my-project"
   
-  notification { type = "on_failure" ... }
-  notification { type = "on_start" ... }
-  notification { type = "on_success" ... }
+  notification {
+    type = "on_success"
+    email {
+      recipients = ["user@example.com"]
+      attach_log = true
+    }
+  }
+  
+  notification {
+    type = "on_failure"
+    webhook_urls = ["https://example.com/webhook"]
+  }
   
   command {
     shell_command = "echo hello"
   }
 }
 
-# Incorrect (will show drift)
+# New syntax (v1.1.0+ - list attribute)
 resource "rundeck_job" "example" {
   name         = "Example Job"
   project_name = "my-project"
   
-  notification { type = "on_success" ... }
-  notification { type = "on_failure" ... }  # Wrong order!
+  notification = [{
+    type = "on_success"
+    email = [{
+      recipients = ["user@example.com"]
+      attach_log = true
+    }]
+  }, {
+    type = "on_failure"
+    webhook_urls = ["https://example.com/webhook"]
+  }]
   
   command {
     shell_command = "echo hello"
@@ -76,12 +167,13 @@ resource "rundeck_job" "example" {
 }
 ```
 
-**Why:** Rundeck's API returns notifications as an object (not array). The provider sorts them alphabetically for deterministic state management.
+**Why:** This change enables semantic equality for notification lists, allowing notifications to be defined in any order without plan drift. This restores the behavior that existed in v0.5.0 (SDKv2), where notifications could be defined in any order.
 
 **Migration Steps:**
-1. Review all jobs with multiple notifications
-2. Reorder them alphabetically in your `.tf` files
-3. Run `terraform plan` to verify no unexpected changes
+1. Find all `notification {` blocks in your `.tf` files
+2. Convert to `notification = [{` with closing `}]`
+3. Convert nested `email {` and `plugin {` blocks to list syntax (`email = [{...}]`)
+4. Run `terraform plan` to verify no unexpected changes
 
 #### 2. Execution Lifecycle Plugins
 

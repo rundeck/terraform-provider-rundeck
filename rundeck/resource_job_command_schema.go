@@ -4,6 +4,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
 
 // Command nested block schema
@@ -428,65 +429,44 @@ func jobOptionNestedBlock() schema.ListNestedBlock {
 }
 
 // Notification nested block schema
-// Keep ListNestedBlock for syntax compatibility (nested blocks)
-// We'll convert to NotificationListValue internally for semantic equality
-func jobNotificationNestedBlock() schema.ListNestedBlock {
-	return schema.ListNestedBlock{
-		Description: "Job notifications",
-		NestedObject: schema.NestedBlockObject{
-			Attributes: map[string]schema.Attribute{
-				"type": schema.StringAttribute{
-					Required:    true,
-					Description: "Notification trigger type: on_success, on_failure, on_start, on_retryablefailure, on_avgduration",
-				},
-				"format": schema.StringAttribute{
-					Optional:    true,
-					Description: "Webhook payload format (json or xml)",
-				},
-				"http_method": schema.StringAttribute{
-					Optional:    true,
-					Description: "HTTP method for webhook (post or get)",
-				},
-				"webhook_urls": schema.ListAttribute{
-					Optional:    true,
-					ElementType: types.StringType,
-					Description: "List of webhook URLs",
-				},
-			},
-			Blocks: map[string]schema.Block{
-				"email": schema.ListNestedBlock{
-					Description: "Email notification configuration",
-					NestedObject: schema.NestedBlockObject{
-						Attributes: map[string]schema.Attribute{
-							"attach_log": schema.BoolAttribute{
-								Optional: true,
-							},
-							"recipients": schema.ListAttribute{
-								Required:    true,
-								ElementType: types.StringType,
-							},
-							"subject": schema.StringAttribute{
-								Optional: true,
-							},
-						},
+// Changed to ListAttribute with CustomType for semantic equality support
+// This enables semantic equality so notification order doesn't cause plan drift
+func jobNotificationNestedBlock() schema.ListAttribute {
+	// Define the notification object type - must match convertNotificationsFromJSON
+	notificationObjectType := types.ObjectType{
+		AttrTypes: map[string]attr.Type{
+			"type":         types.StringType,
+			"webhook_urls": types.ListType{ElemType: types.StringType},
+			"format":       types.StringType,
+			"http_method":  types.StringType,
+			"email": types.ListType{
+				ElemType: types.ObjectType{
+					AttrTypes: map[string]attr.Type{
+						"recipients": types.ListType{ElemType: types.StringType},
+						"subject":    types.StringType,
+						"attach_log": types.BoolType,
 					},
 				},
-				"plugin": schema.ListNestedBlock{
-					Description: "Plugin notification configuration",
-					NestedObject: schema.NestedBlockObject{
-						Attributes: map[string]schema.Attribute{
-							"type": schema.StringAttribute{
-								Required: true,
-							},
-							"config": schema.MapAttribute{
-								Optional:    true,
-								ElementType: types.StringType,
-							},
-						},
+			},
+			"plugin": types.ListType{
+				ElemType: types.ObjectType{
+					AttrTypes: map[string]attr.Type{
+						"type":   types.StringType,
+						"config": types.MapType{ElemType: types.StringType},
 					},
 				},
 			},
 		},
+	}
+
+	// Create custom list type with semantic equality
+	customListType := NotificationListType{ListType: basetypes.ListType{ElemType: notificationObjectType}}
+
+	return schema.ListAttribute{
+		Description: "Job notifications",
+		ElementType: notificationObjectType,
+		Optional:    true,
+		CustomType:  customListType,
 	}
 }
 

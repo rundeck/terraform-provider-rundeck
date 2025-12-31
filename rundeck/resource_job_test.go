@@ -329,7 +329,8 @@ func TestAccJobWebhookNotification(t *testing.T) {
 					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "description", "A job with webhook notifications"),
 					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "execution_enabled", "true"),
 
-					// Notifications are ordered alphabetically: onfailure, onstart, onsuccess
+					// Notifications use semantic equality - order doesn't cause plan drift
+					// Configuration order: onfailure, onstart, onsuccess
 
 					// Verify on_failure notification (index 0)
 					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.0.type", "on_failure"),
@@ -377,25 +378,23 @@ resource "rundeck_job" "test_webhook" {
     shell_command = "echo Hello World"
   }
   
-  # Notifications are ordered alphabetically: onfailure, onstart, onsuccess
-  notification {
+  # Notifications use semantic equality - order doesn't cause plan drift
+  # Configuration order: onfailure, onstart, onsuccess
+  # v1.1.0+ uses list syntax for notifications
+  notification = [{
     type = "on_failure"
     webhook_urls = ["https://example.com/webhook"]
-  }
-  
-  notification {
+  }, {
     type = "on_start"
     format = "json"
     http_method = "post"
     webhook_urls = ["https://example.com/webhook"]
-  }
-  
-  notification {
+  }, {
     type = "on_success"
     format = "json"
     http_method = "post"
     webhook_urls = ["https://example.com/webhook"]
-  }
+  }]
 }
 `
 
@@ -437,12 +436,12 @@ resource "rundeck_job" "test" {
   command {
     script_url = "http://example.com/script.sh"
   }
-  notification {
-	  type = "on_success"
-	  email {
-		  recipients = ["foo@foo.bar"]
-	  }
-  }
+  notification = [{
+    type = "on_success"
+    email = [{
+      recipients = ["foo@foo.bar"]
+    }]
+  }]
 }
 `
 
@@ -653,12 +652,12 @@ resource "rundeck_job" "source_test_job" {
     }
     description = "Prints Hello World"
   }
-  notification {
-	  type = "on_success"
-	  email {
-		  recipients = ["foo@foo.bar"]
-	  }
-  }
+  notification = [{
+    type = "on_success"
+    email = [{
+      recipients = ["foo@foo.bar"]
+    }]
+  }]
 }
 `
 
@@ -794,12 +793,12 @@ resource "rundeck_job" "test" {
     shell_command = "echo hello"
   }
 
-  notification {
-	  type = "on_success"
-	  email {
-		  recipients = ["foo@foo.bar"]
-	  }
-  }
+  notification = [{
+    type = "on_success"
+    email = [{
+      recipients = ["foo@foo.bar"]
+    }]
+  }]
 }
 `
 
@@ -834,12 +833,12 @@ resource "rundeck_job" "test" {
     description = "Prints Hello World"
     shell_command = "echo Hello World"
   }
-  notification {
-	  type = "on_testing"
-	  email {
-		  recipients = ["foo@foo.bar"]
-	  }
-  }
+  notification = [{
+    type = "on_testing"
+    email = [{
+      recipients = ["foo@foo.bar"]
+    }]
+  }]
 }
 `
 
@@ -874,18 +873,17 @@ resource "rundeck_job" "test" {
     description = "Prints Hello World"
     shell_command = "echo Hello World"
   }
-  notification {
-	  type = "on_success"
-	  email {
-		  recipients = ["foo@foo.bar"]
-	  }
-  }
-  notification {
-	  type = "on_success"
-	  email {
-		  recipients = ["foo@foo.bar"]
-	  }
-  }
+  notification = [{
+    type = "on_success"
+    email = [{
+      recipients = ["foo@foo.bar"]
+    }]
+  }, {
+    type = "on_success"
+    email = [{
+      recipients = ["foo@foo.bar"]
+    }]
+  }]
 }
 `
 
@@ -1035,12 +1033,12 @@ resource "rundeck_project" "test" {
 	  }
 	  description = "Prints Hello World"
 	}
-	notification {
+	notification = [{
 		type = "on_success"
-		email {
+		email = [{
 			recipients = ["foo@foo.bar"]
-		}
-	}
+		}]
+	}]
   }
   `
 
@@ -1088,12 +1086,12 @@ resource "rundeck_project" "test" {
 	  }
 	  description = "Prints Hello World"
 	}
-	notification {
+	notification = [{
 		type = "on_success"
-		email {
+		email = [{
 			recipients = ["foo@foo.bar"]
-		}
-	}
+		}]
+	}]
   }
   `
 
@@ -1139,12 +1137,12 @@ resource "rundeck_project" "test" {
 	  }
 	  description = "Prints Hello World"
 	}
-	notification {
+	notification = [{
 		type = "on_success"
-		email {
+		email = [{
 			recipients = ["foo@foo.bar"]
-		}
-	}
+		}]
+	}]
   }
   `
 
@@ -1620,12 +1618,12 @@ resource "rundeck_job" "test" {
       }
     }
   }
-  notification {
-	  type = "on_success"
-	  email {
-		  recipients = ["foo@foo.bar"]
-	  }
-  }
+  notification = [{
+    type = "on_success"
+    email = [{
+      recipients = ["foo@foo.bar"]
+    }]
+  }]
 }
 `
 
@@ -1643,12 +1641,13 @@ func TestAccJobNotification_outOfOrder(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "name", "test-notifications"),
 					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "project_name", "terraform-acc-test-notification-order"),
-					// After auto-sort, notifications should be in alphabetical order
-					// on_failure (index 0), on_success (index 1)
-					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "notification.0.type", "on_failure"),
+					// With semantic equality, notifications preserve their configured order
+					// Configuration has on_success first, then on_failure
+					// Note: The actual order in state may vary, but semantic equality prevents plan drift
+					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "notification.0.type", "on_success"),
 					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "notification.0.email.0.recipients.0", "foo@example.org"),
 					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "notification.0.email.0.attach_log", "true"),
-					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "notification.1.type", "on_success"),
+					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "notification.1.type", "on_failure"),
 					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "notification.1.email.0.recipients.0", "foo@example.org"),
 					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "notification.1.email.0.attach_log", "true"),
 				),
@@ -1683,21 +1682,20 @@ resource "rundeck_job" "test_notifications" {
 
   # Intentionally defined in non-alphabetical order (on_success before on_failure)
   # This reproduces GitHub Issue #209
-  notification {
+  # Note: v1.1.0+ uses list syntax for notifications (breaking change from v1.0.0)
+  notification = [{
     type = "on_success"
-    email {
+    email = [{
       recipients = ["foo@example.org"]
       attach_log = true
-    }
-  }
-
-  notification {
+    }]
+  }, {
     type = "on_failure"
-    email {
+    email = [{
       recipients = ["foo@example.org"]
       attach_log = true
-    }
-  }
+    }]
+  }]
 }
 `
 

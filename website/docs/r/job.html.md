@@ -12,12 +12,12 @@ Define your runbook automation workflows as code. Jobs represent executable auto
 
 **Key capabilities:** Multi-step workflows, parallel execution, retry logic, webhooks, log filtering, project schedules (Enterprise), and execution lifecycle plugins.
 
-## Upgrading to v1.0.0
+## Upgrading
 
-**If upgrading from a pre-1.0.0 version, please review the [Upgrade Guide](../guides/upgrading.html#upgrading-to-v1-0-0).** Key changes affecting jobs:
+**If upgrading from a pre-1.1.0 version, please review the [Upgrade Guide](../guides/upgrading.html).** Key changes affecting jobs:
 
-1. **Notifications must be alphabetically ordered** by type (see note in notification section below)
-2. **Execution lifecycle plugins** may need to be re-applied (they were silently ignored in previous versions)
+1. **Notification syntax changed in v1.1.0** - Notifications now use list syntax (`notification = [{...}]`) instead of nested blocks. See the [upgrading guide](../guides/upgrading.html#1-notification-syntax-change) for migration instructions.
+2. **Execution lifecycle plugins** may need to be re-applied if upgrading from pre-1.0.0 (they were silently ignored in previous versions)
 3. **All command types now work correctly** (script interpreter, plugins, job references, error handlers)
 
 ## Example Usage
@@ -454,11 +454,13 @@ A command's `log_filter_plugin`, `step_plugin`  or `node_step_plugin` block both
 
 * `config`: (Optional) Map of arbitrary configuration parameters for the selected plugin.
 
-`notification` blocks have the following structure:
+`notification` is a list attribute (v1.1.0+) with the following structure:
 
 * `type`: (Required) The name of the type of notification. Can be of type `on_success`, `on_failure`, `on_start`, `on_retryable_failure`, `on_avg_duration`.
 
-**Note on Notification Ordering (v1.0.1+):** Notifications can be defined in any order in your Terraform configuration. The provider automatically sorts them alphabetically before sending to Rundeck's API, ensuring consistent behavior. In versions prior to v1.0.1, notifications had to be manually arranged in alphabetical order.
+**Note on Notification Syntax (v1.1.0+):** Notifications use list syntax (`notification = [{...}]`) instead of nested blocks. Notifications can be defined in any order - the provider uses semantic equality to compare lists, preventing plan drift regardless of order. This restores the behavior that existed in v0.5.0.
+
+**Breaking Change:** v1.1.0 changes notification syntax from nested blocks to list attribute. See the [upgrading guide](/docs/guides/upgrading.html) for migration instructions.
 
 * `email`: (Optional) block listed below to send emails as notification.
 
@@ -468,9 +470,9 @@ A command's `log_filter_plugin`, `step_plugin`  or `node_step_plugin` block both
 
 * `http_method` - (Optional) HTTP method to use for webhook delivery. Values can be `post` or `get`. (Useful only with `webhook_urls`)
 
-* `plugin`: (Optional) A block listed below to send notifications using a plugin.
+* `plugin`: (Optional) List of plugin notification objects (see structure below).
 
-A notification's `email` block has the following structure:
+A notification's `email` list element has the following structure:
 
 * `attach_log`: (Optional) A boolean to attach log to email or not. Defaults to false.
 
@@ -478,7 +480,7 @@ A notification's `email` block has the following structure:
 
 * `subject`: (Optional) Name of email subject.
 
-A notification's `plugin` block has the following structure:
+A notification's `plugin` list element has the following structure:
 
 * `type` - (Required) The name of the plugin to use.
 
