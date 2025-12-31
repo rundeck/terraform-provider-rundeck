@@ -2,31 +2,12 @@
 
 Forward-looking tasks for the Rundeck Terraform Provider.
 
-**Current Status**: v1.0.0 ready for release - All critical bugs fixed!  
-**Last Updated**: 2025-11-21 (Command types audit complete, all formatting verified)
+**Current Status**: v1.1.0 ready for release - All critical bugs fixed!  
+**Last Updated**: 2025-12-31 (v1.1.0 release preparation)
 
 ---
 
 ## 🔴 High Priority
-
-### Schema-Level Validation
-**Effort**: Small (4-6 hours)  
-**Why Important**: Prevents user errors at plan time instead of apply time, improving UX and reducing failed API calls.
-
-#### ✅ Duplicate Notification Validation - COMPLETED (v1.1.0)
-- ✅ Prevent multiple notifications of the same type (e.g., two `on_success` blocks)
-- ✅ Validate alphabetical ordering of notifications
-- ✅ Added `ValidateConfig` method to `jobResource`
-- ✅ **Test**: `TestAccJobNotification_multiple` - enabled and passing
-- ✅ **Test**: `TestAccJobNotification_outOfOrderValidation` - added and passing
-
-#### ✅ Empty Choice Validation - COMPLETED (v1.1.0)
-- ✅ Require at least one non-empty `value_choices` when `require_predefined_choice = true`
-- ✅ Custom conditional validator in `ValidateConfig`
-- ✅ Validates presence and non-empty values
-- ✅ **Test**: `TestAccJobOptions_empty_choice` - enabled and passing
-
-**Files**: `rundeck/resource_job_framework.go` (ValidateConfig), `rundeck/resource_job_option_schema.go`
 
 ---
 
@@ -35,7 +16,7 @@ Forward-looking tasks for the Rundeck Terraform Provider.
 **Status**: Core docs complete, guides deferred  
 **Why Important**: Reduces support burden and improves onboarding for new users upgrading from 0.x to 1.0.
 
-**Deferred to v1.1.0** (nice-to-have guide pages):
+**Nice-to-have guide pages:**
 - **Import Guide** (`website/docs/guides/import.html.md`)
   - Step-by-step import workflow
   - Known limitations for complex structures
@@ -147,7 +128,7 @@ Terraform's default behavior replaces the entire `extra_config` map. Users want 
    - Manages single key-value pairs
    - More Terraform-idiomatic
 
-**Recommendation**: Document current behavior, consider `rundeck_project_config_item` for v2.0.0 if demand is high.
+**Recommendation**: Document current behavior, consider `rundeck_project_config_item` for future release if demand is high.
 
 ---
 
@@ -238,7 +219,7 @@ Add support for Rundeck's Source Control Management (SCM) integration, allowing 
 - Complex implementation
 - Workaround exists (manual SCM setup in Rundeck UI)
 
-**Recommendation**: Consider for v1.x if user demand increases
+**Recommendation**: Consider for future release if user demand increases
 
 ---
 
@@ -268,20 +249,11 @@ Add support for Rundeck's Source Control Management (SCM) integration, allowing 
 
 ---
 
-## 📞 Contributing
+## Contributing
 
-Want to tackle one of these? 
-
-- **Small tasks** (< 1 day): Schema validation, individual docs
-- **Medium tasks** (1-5 days): Docs, extra_config, errors, test automation
-- **Large tasks** (1-3 weeks): Data sources, SCM, advanced features
-
-Open an issue on GitHub to discuss your approach before starting.
+Want to tackle one of these tasks? Open an issue on GitHub to discuss your approach before starting.
 
 **GitHub Issues**: Check [open issues](https://github.com/rundeck/terraform-provider-rundeck/issues) for community-reported bugs and feature requests.
 
----
-
-**Last Updated**: 2025-11-21  
 **Maintainer**: Rundeck Team  
 **Repository**: https://github.com/rundeck/terraform-provider-rundeck
