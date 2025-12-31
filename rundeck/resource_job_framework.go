@@ -440,7 +440,7 @@ func (r *jobResource) ValidateConfig(ctx context.Context, req resource.ValidateC
 					continue
 				}
 
-				// Check for at least one non-empty value
+				// Check for at least one non-empty value and reject empty strings
 				hasNonEmptyValue := false
 				var emptyValueIndices []int
 				for j, choice := range valueChoices {
@@ -463,11 +463,11 @@ func (r *jobResource) ValidateConfig(ctx context.Context, req resource.ValidateC
 						fmt.Sprintf("Option %q has require_predefined_choice set to true, but value_choices contains no non-empty values. When require_predefined_choice is true, value_choices must contain at least one non-empty value.", optionName),
 					)
 				} else if len(emptyValueIndices) > 0 {
-					// Warn about empty values but don't fail (API will handle this)
-					resp.Diagnostics.AddAttributeWarning(
+					// Error on empty values - API filters them out causing plan drift
+					resp.Diagnostics.AddAttributeError(
 						path.Root("option").AtListIndex(i).AtName("value_choices"),
-						"Empty values in choices",
-						fmt.Sprintf("Option %q has require_predefined_choice set to true, but value_choices contains empty values at indices %v. Empty values will be ignored by Rundeck.", optionName, emptyValueIndices),
+						"Empty value choices",
+						fmt.Sprintf("Option %q has require_predefined_choice set to true, but value_choices contains empty values at indices %v. Empty values are not allowed when require_predefined_choice is true as they cause plan drift (Rundeck API filters them out).", optionName, emptyValueIndices),
 					)
 				}
 			}
