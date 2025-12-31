@@ -428,6 +428,8 @@ func jobOptionNestedBlock() schema.ListNestedBlock {
 }
 
 // Notification nested block schema
+// Keep ListNestedBlock for syntax compatibility (nested blocks)
+// We'll convert to NotificationListValue internally for semantic equality
 func jobNotificationNestedBlock() schema.ListNestedBlock {
 	return schema.ListNestedBlock{
 		Description: "Job notifications",

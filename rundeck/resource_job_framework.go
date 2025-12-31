@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
 
 type jobResource struct {
@@ -66,7 +67,7 @@ type jobResourceModel struct {
 	// Complex nested structures as lists
 	Command                  types.List `tfsdk:"command"`
 	Option                   types.List `tfsdk:"option"`
-	Notification             types.List `tfsdk:"notification"`
+	Notification             types.List `tfsdk:"notification"` // Keep types.List for schema compatibility, convert to NotificationListValue when setting state
 	LogLimit                 types.List `tfsdk:"log_limit"`
 	Orchestrator             types.List `tfsdk:"orchestrator"`
 	GlobalLogFilter          types.List `tfsdk:"global_log_filter"`
@@ -288,15 +289,15 @@ func (r *jobResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				Computed: true,
 				Default:  booldefault.StaticBool(true),
 			},
-			"time_zone": schema.StringAttribute{
-				Optional: true,
-			},
+		"time_zone": schema.StringAttribute{
+			Optional: true,
 		},
-		Blocks: map[string]schema.Block{
-			"command":                    jobCommandNestedBlock(),
-			"option":                     jobOptionNestedBlock(),
-			"notification":               jobNotificationNestedBlock(),
-			"log_limit":                  jobLogLimitNestedBlock(),
+	},
+	Blocks: map[string]schema.Block{
+		"command":                    jobCommandNestedBlock(),
+		"option":                     jobOptionNestedBlock(),
+		"notification":               jobNotificationNestedBlock(), // Keep ListNestedBlock for syntax compatibility
+		"log_limit":                  jobLogLimitNestedBlock(),
 			"orchestrator":               jobOrchestratorNestedBlock(),
 			"global_log_filter":          jobGlobalLogFilterNestedBlock(),
 			"project_schedule":           jobProjectScheduleNestedBlock(),
@@ -328,16 +329,6 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
-	}
-
-	// Sort notifications in plan BEFORE converting to JSON
-	// This ensures Terraform's consistency check passes (plan vs state comparison)
-	// The API will return them sorted, so we need the plan sorted too
-	if !plan.Notification.IsNull() && !plan.Notification.IsUnknown() {
-		sortedNotifications, diags := r.sortNotificationsList(ctx, plan.Notification)
-		if !diags.HasError() {
-			plan.Notification = sortedNotifications
-		}
 	}
 
 	// Convert Terraform model to Rundeck JSON format
@@ -500,7 +491,24 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 		return
 	}
 
+	// Set state - convert notification to NotificationListValue for semantic equality
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Override notification attribute with NotificationListValue for semantic equality
+	// This allows Terraform to consider lists equal even if order differs
+	if !plan.Notification.IsNull() && !plan.Notification.IsUnknown() {
+		notificationObjectType := plan.Notification.ElementType(ctx)
+		notificationListType := NotificationListType{ListType: basetypes.ListType{ElemType: notificationObjectType}}
+		customValue, diags := notificationListType.ValueFromList(ctx, plan.Notification)
+		if !diags.HasError() {
+			// Set notification as NotificationListValue - Terraform will use semantic equality when comparing
+			resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("notification"), customValue)...)
+		}
+		resp.Diagnostics.Append(diags...)
+	}
 }
 
 func (r *jobResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -546,16 +554,6 @@ func (r *jobResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
-	}
-
-	// Sort notifications in plan BEFORE converting to JSON
-	// This ensures Terraform's consistency check passes (plan vs state comparison)
-	// The API will return them sorted, so we need the plan sorted too
-	if !plan.Notification.IsNull() && !plan.Notification.IsUnknown() {
-		sortedNotifications, diags := r.sortNotificationsList(ctx, plan.Notification)
-		if !diags.HasError() {
-			plan.Notification = sortedNotifications
-		}
 	}
 
 	// Convert Terraform model to Rundeck JSON format
@@ -719,7 +717,24 @@ func (r *jobResource) Update(ctx context.Context, req resource.UpdateRequest, re
 		plan.RunnerSelectorFilterType = types.StringNull()
 	}
 
+	// Set state - convert notification to NotificationListValue for semantic equality
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Override notification attribute with NotificationListValue for semantic equality
+	// This allows Terraform to consider lists equal even if order differs
+	if !plan.Notification.IsNull() && !plan.Notification.IsUnknown() {
+		notificationObjectType := plan.Notification.ElementType(ctx)
+		notificationListType := NotificationListType{ListType: basetypes.ListType{ElemType: notificationObjectType}}
+		customValue, diags := notificationListType.ValueFromList(ctx, plan.Notification)
+		if !diags.HasError() {
+			// Set notification as NotificationListValue - Terraform will use semantic equality when comparing
+			resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("notification"), customValue)...)
+		}
+		resp.Diagnostics.Append(diags...)
+	}
 }
 
 func (r *jobResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -896,8 +911,16 @@ func (r *jobResource) planToJobJSON(ctx context.Context, plan *jobResourceModel)
 	}
 
 	// Convert notifications
+	// Convert types.List to NotificationListValue for conversion
 	if !plan.Notification.IsNull() && !plan.Notification.IsUnknown() {
-		notifications, diags := convertNotificationsToJSON(ctx, plan.Notification)
+		// Convert types.List to NotificationListValue
+		notificationObjectType := plan.Notification.ElementType(ctx)
+		notificationListType := NotificationListType{ListType: basetypes.ListType{ElemType: notificationObjectType}}
+		notificationListValue, diags := notificationListType.ValueFromList(ctx, plan.Notification)
+		if diags.HasError() {
+			return nil, fmt.Errorf("failed to convert notification list: %v", diags)
+		}
+		notifications, diags := convertNotificationsToJSON(ctx, notificationListValue.(NotificationListValue))
 		if diags.HasError() {
 			return nil, fmt.Errorf("error converting notifications: %v", diags.Errors())
 		}
@@ -1092,7 +1115,8 @@ func (r *jobResource) jobJSONToState(ctx context.Context, job *jobJSON, state *j
 	if job.Notification != nil {
 		notificationsList, diags := convertNotificationsFromJSON(ctx, job.Notification)
 		if !diags.HasError() {
-			state.Notification = notificationsList
+			// Store as types.List in model (for schema compatibility)
+			state.Notification = notificationsList.ListValue
 		}
 	}
 
@@ -1311,10 +1335,13 @@ func (r *jobResource) jobJSONAPIToState(ctx context.Context, job *JobJSON, state
 	}
 
 	// Convert notifications from JSON to state
+	// Convert to NotificationListValue for semantic equality (handles order differences)
 	if len(job.Notification) > 0 {
 		notificationsList, diags := convertNotificationsFromJSON(ctx, job.Notification)
 		if !diags.HasError() {
-			state.Notification = notificationsList
+			// Store as types.List in model (schema compatibility)
+			// But convert plan to NotificationListValue before setting state for semantic equality
+			state.Notification = notificationsList.ListValue
 		}
 	}
 
@@ -1336,7 +1363,7 @@ func (r *jobResource) jobJSONAPIToState(ctx context.Context, job *JobJSON, state
 
 // sortNotificationsList sorts a notifications list alphabetically by type
 // This ensures the plan matches what we'll get back from the API (which sorts notifications)
-func (r *jobResource) sortNotificationsList(ctx context.Context, notificationsList types.List) (types.List, diag.Diagnostics) {
+func (r *jobResource) sortNotificationsList(ctx context.Context, notificationsList NotificationListValue) (NotificationListValue, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	if notificationsList.IsNull() || notificationsList.IsUnknown() {
@@ -1344,7 +1371,7 @@ func (r *jobResource) sortNotificationsList(ctx context.Context, notificationsLi
 	}
 
 	var notifications []types.Object
-	diags.Append(notificationsList.ElementsAs(ctx, &notifications, false)...)
+	diags.Append(notificationsList.ListValue.ElementsAs(ctx, &notifications, false)...)
 	if diags.HasError() {
 		return notificationsList, diags
 	}
@@ -1379,7 +1406,7 @@ func (r *jobResource) sortNotificationsList(ctx context.Context, notificationsLi
 	})
 
 	// Get the element type from the original list
-	elementType := notificationsList.ElementType(ctx)
+	elementType := notificationsList.ListValue.ElementType(ctx)
 
 	// Convert []types.Object to []attr.Value (types.Object implements attr.Value)
 	notificationValues := make([]attr.Value, len(notifications))
@@ -1387,8 +1414,16 @@ func (r *jobResource) sortNotificationsList(ctx context.Context, notificationsLi
 		notificationValues[i] = notif
 	}
 
-	// Create a new sorted list using ListValueMust (same approach as convertNotificationsFromJSON)
+	// Create a new sorted list
 	sortedList := types.ListValueMust(elementType, notificationValues)
 
-	return sortedList, diags
+	// Convert to NotificationListValue
+	notificationListType := NotificationListType{ListType: basetypes.ListType{ElemType: elementType}}
+	customValue, convDiags := notificationListType.ValueFromList(ctx, sortedList)
+	diags.Append(convDiags...)
+	if diags.HasError() {
+		return notificationsList, diags
+	}
+
+	return customValue.(NotificationListValue), diags
 }

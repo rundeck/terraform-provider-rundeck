@@ -1685,7 +1685,6 @@ resource "rundeck_job" "test_notifications" {
   # This reproduces GitHub Issue #209
   notification {
     type = "on_success"
-
     email {
       recipients = ["foo@example.org"]
       attach_log = true
@@ -1694,7 +1693,6 @@ resource "rundeck_job" "test_notifications" {
 
   notification {
     type = "on_failure"
-
     email {
       recipients = ["foo@example.org"]
       attach_log = true
