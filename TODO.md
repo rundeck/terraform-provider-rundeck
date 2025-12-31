@@ -13,17 +13,19 @@ Forward-looking tasks for the Rundeck Terraform Provider.
 **Effort**: Small (4-6 hours)  
 **Why Important**: Prevents user errors at plan time instead of apply time, improving UX and reducing failed API calls.
 
-#### Duplicate Notification Validation
-- Prevent multiple notifications of the same type (e.g., two `on_success` blocks)
-- Use `terraform-plugin-framework-validators`
-- **Test**: `TestAccJobNotification_multiple` (currently skipped)
+#### ✅ Duplicate Notification Validation - COMPLETED (v1.1.0)
+- ✅ Prevent multiple notifications of the same type (e.g., two `on_success` blocks)
+- ✅ Validate alphabetical ordering of notifications
+- ✅ Added `ValidateConfig` method to `jobResource`
+- ✅ **Test**: `TestAccJobNotification_multiple` - enabled and passing
+- ✅ **Test**: `TestAccJobNotification_outOfOrderValidation` - added and passing
 
 #### Empty Choice Validation
 - Require at least one `value_choices` when `require_predefined_choice = true`
 - Custom conditional validator
 - **Test**: `TestAccJobOptions_empty_choice` (currently skipped)
 
-**Files**: `rundeck/resource_job_option_schema.go`, `rundeck/resource_job_notification_schema.go`
+**Files**: `rundeck/resource_job_framework.go` (ValidateConfig), `rundeck/resource_job_option_schema.go`
 
 ---
 
