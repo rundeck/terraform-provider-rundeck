@@ -299,7 +299,7 @@ func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]inte
 						if rfn, ok := jobAttrs["run_for_each_node"].(types.Bool); ok && !rfn.IsNull() {
 							jobMap["runForEachNode"] = rfn.ValueBool()
 						}
-						
+
 						// Determine if parent command is a node step or workflow step
 						// Error handlers must match the parent command type
 						isParentNodeStep := false
@@ -311,7 +311,7 @@ func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]inte
 							// shell_command, inline_script, etc. are workflow steps (not node steps)
 							isParentNodeStep = false
 						}
-						
+
 						if ns, ok := jobAttrs["node_step"].(types.Bool); ok && !ns.IsNull() {
 							// API expects string "true" or "false" for nodeStep
 							if ns.ValueBool() {
