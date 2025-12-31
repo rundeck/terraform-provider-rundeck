@@ -20,10 +20,11 @@ Forward-looking tasks for the Rundeck Terraform Provider.
 - ✅ **Test**: `TestAccJobNotification_multiple` - enabled and passing
 - ✅ **Test**: `TestAccJobNotification_outOfOrderValidation` - added and passing
 
-#### Empty Choice Validation
-- Require at least one `value_choices` when `require_predefined_choice = true`
-- Custom conditional validator
-- **Test**: `TestAccJobOptions_empty_choice` (currently skipped)
+#### ✅ Empty Choice Validation - COMPLETED (v1.1.0)
+- ✅ Require at least one non-empty `value_choices` when `require_predefined_choice = true`
+- ✅ Custom conditional validator in `ValidateConfig`
+- ✅ Validates presence and non-empty values
+- ✅ **Test**: `TestAccJobOptions_empty_choice` - enabled and passing
 
 **Files**: `rundeck/resource_job_framework.go` (ValidateConfig), `rundeck/resource_job_option_schema.go`
 

@@ -381,6 +381,98 @@ func (r *jobResource) ValidateConfig(ctx context.Context, req resource.ValidateC
 			}
 		}
 	}
+
+	// Validate options: check value_choices when require_predefined_choice is true
+	if !config.Option.IsNull() && !config.Option.IsUnknown() {
+		var options []types.Object
+		diags := config.Option.ElementsAs(ctx, &options, false)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		for i, opt := range options {
+			attrs := opt.Attributes()
+
+			// Check if require_predefined_choice is true
+			var requirePredefined bool
+			if reqPredefinedAttr, ok := attrs["require_predefined_choice"]; ok {
+				if reqPredefinedBool, ok := reqPredefinedAttr.(types.Bool); ok && !reqPredefinedBool.IsNull() && !reqPredefinedBool.IsUnknown() {
+					requirePredefined = reqPredefinedBool.ValueBool()
+				}
+			}
+
+			if requirePredefined {
+				// Get option name for error message
+				optionName := "unnamed"
+				if nameAttr, ok := attrs["name"]; ok {
+					if nameStr, ok := nameAttr.(types.String); ok && !nameStr.IsNull() && !nameStr.IsUnknown() {
+						optionName = nameStr.ValueString()
+					}
+				}
+
+				// Check value_choices
+				valueChoicesAttr, hasValueChoices := attrs["value_choices"]
+				if !hasValueChoices {
+					resp.Diagnostics.AddAttributeError(
+						path.Root("option").AtListIndex(i).AtName("value_choices"),
+						"Missing value choices",
+						fmt.Sprintf("Option %q has require_predefined_choice set to true, but value_choices is not provided. When require_predefined_choice is true, value_choices must contain at least one non-empty value.", optionName),
+					)
+					continue
+				}
+
+				valueChoicesList, ok := valueChoicesAttr.(types.List)
+				if !ok || valueChoicesList.IsNull() || valueChoicesList.IsUnknown() {
+					resp.Diagnostics.AddAttributeError(
+						path.Root("option").AtListIndex(i).AtName("value_choices"),
+						"Missing value choices",
+						fmt.Sprintf("Option %q has require_predefined_choice set to true, but value_choices is not provided. When require_predefined_choice is true, value_choices must contain at least one non-empty value.", optionName),
+					)
+					continue
+				}
+
+				// Extract string values from the list
+				var valueChoices []types.String
+				diags := valueChoicesList.ElementsAs(ctx, &valueChoices, false)
+				resp.Diagnostics.Append(diags...)
+				if resp.Diagnostics.HasError() {
+					continue
+				}
+
+				// Check for at least one non-empty value
+				hasNonEmptyValue := false
+				var emptyValueIndices []int
+				for j, choice := range valueChoices {
+					if choice.IsNull() || choice.IsUnknown() {
+						emptyValueIndices = append(emptyValueIndices, j)
+						continue
+					}
+					choiceValue := choice.ValueString()
+					if choiceValue == "" {
+						emptyValueIndices = append(emptyValueIndices, j)
+					} else {
+						hasNonEmptyValue = true
+					}
+				}
+
+				if !hasNonEmptyValue {
+					resp.Diagnostics.AddAttributeError(
+						path.Root("option").AtListIndex(i).AtName("value_choices"),
+						"Empty value choices",
+						fmt.Sprintf("Option %q has require_predefined_choice set to true, but value_choices contains no non-empty values. When require_predefined_choice is true, value_choices must contain at least one non-empty value.", optionName),
+					)
+				} else if len(emptyValueIndices) > 0 {
+					// Warn about empty values but don't fail (API will handle this)
+					resp.Diagnostics.AddAttributeWarning(
+						path.Root("option").AtListIndex(i).AtName("value_choices"),
+						"Empty values in choices",
+						fmt.Sprintf("Option %q has require_predefined_choice set to true, but value_choices contains empty values at indices %v. Empty values will be ignored by Rundeck.", optionName, emptyValueIndices),
+					)
+				}
+			}
+		}
+	}
 }
 
 func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {

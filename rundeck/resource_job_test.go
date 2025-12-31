@@ -247,15 +247,13 @@ func TestAccJobNotification_outOfOrderValidation(t *testing.T) {
 }
 
 func TestAccJobOptions_empty_choice(t *testing.T) {
-	t.Skip("DEFERRED: Provider-side schema validation for empty choice values (not a bug - API already validates)")
-
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccJobOptions_empty_choice,
-				ExpectError: regexp.MustCompile("argument \"value_choices\" can not have empty values; try \"required\""),
+				ExpectError: regexp.MustCompile("Empty value choices"),
 			},
 		},
 	})
@@ -968,6 +966,7 @@ resource "rundeck_job" "test" {
   option {
     name = "foo"
 	default_value = "bar"
+	require_predefined_choice = true
 	value_choices = ["", "foo"]
   }
 
