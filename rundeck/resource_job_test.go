@@ -1641,13 +1641,11 @@ func TestAccJobNotification_outOfOrder(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "name", "test-notifications"),
 					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "project_name", "terraform-acc-test-notification-order"),
-					// With semantic equality, notifications preserve their configured order
-					// Configuration has on_success first, then on_failure
-					// Note: The actual order in state may vary, but semantic equality prevents plan drift
-					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "notification.0.type", "on_success"),
+					// Notifications are sorted alphabetically by type (on_failure before on_success)
+					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "notification.0.type", "on_failure"),
 					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "notification.0.email.0.recipients.0", "foo@example.org"),
 					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "notification.0.email.0.attach_log", "true"),
-					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "notification.1.type", "on_failure"),
+					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "notification.1.type", "on_success"),
 					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "notification.1.email.0.recipients.0", "foo@example.org"),
 					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "notification.1.email.0.attach_log", "true"),
 				),
@@ -1680,22 +1678,22 @@ resource "rundeck_job" "test_notifications" {
     shell_command = "echo 'test'"
   }
 
-  # Intentionally defined in non-alphabetical order (on_success before on_failure)
-  # This reproduces GitHub Issue #209
-  # Note: v1.1.0+ uses list syntax for notifications (breaking change from v1.0.0)
-  notification = [{
-    type = "on_success"
-    email = [{
-      recipients = ["foo@example.org"]
-      attach_log = true
-    }]
-  }, {
+  # Notifications must be defined in alphabetical order by type to prevent plan drift
+  # Rundeck API returns notifications sorted alphabetically, so Terraform config must match
+  notification {
     type = "on_failure"
-    email = [{
+    email {
       recipients = ["foo@example.org"]
       attach_log = true
-    }]
-  }]
+    }
+  }
+  notification {
+    type = "on_success"
+    email {
+      recipients = ["foo@example.org"]
+      attach_log = true
+    }
+  }
 }
 `
 
