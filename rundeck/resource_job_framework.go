@@ -289,15 +289,15 @@ func (r *jobResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				Computed: true,
 				Default:  booldefault.StaticBool(true),
 			},
-		"time_zone": schema.StringAttribute{
-			Optional: true,
+			"time_zone": schema.StringAttribute{
+				Optional: true,
+			},
 		},
-	},
-	Blocks: map[string]schema.Block{
-		"command":                    jobCommandNestedBlock(),
-		"option":                     jobOptionNestedBlock(),
-		"notification":               jobNotificationNestedBlock(), // Keep ListNestedBlock for syntax compatibility
-		"log_limit":                  jobLogLimitNestedBlock(),
+		Blocks: map[string]schema.Block{
+			"command":                    jobCommandNestedBlock(),
+			"option":                     jobOptionNestedBlock(),
+			"notification":               jobNotificationNestedBlock(), // Keep ListNestedBlock for syntax compatibility
+			"log_limit":                  jobLogLimitNestedBlock(),
 			"orchestrator":               jobOrchestratorNestedBlock(),
 			"global_log_filter":          jobGlobalLogFilterNestedBlock(),
 			"project_schedule":           jobProjectScheduleNestedBlock(),

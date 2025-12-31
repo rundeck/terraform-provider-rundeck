@@ -185,4 +185,3 @@ func normalizeNotificationList(ctx context.Context, listValue basetypes.ListValu
 
 	return sortedList, diags
 }
-
