@@ -666,6 +666,27 @@ func (r *jobResource) Update(ctx context.Context, req resource.UpdateRequest, re
 		return
 	}
 
+	// Read the job back from API to ensure state matches what's actually stored
+	// This is important for fields like notifications which are sorted by the API
+	jobID := importResult.Succeeded[0].ID
+	apiJobData, err := GetJobJSON(r.client.V1, jobID)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error reading job after update",
+			fmt.Sprintf("Could not read job after update: %s", err.Error()),
+		)
+		return
+	}
+
+	// Update plan with values from API (ensures state matches what's actually in Rundeck)
+	if err = r.jobJSONAPIToState(ctx, apiJobData, &plan); err != nil {
+		resp.Diagnostics.AddError(
+			"Error reading job after update",
+			fmt.Sprintf("Could not convert job JSON to state: %s", err.Error()),
+		)
+		return
+	}
+
 	// Set computed fields that may not have been set in the plan
 	if plan.PreserveOptionsOrder.IsUnknown() {
 		plan.PreserveOptionsOrder = types.BoolValue(false)
@@ -1134,14 +1155,23 @@ func (r *jobResource) jobJSONAPIToState(ctx context.Context, job *JobJSON, state
 					state.MaxThreadCount = types.Int64Value(tc)
 				}
 			}
+			// continue_on_error comes from dispatch.keepgoing (dispatch-level setting)
 			if keepGoing, ok := dispatch["keepgoing"].(bool); ok {
-				state.ContinueNextNodeOnError = types.BoolValue(keepGoing)
+				state.ContinueOnError = types.BoolValue(keepGoing)
 			}
 			if rankOrder, ok := dispatch["rankOrder"].(string); ok {
 				state.RankOrder = types.StringValue(rankOrder)
 			}
 			if rankAttr, ok := dispatch["rankAttribute"].(string); ok {
 				state.RankAttribute = types.StringValue(rankAttr)
+			}
+			// Extract excludePrecedence from dispatch
+			if excludePrec, ok := dispatch["excludePrecedence"].(bool); ok {
+				state.NodeFilterExcludePrecedence = types.BoolValue(excludePrec)
+			}
+			// Extract successOnEmptyNodeFilter from dispatch
+			if successEmpty, ok := dispatch["successOnEmptyNodeFilter"].(bool); ok {
+				state.SuccessOnEmptyNodeFilter = types.BoolValue(successEmpty)
 			}
 		}
 	}
@@ -1236,6 +1266,10 @@ func (r *jobResource) jobJSONAPIToState(ctx context.Context, job *JobJSON, state
 		cronStr, err := convertScheduleObjectToCron(job.Schedule)
 		if err == nil {
 			state.Schedule = types.StringValue(cronStr)
+		}
+		// Extract timeZone from schedule object
+		if timeZone, ok := job.Schedule["timeZone"].(string); ok && timeZone != "" {
+			state.TimeZone = types.StringValue(timeZone)
 		}
 	}
 

@@ -4,6 +4,7 @@
 
 ### Job Resource
 - **Fixed notification ordering requirement** ([#209](https://github.com/rundeck/terraform-provider-rundeck/issues/209)) - Notifications can now be defined in any order in your Terraform configuration. The provider automatically sorts them alphabetically before sending to Rundeck's API, eliminating confusing "Provider produced inconsistent result" errors. Previously, notifications had to be manually arranged in alphabetical order to avoid plan drift.
+- **Fixed lossy job imports** ([#213](https://github.com/rundeck/terraform-provider-rundeck/issues/213)) - Job imports now correctly extract all fields from the Rundeck API, including `continue_on_error`, `time_zone`, `node_filter_exclude_precedence`, `success_on_empty_node_filter`, and enhanced `node_step` handling for job references. Previously, many fields were missing from imported jobs, making imports unusable compared to v0.5.0.
 - **Added UUID support for error_handler job references** ([#212](https://github.com/rundeck/terraform-provider-rundeck/issues/212)) - Error handler job references now support UUID-based references (like regular job references), making them immutable and resilient to job renames. Previously, error handler job references only supported name-based references which could break if the referenced job was renamed. This brings error handler job references to feature parity with regular job references, including support for `project_name`, `node_step`, `node_filters`, and other advanced options.
 
 ### Documentation

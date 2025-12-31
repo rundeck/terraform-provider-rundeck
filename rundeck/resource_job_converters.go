@@ -299,9 +299,30 @@ func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]inte
 						if rfn, ok := jobAttrs["run_for_each_node"].(types.Bool); ok && !rfn.IsNull() {
 							jobMap["runForEachNode"] = rfn.ValueBool()
 						}
+						
+						// Determine if parent command is a node step or workflow step
+						// Error handlers must match the parent command type
+						isParentNodeStep := false
+						if _, hasNodeStepPlugin := attrs["node_step_plugin"]; hasNodeStepPlugin {
+							isParentNodeStep = true
+						} else if _, hasStepPlugin := attrs["step_plugin"]; hasStepPlugin {
+							isParentNodeStep = false // step_plugin is workflow step
+						} else {
+							// shell_command, inline_script, etc. are workflow steps (not node steps)
+							isParentNodeStep = false
+						}
+						
 						if ns, ok := jobAttrs["node_step"].(types.Bool); ok && !ns.IsNull() {
 							// API expects string "true" or "false" for nodeStep
 							if ns.ValueBool() {
+								jobMap["nodeStep"] = "true"
+							} else {
+								jobMap["nodeStep"] = "false"
+							}
+						} else {
+							// If node_step not specified, infer from parent command type
+							// Rundeck requires error handler job references to match parent command type
+							if isParentNodeStep {
 								jobMap["nodeStep"] = "true"
 							} else {
 								jobMap["nodeStep"] = "false"
@@ -2317,9 +2338,11 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 				jobAttrs["ignore_notifications"] = types.BoolValue(ign)
 			}
 
-			// nodeStep field (API uses string "true"/"false")
+			// nodeStep field (API can use string "true"/"false" or boolean)
 			if ns, ok := jobref["nodeStep"].(string); ok && ns != "" {
 				jobAttrs["node_step"] = types.BoolValue(ns == "true")
+			} else if ns, ok := jobref["nodeStep"].(bool); ok {
+				jobAttrs["node_step"] = types.BoolValue(ns)
 			}
 
 			// Handle node_filters if present
