@@ -1702,3 +1702,70 @@ resource "rundeck_job" "test_notifications" {
   }
 }
 `
+
+// TestAccJob_errorHandler_job_uuid tests that error_handler job references support UUID
+// Reproduces GitHub Issue #212 - error_handler job references should support UUID like regular job references
+func TestAccJob_errorHandler_job_uuid(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		CheckDestroy:             testAccJobCheckDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_errorHandler_job_uuid,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("rundeck_job.handler_job", "name", "handler-job"),
+					resource.TestCheckResourceAttr("rundeck_job.test_job", "name", "test-job-with-error-handler"),
+					// Verify the error_handler job reference uses UUID
+					resource.TestCheckResourceAttrSet("rundeck_job.test_job", "command.0.error_handler.0.job.0.uuid"),
+					// Verify UUID matches the handler job's ID
+					resource.TestCheckResourceAttrPair("rundeck_job.test_job", "command.0.error_handler.0.job.0.uuid", "rundeck_job.handler_job", "id"),
+				),
+			},
+		},
+	})
+}
+
+// Test configuration for GitHub Issue #212 - error_handler job reference with UUID
+const testAccJobConfig_errorHandler_job_uuid = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-error-handler-uuid"
+  description = "Test project for error handler UUID job references"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
+    }
+  }
+}
+
+resource "rundeck_job" "handler_job" {
+  project_name = rundeck_project.test.name
+  name         = "handler-job"
+  description  = "Job to be referenced as error handler"
+  execution_enabled = true
+  
+  command {
+    shell_command = "echo 'Error handler executed'"
+  }
+}
+
+resource "rundeck_job" "test_job" {
+  project_name = rundeck_project.test.name
+  name         = "test-job-with-error-handler"
+  description  = "Job with error handler referencing another job by UUID"
+  execution_enabled = true
+  
+  command {
+    shell_command = "exit 1"  # Intentionally fail to trigger error handler
+    
+    error_handler {
+      job {
+        uuid = rundeck_job.handler_job.id
+      }
+    }
+  }
+}
+`

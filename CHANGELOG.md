@@ -4,6 +4,7 @@
 
 ### Job Resource
 - **Fixed notification ordering requirement** ([#209](https://github.com/rundeck/terraform-provider-rundeck/issues/209)) - Notifications can now be defined in any order in your Terraform configuration. The provider automatically sorts them alphabetically before sending to Rundeck's API, eliminating confusing "Provider produced inconsistent result" errors. Previously, notifications had to be manually arranged in alphabetical order to avoid plan drift.
+- **Added UUID support for error_handler job references** ([#212](https://github.com/rundeck/terraform-provider-rundeck/issues/212)) - Error handler job references now support UUID-based references (like regular job references), making them immutable and resilient to job renames. Previously, error handler job references only supported name-based references which could break if the referenced job was renamed. This brings error handler job references to feature parity with regular job references, including support for `project_name`, `node_step`, `node_filters`, and other advanced options.
 
 ### Documentation
 - **Fixed `extra_config` example in project resource** ([#210](https://github.com/rundeck/terraform-provider-rundeck/issues/210)) - Corrected documentation examples to use `"project/label"` instead of `"project.label"`. Rundeck uses forward slashes as separators in project configuration keys, not dots. Using dots causes plan drift as Rundeck normalizes them to forward slashes.
