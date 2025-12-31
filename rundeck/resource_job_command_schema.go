@@ -4,7 +4,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
 
 // Command nested block schema
@@ -429,50 +428,68 @@ func jobOptionNestedBlock() schema.ListNestedBlock {
 }
 
 // Notification nested block schema
-// Changed to ListAttribute with CustomType for semantic equality support
-// This enables semantic equality so notification order doesn't cause plan drift
-// Uses DynamicType as ElementType to bypass schema validation requiring all ObjectType attributes
-// Normalization in ValueFromTerraform converts DynamicType to proper ObjectType
-func jobNotificationNestedBlock() schema.ListAttribute {
-	// Define the notification object type - must match convertNotificationsFromJSON
-	notificationObjectType := types.ObjectType{
-		AttrTypes: map[string]attr.Type{
-			"type":         types.StringType,
-			"webhook_urls": types.ListType{ElemType: types.StringType},
-			"format":       types.StringType,
-			"http_method":  types.StringType,
-			"email": types.ListType{
-				ElemType: types.ObjectType{
-					AttrTypes: map[string]attr.Type{
-						"recipients": types.ListType{ElemType: types.StringType},
-						"subject":    types.StringType,
-						"attach_log": types.BoolType,
-					},
+// Reverted to ListNestedBlock - the original approach that works
+// Note: Notification ordering may cause plan drift, but this is the only schema type that works
+func jobNotificationNestedBlock() schema.ListNestedBlock {
+	return schema.ListNestedBlock{
+		Description: "Job notifications",
+		NestedObject: schema.NestedBlockObject{
+			Attributes: map[string]schema.Attribute{
+				"type": schema.StringAttribute{
+					Required:    true,
+					Description: "Notification type (on_success, on_failure, on_start, on_avg_duration, on_retryable_failure)",
+				},
+				"webhook_urls": schema.ListAttribute{
+					ElementType: types.StringType,
+					Optional:    true,
+					Description: "Webhook URLs for webhook notifications",
+				},
+				"format": schema.StringAttribute{
+					Optional:    true,
+					Description: "Format for webhook notifications (json, xml, form)",
+				},
+				"http_method": schema.StringAttribute{
+					Optional:    true,
+					Description: "HTTP method for webhook notifications (GET, POST, PUT, DELETE)",
 				},
 			},
-			"plugin": types.ListType{
-				ElemType: types.ObjectType{
-					AttrTypes: map[string]attr.Type{
-						"type":   types.StringType,
-						"config": types.MapType{ElemType: types.StringType},
+			Blocks: map[string]schema.Block{
+				"email": schema.ListNestedBlock{
+					NestedObject: schema.NestedBlockObject{
+						Attributes: map[string]schema.Attribute{
+							"recipients": schema.ListAttribute{
+								ElementType: types.StringType,
+								Required:    true,
+								Description: "Email recipients",
+							},
+							"subject": schema.StringAttribute{
+								Optional:    true,
+								Description: "Email subject",
+							},
+							"attach_log": schema.BoolAttribute{
+								Optional:    true,
+								Description: "Attach execution log to email",
+							},
+						},
+					},
+				},
+				"plugin": schema.ListNestedBlock{
+					NestedObject: schema.NestedBlockObject{
+						Attributes: map[string]schema.Attribute{
+							"type": schema.StringAttribute{
+								Required:    true,
+								Description: "Plugin type",
+							},
+							"config": schema.MapAttribute{
+								ElementType: types.StringType,
+								Optional:    true,
+								Description: "Plugin configuration",
+							},
+						},
 					},
 				},
 			},
 		},
-	}
-
-	// Use DynamicType as ElementType to bypass schema validation
-	// Custom type will normalize DynamicType to ObjectType in ValueFromTerraform
-	customListType := NotificationListType{
-		ListType:   basetypes.ListType{ElemType: types.DynamicType},
-		ObjectType: notificationObjectType, // Store the target ObjectType for normalization
-	}
-
-	return schema.ListAttribute{
-		Description: "Job notifications",
-		ElementType: types.DynamicType, // Use DynamicType to allow optional attributes
-		Optional:    true,
-		CustomType:  customListType,
 	}
 }
 

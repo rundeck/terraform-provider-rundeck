@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
 
 // convertCommandsToJSON converts Framework command list to JSON array
@@ -519,7 +518,7 @@ func convertOptionsToJSON(ctx context.Context, optionsList types.List) ([]interf
 }
 
 // convertNotificationsToJSON converts Framework notification list to JSON structure
-func convertNotificationsToJSON(ctx context.Context, notificationsList NotificationListValue) (map[string]interface{}, diag.Diagnostics) {
+func convertNotificationsToJSON(ctx context.Context, notificationsList types.List) (map[string]interface{}, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	if notificationsList.IsNull() || notificationsList.IsUnknown() {
@@ -527,7 +526,7 @@ func convertNotificationsToJSON(ctx context.Context, notificationsList Notificat
 	}
 
 	var notifications []types.Object
-	diags.Append(notificationsList.ListValue.ElementsAs(ctx, &notifications, false)...)
+	diags.Append(notificationsList.ElementsAs(ctx, &notifications, false)...)
 	if diags.HasError() {
 		return nil, diags
 	}
@@ -1217,7 +1216,7 @@ func convertLogLimitFromJSON(ctx context.Context, loglimit, loglimitAction, logl
 }
 
 // convertNotificationsFromJSON converts Rundeck notification JSON to Terraform state list
-func convertNotificationsFromJSON(ctx context.Context, notificationsObj interface{}) (NotificationListValue, diag.Diagnostics) {
+func convertNotificationsFromJSON(ctx context.Context, notificationsObj interface{}) (types.List, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	// Define the notification object type schema - must match resource schema exactly
@@ -1247,31 +1246,13 @@ func convertNotificationsFromJSON(ctx context.Context, notificationsObj interfac
 		},
 	}
 
-	// Create the custom list type with ObjectType for normalization
-	notificationListType := NotificationListType{
-		ListType:   basetypes.ListType{ElemType: types.DynamicType},
-		ObjectType: notificationObjectType,
-	}
-
 	if notificationsObj == nil {
-		listNull := types.ListNull(notificationObjectType)
-		customValue, convDiags := notificationListType.ValueFromList(ctx, listNull)
-		diags.Append(convDiags...)
-		if diags.HasError() {
-			return NotificationListValue{}, diags
-		}
-		return customValue.(NotificationListValue), diags
+		return types.ListNull(notificationObjectType), diags
 	}
 
 	notifMap, ok := notificationsObj.(map[string]interface{})
 	if !ok {
-		listNull := types.ListNull(notificationObjectType)
-		customValue, convDiags := notificationListType.ValueFromList(ctx, listNull)
-		diags.Append(convDiags...)
-		if diags.HasError() {
-			return NotificationListValue{}, diags
-		}
-		return customValue.(NotificationListValue), diags
+		return types.ListNull(notificationObjectType), diags
 	}
 
 	var notifList []attr.Value
@@ -1581,21 +1562,11 @@ func convertNotificationsFromJSON(ctx context.Context, notificationsObj interfac
 		}
 	}
 
-	var listValue types.List
 	if len(notifList) == 0 {
-		listValue = types.ListNull(notificationObjectType)
-	} else {
-		listValue = types.ListValueMust(notificationObjectType, notifList)
+		return types.ListNull(notificationObjectType), diags
 	}
 
-	// Convert to NotificationListValue
-	customValue, convDiags := notificationListType.ValueFromList(ctx, listValue)
-	diags.Append(convDiags...)
-	if diags.HasError() {
-		return NotificationListValue{}, diags
-	}
-
-	return customValue.(NotificationListValue), diags
+	return types.ListValueMust(notificationObjectType, notifList), diags
 }
 
 // convertOptionsFromJSON converts Rundeck options JSON array to Terraform state list
