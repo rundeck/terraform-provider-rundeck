@@ -322,6 +322,67 @@ func (r *jobResource) Configure(_ context.Context, req resource.ConfigureRequest
 	r.client = clients
 }
 
+func (r *jobResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var config jobResourceModel
+	diags := req.Config.Get(ctx, &config)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Validate notifications: check for duplicates and alphabetical ordering
+	if !config.Notification.IsNull() && !config.Notification.IsUnknown() {
+		var notifications []types.Object
+		diags := config.Notification.ElementsAs(ctx, &notifications, false)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		// Check for duplicates and collect types
+		seenTypes := make(map[string]int) // map of type -> index
+		var notificationTypes []string
+		for i, notif := range notifications {
+			attrs := notif.Attributes()
+			if typeAttr, ok := attrs["type"]; ok {
+				if typeStr, ok := typeAttr.(types.String); ok && !typeStr.IsNull() && !typeStr.IsUnknown() {
+					notifType := typeStr.ValueString()
+					if prevIdx, exists := seenTypes[notifType]; exists {
+						resp.Diagnostics.AddAttributeError(
+							path.Root("notification").AtListIndex(i).AtName("type"),
+							"Duplicate notification type",
+							fmt.Sprintf("Notification type %q is already defined at index %d. Each notification type can only be defined once.", notifType, prevIdx),
+						)
+					} else {
+						seenTypes[notifType] = i
+					}
+					notificationTypes = append(notificationTypes, notifType)
+				}
+			}
+		}
+
+		// Check alphabetical ordering
+		if len(notificationTypes) > 1 {
+			sortedTypes := make([]string, len(notificationTypes))
+			copy(sortedTypes, notificationTypes)
+			sort.Strings(sortedTypes)
+
+			for i, actualType := range notificationTypes {
+				if actualType != sortedTypes[i] {
+					expectedOrder := strings.Join(sortedTypes, ", ")
+					resp.Diagnostics.AddAttributeError(
+						path.Root("notification").AtListIndex(i).AtName("type"),
+						"Invalid notification order",
+						fmt.Sprintf("Notifications must be defined in alphabetical order by type. Found %q at index %d, but expected %q. Expected order: %s", actualType, i, sortedTypes[i], expectedOrder),
+					)
+					// Only report first error to avoid overwhelming the user
+					break
+				}
+			}
+		}
+	}
+}
+
 func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan jobResourceModel
 

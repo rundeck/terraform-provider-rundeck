@@ -220,15 +220,27 @@ func TestAccJobNotification_wrongType(t *testing.T) {
 }
 
 func TestAccJobNotification_multiple(t *testing.T) {
-	t.Skip("DEFERRED: Provider-side schema validation for duplicate notification blocks (not a bug - API already validates)")
-
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccJobNotification_multiple,
-				ExpectError: regexp.MustCompile("a block with on_success already exists"),
+				ExpectError: regexp.MustCompile("Duplicate notification type"),
+			},
+		},
+	})
+}
+
+// TestAccJobNotification_outOfOrderValidation tests that validation catches out-of-order notifications
+func TestAccJobNotification_outOfOrderValidation(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		Steps: []resource.TestStep{
+			{
+				Config:      testAccJobNotification_outOfOrderValidation,
+				ExpectError: regexp.MustCompile("Invalid notification order"),
 			},
 		},
 	})
@@ -881,6 +893,53 @@ resource "rundeck_job" "test" {
   }
   notification {
     type = "on_success"
+    email {
+      recipients = ["foo@foo.bar"]
+    }
+  }
+}
+`
+
+const testAccJobNotification_outOfOrderValidation = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-job-notification-order-validation"
+  description = "parent project for job acceptance tests"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
+    }
+  }
+}
+resource "rundeck_job" "test" {
+  project_name = "${rundeck_project.test.name}"
+  name = "basic-job"
+  description = "A basic job"
+  execution_enabled = true
+  node_filter_query = "example"
+  allow_concurrent_executions = true
+  max_thread_count = 1
+  rank_order = "ascending"
+  schedule = "0 0 12 * * * *"
+  option {
+    name = "foo"
+    default_value = "bar"
+  }
+  command {
+    description = "Prints Hello World"
+    shell_command = "echo Hello World"
+  }
+  # Intentionally out of order: on_success before on_failure
+  notification {
+    type = "on_success"
+    email {
+      recipients = ["foo@foo.bar"]
+    }
+  }
+  notification {
+    type = "on_failure"
     email {
       recipients = ["foo@foo.bar"]
     }
