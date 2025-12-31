@@ -14,19 +14,32 @@ This guide covers important changes and migration steps for major version upgrad
 
 ## Upgrading to v1.1.0
 
-Version 1.1.0 includes important bug fixes and a breaking change for notification syntax. **Please review these migration steps before upgrading.**
+Version 1.1.0 includes important bug fixes. **Please review these changes before upgrading.**
 
-### Breaking Changes
+### Important Changes
 
-#### Notification Syntax Change
+#### Notification Ordering Requirement
 
-**ACTION REQUIRED:** Notifications now use list syntax instead of nested blocks. This is a breaking change from v1.0.0.
+**ACTION REQUIRED:** Notifications must be defined in alphabetical order by type to prevent plan drift. The Rundeck API returns notifications sorted alphabetically, so your Terraform configuration must match this order.
+
+**Valid notification types (in alphabetical order):**
+- `on_avg_duration`
+- `on_failure`
+- `on_retryable_failure`
+- `on_start`
+- `on_success`
 
 ```hcl
-# Old syntax (v1.0.0 - nested blocks)
+# Correct syntax (v1.1.0+ - alphabetical order)
 resource "rundeck_job" "example" {
   name         = "Example Job"
   project_name = "my-project"
+  
+  # on_failure comes before on_success alphabetically
+  notification {
+    type = "on_failure"
+    webhook_urls = ["https://example.com/webhook"]
+  }
   
   notification {
     type = "on_success"
@@ -36,49 +49,22 @@ resource "rundeck_job" "example" {
     }
   }
   
-  notification {
-    type = "on_failure"
-    webhook_urls = ["https://example.com/webhook"]
-  }
-  
-  command {
-    shell_command = "echo hello"
-  }
-}
-
-# New syntax (v1.1.0+ - list attribute)
-resource "rundeck_job" "example" {
-  name         = "Example Job"
-  project_name = "my-project"
-  
-  notification = [{
-    type = "on_success"
-    email = [{
-      recipients = ["user@example.com"]
-      attach_log = true
-    }]
-  }, {
-    type = "on_failure"
-    webhook_urls = ["https://example.com/webhook"]
-  }]
-  
   command {
     shell_command = "echo hello"
   }
 }
 ```
 
-**Why:** This change enables semantic equality for notification lists, allowing notifications to be defined in any order without plan drift. This restores the behavior that existed in v0.5.0 (SDKv2), where notifications could be defined in any order.
+**Why:** The Rundeck API returns notifications sorted alphabetically by type. If your Terraform configuration defines them in a different order, Terraform will detect plan drift and attempt to reorder them, causing "Provider produced inconsistent result" errors. By defining notifications in alphabetical order, your configuration matches what the API returns, eliminating plan drift.
 
 **Migration Steps:**
-1. Find all `notification {` blocks in your `.tf` files
-2. Convert to `notification = [{` with closing `}]`
-3. Convert nested `email {` and `plugin {` blocks to list syntax (`email = [{...}]`)
-4. Run `terraform plan` to verify no unexpected changes
+1. Review all `notification {` blocks in your `.tf` files
+2. Reorder them alphabetically by `type` (`on_avg_duration`, `on_failure`, `on_retryable_failure`, `on_start`, `on_success`)
+3. Run `terraform plan` to verify no unexpected changes
 
 ### Bug Fixes
 
-- **Fixed notification ordering requirement** ([#209](https://github.com/rundeck/terraform-provider-rundeck/issues/209)) - Notifications can now be defined in any order. The provider uses semantic equality to compare lists, preventing plan drift regardless of order.
+- **Fixed notification ordering requirement** ([#209](https://github.com/rundeck/terraform-provider-rundeck/issues/209)) - The provider now sorts notifications alphabetically by type before sending to the API and after reading from the API, ensuring consistent state. This eliminates confusing "Provider produced inconsistent result" errors. Users must define notifications in alphabetical order to match the API's behavior.
 - **Fixed lossy job imports** ([#213](https://github.com/rundeck/terraform-provider-rundeck/issues/213)) - Job imports now correctly extract all fields from the Rundeck API.
 - **Added UUID support for error_handler job references** ([#212](https://github.com/rundeck/terraform-provider-rundeck/issues/212)) - Error handler job references now support UUID-based references.
 

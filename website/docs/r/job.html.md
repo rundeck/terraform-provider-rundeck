@@ -16,7 +16,7 @@ Define your runbook automation workflows as code. Jobs represent executable auto
 
 **If upgrading from a pre-1.1.0 version, please review the [Upgrade Guide](../guides/upgrading.html).** Key changes affecting jobs:
 
-1. **Notification syntax changed in v1.1.0** - Notifications now use list syntax (`notification = [{...}]`) instead of nested blocks. See the [upgrading guide](../guides/upgrading.html#1-notification-syntax-change) for migration instructions.
+1. **Notification ordering requirement** - Notifications must be defined in alphabetical order by type (`on_avg_duration`, `on_failure`, `on_retryable_failure`, `on_start`, `on_success`) to prevent plan drift. The Rundeck API returns notifications sorted alphabetically, so your Terraform configuration must match this order.
 2. **Execution lifecycle plugins** may need to be re-applied if upgrading from pre-1.0.0 (they were silently ignored in previous versions)
 3. **All command types now work correctly** (script interpreter, plugins, job references, error handlers)
 

@@ -1,35 +1,32 @@
 ## 1.1.0
 
-**Breaking Changes**
+**Important Changes**
 
-### Job Resource - Notification Syntax Change
-- **Changed notification syntax from nested blocks to list attribute** ([#209](https://github.com/rundeck/terraform-provider-rundeck/issues/209)) - Notifications now use list syntax (`notification = [{...}]`) instead of nested blocks (`notification {...}`). This breaking change enables semantic equality, allowing notifications to be defined in any order without plan drift. This restores the behavior that existed in v0.5.0 (SDKv2), where notifications could be defined in any order.
+### Job Resource - Notification Ordering Requirement
+- **Notification ordering requirement** ([#209](https://github.com/rundeck/terraform-provider-rundeck/issues/209)) - Notifications must be defined in alphabetical order by type (`on_avg_duration`, `on_failure`, `on_retryable_failure`, `on_start`, `on_success`) to prevent plan drift. The Rundeck API returns notifications sorted alphabetically, so your Terraform configuration must match this order.
 
-**Migration Required:**
+**Why:** The Rundeck API returns notifications sorted alphabetically by type. If your Terraform configuration defines them in a different order, Terraform will detect plan drift and attempt to reorder them, causing "Provider produced inconsistent result" errors. By defining notifications in alphabetical order, your configuration matches what the API returns, eliminating plan drift.
+
+**Example:**
 ```hcl
-# Old syntax (v1.0.0)
+# Correct - alphabetical order (on_failure before on_success)
+notification {
+  type = "on_failure"
+  webhook_urls = ["https://example.com/webhook"]
+}
+
 notification {
   type = "on_success"
   email {
     recipients = ["user@example.com"]
   }
 }
-
-# New syntax (v1.1.0+)
-notification = [{
-  type = "on_success"
-  email = [{
-    recipients = ["user@example.com"]
-  }]
-}]
 ```
-
-**Why:** This change enables semantic equality for notification lists, preventing plan drift when Rundeck's API returns notifications in a different order than defined. This fixes a regression introduced in v1.0.0, where notifications had to be manually arranged in alphabetical order to avoid plan drift.
 
 **Bug Fixes**
 
 ### Job Resource
-- **Fixed notification ordering requirement** ([#209](https://github.com/rundeck/terraform-provider-rundeck/issues/209)) - Notifications can now be defined in any order in your Terraform configuration. The provider uses semantic equality to compare notification lists, eliminating confusing "Provider produced inconsistent result" errors. This restores the v0.5.0 behavior where notifications could be defined in any order.
+- **Fixed notification ordering requirement** ([#209](https://github.com/rundeck/terraform-provider-rundeck/issues/209)) - The provider now sorts notifications alphabetically by type before sending to the API and after reading from the API, ensuring consistent state. This eliminates confusing "Provider produced inconsistent result" errors when notifications are defined in non-alphabetical order. Users must define notifications in alphabetical order to match the API's behavior.
 - **Fixed lossy job imports** ([#213](https://github.com/rundeck/terraform-provider-rundeck/issues/213)) - Job imports now correctly extract all fields from the Rundeck API, including `continue_on_error`, `time_zone`, `node_filter_exclude_precedence`, `success_on_empty_node_filter`, and enhanced `node_step` handling for job references. Previously, many fields were missing from imported jobs, making imports unusable compared to v0.5.0.
 - **Added UUID support for error_handler job references** ([#212](https://github.com/rundeck/terraform-provider-rundeck/issues/212)) - Error handler job references now support UUID-based references (like regular job references), making them immutable and resilient to job renames. Previously, error handler job references only supported name-based references which could break if the referenced job was renamed. This brings error handler job references to feature parity with regular job references, including support for `project_name`, `node_step`, `node_filters`, and other advanced options.
 
