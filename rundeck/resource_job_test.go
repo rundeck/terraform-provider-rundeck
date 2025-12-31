@@ -378,23 +378,23 @@ resource "rundeck_job" "test_webhook" {
     shell_command = "echo Hello World"
   }
   
-  # Notifications use semantic equality - order doesn't cause plan drift
-  # Configuration order: onfailure, onstart, onsuccess
-  # v1.1.0+ uses list syntax for notifications
-  notification = [{
+  # Notifications must be defined in alphabetical order by type to prevent plan drift
+  notification {
     type = "on_failure"
     webhook_urls = ["https://example.com/webhook"]
-  }, {
+  }
+  notification {
     type = "on_start"
     format = "json"
     http_method = "post"
     webhook_urls = ["https://example.com/webhook"]
-  }, {
+  }
+  notification {
     type = "on_success"
     format = "json"
     http_method = "post"
     webhook_urls = ["https://example.com/webhook"]
-  }]
+  }
 }
 `
 
@@ -436,12 +436,12 @@ resource "rundeck_job" "test" {
   command {
     script_url = "http://example.com/script.sh"
   }
-  notification = [{
+  notification {
     type = "on_success"
-    email = [{
+    email {
       recipients = ["foo@foo.bar"]
-    }]
-  }]
+    }
+  }
 }
 `
 
@@ -652,12 +652,12 @@ resource "rundeck_job" "source_test_job" {
     }
     description = "Prints Hello World"
   }
-  notification = [{
+  notification {
     type = "on_success"
-    email = [{
+    email {
       recipients = ["foo@foo.bar"]
-    }]
-  }]
+    }
+  }
 }
 `
 
@@ -793,12 +793,12 @@ resource "rundeck_job" "test" {
     shell_command = "echo hello"
   }
 
-  notification = [{
+  notification {
     type = "on_success"
-    email = [{
+    email {
       recipients = ["foo@foo.bar"]
-    }]
-  }]
+    }
+  }
 }
 `
 
@@ -833,12 +833,12 @@ resource "rundeck_job" "test" {
     description = "Prints Hello World"
     shell_command = "echo Hello World"
   }
-  notification = [{
+  notification {
     type = "on_testing"
-    email = [{
+    email {
       recipients = ["foo@foo.bar"]
-    }]
-  }]
+    }
+  }
 }
 `
 
@@ -873,17 +873,18 @@ resource "rundeck_job" "test" {
     description = "Prints Hello World"
     shell_command = "echo Hello World"
   }
-  notification = [{
+  notification {
     type = "on_success"
-    email = [{
+    email {
       recipients = ["foo@foo.bar"]
-    }]
-  }, {
+    }
+  }
+  notification {
     type = "on_success"
-    email = [{
+    email {
       recipients = ["foo@foo.bar"]
-    }]
-  }]
+    }
+  }
 }
 `
 
@@ -1033,12 +1034,12 @@ resource "rundeck_project" "test" {
 	  }
 	  description = "Prints Hello World"
 	}
-	notification = [{
+	notification {
 		type = "on_success"
-		email = [{
+		email {
 			recipients = ["foo@foo.bar"]
-		}]
-	}]
+		}
+	}
   }
   `
 
@@ -1086,12 +1087,12 @@ resource "rundeck_project" "test" {
 	  }
 	  description = "Prints Hello World"
 	}
-	notification = [{
+	notification {
 		type = "on_success"
-		email = [{
+		email {
 			recipients = ["foo@foo.bar"]
-		}]
-	}]
+		}
+	}
   }
   `
 
@@ -1137,12 +1138,12 @@ resource "rundeck_project" "test" {
 	  }
 	  description = "Prints Hello World"
 	}
-	notification = [{
+	notification {
 		type = "on_success"
-		email = [{
+		email {
 			recipients = ["foo@foo.bar"]
-		}]
-	}]
+		}
+	}
   }
   `
 
@@ -1618,12 +1619,12 @@ resource "rundeck_job" "test" {
       }
     }
   }
-  notification = [{
+  notification {
     type = "on_success"
-    email = [{
+    email {
       recipients = ["foo@foo.bar"]
-    }]
-  }]
+    }
+  }
 }
 `
 
