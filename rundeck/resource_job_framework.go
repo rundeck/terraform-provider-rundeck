@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -329,6 +330,16 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 		return
 	}
 
+	// Sort notifications in plan BEFORE converting to JSON
+	// This ensures Terraform's consistency check passes (plan vs state comparison)
+	// The API will return them sorted, so we need the plan sorted too
+	if !plan.Notification.IsNull() && !plan.Notification.IsUnknown() {
+		sortedNotifications, diags := r.sortNotificationsList(ctx, plan.Notification)
+		if !diags.HasError() {
+			plan.Notification = sortedNotifications
+		}
+	}
+
 	// Convert Terraform model to Rundeck JSON format
 	jobData, err := r.planToJobJSON(ctx, &plan)
 	if err != nil {
@@ -535,6 +546,16 @@ func (r *jobResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
+	}
+
+	// Sort notifications in plan BEFORE converting to JSON
+	// This ensures Terraform's consistency check passes (plan vs state comparison)
+	// The API will return them sorted, so we need the plan sorted too
+	if !plan.Notification.IsNull() && !plan.Notification.IsUnknown() {
+		sortedNotifications, diags := r.sortNotificationsList(ctx, plan.Notification)
+		if !diags.HasError() {
+			plan.Notification = sortedNotifications
+		}
 	}
 
 	// Convert Terraform model to Rundeck JSON format
@@ -1311,4 +1332,63 @@ func (r *jobResource) jobJSONAPIToState(ctx context.Context, job *JobJSON, state
 	}
 
 	return nil
+}
+
+// sortNotificationsList sorts a notifications list alphabetically by type
+// This ensures the plan matches what we'll get back from the API (which sorts notifications)
+func (r *jobResource) sortNotificationsList(ctx context.Context, notificationsList types.List) (types.List, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	if notificationsList.IsNull() || notificationsList.IsUnknown() {
+		return notificationsList, diags
+	}
+
+	var notifications []types.Object
+	diags.Append(notificationsList.ElementsAs(ctx, &notifications, false)...)
+	if diags.HasError() {
+		return notificationsList, diags
+	}
+
+	// Sort notifications alphabetically by type (same logic as convertNotificationsToJSON)
+	sort.Slice(notifications, func(i, j int) bool {
+		var typeI, typeJ string
+
+		// Safely extract type from notification i
+		if attrI, ok := notifications[i].Attributes()["type"]; ok {
+			if s, ok := attrI.(types.String); ok && !s.IsNull() && !s.IsUnknown() {
+				typeI = s.ValueString()
+			}
+		}
+
+		// Safely extract type from notification j
+		if attrJ, ok := notifications[j].Attributes()["type"]; ok {
+			if s, ok := attrJ.(types.String); ok && !s.IsNull() && !s.IsUnknown() {
+				typeJ = s.ValueString()
+			}
+		}
+
+		// Treat notifications with invalid or missing types as last in sort order
+		if typeI == "" {
+			typeI = "\uffff" // Unicode max character - sorts last
+		}
+		if typeJ == "" {
+			typeJ = "\uffff"
+		}
+
+		return typeI < typeJ
+	})
+
+	// Get the element type from the original list
+	elementType := notificationsList.ElementType(ctx)
+
+	// Convert []types.Object to []attr.Value (types.Object implements attr.Value)
+	notificationValues := make([]attr.Value, len(notifications))
+	for i, notif := range notifications {
+		notificationValues[i] = notif
+	}
+
+	// Create a new sorted list using ListValueMust (same approach as convertNotificationsFromJSON)
+	sortedList := types.ListValueMust(elementType, notificationValues)
+
+	return sortedList, diags
 }
