@@ -72,13 +72,13 @@ resource "rundeck_job" "example" {
 
 ## Upgrading to v1.0.0 (Not Recommended)
 
-**Note:** v1.0.0 introduced a notification ordering limitation that was fixed in v1.1.0. **We recommend upgrading directly to v1.1.0 by following the steps above+** to avoid the notification ordering requirement and the subsequent syntax change.
+**Note:** v1.0.0 introduced a notification ordering limitation that was fixed in v1.1.0. **We recommend upgrading directly to v1.1.0 by following the steps above** to avoid the notification ordering requirement and the subsequent syntax change.
 
 If you plan to upgrade to v1.0.0 and stop there (not upgrading to v1.1.0+), please review these migration steps:
 
 ### Overview
 
-v1.1.0 brings:
+v1.0.0 brings:
 - **Zero plan drift** for all resource types
 - **100% test pass rate** (38 acceptance tests)
 - Plugin Framework migration (SDKv2 removed)

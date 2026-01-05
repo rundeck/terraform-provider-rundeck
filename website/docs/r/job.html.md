@@ -454,13 +454,11 @@ A command's `log_filter_plugin`, `step_plugin`  or `node_step_plugin` block both
 
 * `config`: (Optional) Map of arbitrary configuration parameters for the selected plugin.
 
-`notification` is a list attribute (v1.1.0+) with the following structure:
+`notification` is a nested block with the following structure:
 
 * `type`: (Required) The name of the type of notification. Can be of type `on_success`, `on_failure`, `on_start`, `on_retryable_failure`, `on_avg_duration`.
 
-**Note on Notification Syntax (v1.1.0+):** Notifications use list syntax (`notification = [{...}]`) instead of nested blocks. Notifications can be defined in any order - the provider uses semantic equality to compare lists, preventing plan drift regardless of order. This restores the behavior that existed in v0.5.0.
-
-**Breaking Change:** v1.1.0 changes notification syntax from nested blocks to list attribute. See the [upgrading guide](/docs/guides/upgrading.html) for migration instructions.
+**Important:** Notifications must be defined in alphabetical order by `type` to prevent plan drift. The Rundeck API returns notifications sorted alphabetically, so your Terraform configuration must match this order. The provider validates this requirement and will show an error if notifications are out of order or if duplicate notification types are defined.
 
 * `email`: (Optional) block listed below to send emails as notification.
 

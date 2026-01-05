@@ -339,8 +339,8 @@ func TestAccJobWebhookNotification(t *testing.T) {
 					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "description", "A job with webhook notifications"),
 					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "execution_enabled", "true"),
 
-					// Notifications use semantic equality - order doesn't cause plan drift
-					// Configuration order: onfailure, onstart, onsuccess
+					// Notifications are normalized to a deterministic, alphabetical order by type
+					// Normalized order: on_failure (0), on_start (1), on_success (2)
 
 					// Verify on_failure notification (index 0)
 					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.0.type", "on_failure"),
@@ -447,10 +447,10 @@ resource "rundeck_job" "test" {
     script_url = "http://example.com/script.sh"
   }
   notification {
-    type = "on_success"
-    email {
-      recipients = ["foo@foo.bar"]
-    }
+	  type = "on_success"
+	  email {
+		  recipients = ["foo@foo.bar"]
+	  }
   }
 }
 `
@@ -663,10 +663,10 @@ resource "rundeck_job" "source_test_job" {
     description = "Prints Hello World"
   }
   notification {
-    type = "on_success"
-    email {
-      recipients = ["foo@foo.bar"]
-    }
+	  type = "on_success"
+	  email {
+		  recipients = ["foo@foo.bar"]
+	  }
   }
 }
 `
@@ -804,10 +804,10 @@ resource "rundeck_job" "test" {
   }
 
   notification {
-    type = "on_success"
-    email {
-      recipients = ["foo@foo.bar"]
-    }
+	  type = "on_success"
+	  email {
+		  recipients = ["foo@foo.bar"]
+	  }
   }
 }
 `
@@ -844,10 +844,10 @@ resource "rundeck_job" "test" {
     shell_command = "echo Hello World"
   }
   notification {
-    type = "on_testing"
-    email {
-      recipients = ["foo@foo.bar"]
-    }
+	  type = "on_testing"
+	  email {
+		  recipients = ["foo@foo.bar"]
+	  }
   }
 }
 `
@@ -884,16 +884,16 @@ resource "rundeck_job" "test" {
     shell_command = "echo Hello World"
   }
   notification {
-    type = "on_success"
-    email {
-      recipients = ["foo@foo.bar"]
-    }
+	  type = "on_success"
+	  email {
+		  recipients = ["foo@foo.bar"]
+	  }
   }
   notification {
-    type = "on_success"
-    email {
-      recipients = ["foo@foo.bar"]
-    }
+	  type = "on_success"
+	  email {
+		  recipients = ["foo@foo.bar"]
+	  }
   }
 }
 `
@@ -1678,17 +1678,17 @@ resource "rundeck_job" "test" {
     }
   }
   notification {
-    type = "on_success"
-    email {
-      recipients = ["foo@foo.bar"]
-    }
+	  type = "on_success"
+	  email {
+		  recipients = ["foo@foo.bar"]
+	  }
   }
 }
 `
 
-// TestAccJobNotification_outOfOrder tests that notifications can be defined in any order
-// Reproduces GitHub Issue #209 - notifications defined as on_success then on_failure
-// should work without "Provider produced inconsistent result" errors
+// TestAccJobNotification_outOfOrder tests that notifications defined in alphabetical order
+// work correctly. The provider normalizes notifications to alphabetical order by type,
+// so configurations must match this order to prevent plan drift.
 func TestAccJobNotification_outOfOrder(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
