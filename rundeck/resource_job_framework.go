@@ -1170,7 +1170,7 @@ func (r *jobResource) jobJSONToState(ctx context.Context, job *jobJSON, state *j
 			threadCount, _ := strconv.ParseInt(job.NodeFilters.Dispatch.ThreadCount, 10, 64)
 			state.MaxThreadCount = types.Int64Value(threadCount)
 		}
-		state.ContinueOnError = types.BoolValue(job.NodeFilters.Dispatch.KeepGoing)
+		state.ContinueNextNodeOnError = types.BoolValue(job.NodeFilters.Dispatch.KeepGoing)
 		state.NodeFilterExcludePrecedence = types.BoolValue(job.NodeFilters.Dispatch.ExcludePrecedence)
 		if job.NodeFilters.Dispatch.RankOrder != "" {
 			state.RankOrder = types.StringValue(job.NodeFilters.Dispatch.RankOrder)
@@ -1319,9 +1319,9 @@ func (r *jobResource) jobJSONAPIToState(ctx context.Context, job *JobJSON, state
 					state.MaxThreadCount = types.Int64Value(tc)
 				}
 			}
-			// continue_on_error comes from dispatch.keepgoing (dispatch-level setting)
+			// continue_next_node_on_error comes from dispatch.keepgoing (dispatch-level setting)
 			if keepGoing, ok := dispatch["keepgoing"].(bool); ok {
-				state.ContinueOnError = types.BoolValue(keepGoing)
+				state.ContinueNextNodeOnError = types.BoolValue(keepGoing)
 			}
 			if rankOrder, ok := dispatch["rankOrder"].(string); ok {
 				state.RankOrder = types.StringValue(rankOrder)

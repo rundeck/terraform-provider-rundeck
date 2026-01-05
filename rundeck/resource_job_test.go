@@ -965,9 +965,9 @@ resource "rundeck_job" "test" {
 
   option {
     name = "foo"
-	default_value = "bar"
-	require_predefined_choice = true
-	value_choices = ["", "foo"]
+    default_value = "bar"
+    require_predefined_choice = true
+    value_choices = ["", "foo"]
   }
 
   command {
@@ -1686,10 +1686,10 @@ resource "rundeck_job" "test" {
 }
 `
 
-// TestAccJobNotification_outOfOrder tests that notifications defined in alphabetical order
+// TestAccJobNotification_alphabeticalOrder tests that notifications defined in alphabetical order
 // work correctly. The provider normalizes notifications to alphabetical order by type,
 // so configurations must match this order to prevent plan drift.
-func TestAccJobNotification_outOfOrder(t *testing.T) {
+func TestAccJobNotification_alphabeticalOrder(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),

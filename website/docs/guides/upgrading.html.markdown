@@ -20,7 +20,7 @@ Version 1.1.0 includes important bug fixes. **Please review these changes before
 
 #### Notification Ordering Requirement
 
-**ACTION REQUIRED:** Notifications must be defined in alphabetical order by type to prevent plan drift. The Rundeck API returns notifications sorted alphabetically, so your Terraform configuration must match this order.
+**Important:** Notifications must be defined in alphabetical order by type to prevent plan drift. The Rundeck API returns notifications sorted alphabetically, so your Terraform configuration must match this order. v1.1.0 adds validation to catch ordering issues at plan time, helping ensure proper plan drift handling.
 
 **Valid notification types (in alphabetical order):**
 - `on_avg_duration`
@@ -55,7 +55,7 @@ resource "rundeck_job" "example" {
 }
 ```
 
-**Why:** The Rundeck API returns notifications sorted alphabetically by type. If your Terraform configuration defines them in a different order, Terraform will detect plan drift and attempt to reorder them, causing "Provider produced inconsistent result" errors. By defining notifications in alphabetical order, your configuration matches what the API returns, eliminating plan drift.
+**Why:** The Rundeck API returns notifications sorted alphabetically by type. If your Terraform configuration defines them in a different order, Terraform will detect plan drift and attempt to reorder them, causing "Provider produced inconsistent result" errors. v1.1.0 refines this requirement by adding validation that catches ordering issues at plan time, ensuring your configuration matches what the API returns and eliminating plan drift.
 
 **Migration Steps:**
 1. Review all `notification {` blocks in your `.tf` files
@@ -140,7 +140,7 @@ resource "rundeck_job" "example" {
 }
 ```
 
-**Why:** The Rundeck API returns notifications sorted alphabetically by type. If your Terraform configuration defines them in a different order, Terraform will detect plan drift and attempt to reorder them, causing "Provider produced inconsistent result" errors. By defining notifications in alphabetical order, your configuration matches what the API returns, eliminating plan drift.
+**Why:** The Rundeck API returns notifications sorted alphabetically by type. If your Terraform configuration defines them in a different order, Terraform will detect plan drift and attempt to reorder them, causing "Provider produced inconsistent result" errors. v1.1.0 refines this requirement by adding validation that catches ordering issues at plan time, ensuring your configuration matches what the API returns and eliminating plan drift.
 
 **Migration Steps:**
 1. Review all `notification {` blocks in your `.tf` files
