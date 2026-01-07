@@ -2,6 +2,11 @@
 
 **Important Changes**
 
+### Breaking Changes
+
+#### Project Resource - `extra_config` Format Change
+- **`extra_config` key format** - Keys in `extra_config` now use dot notation (e.g., `"project.label"`) instead of slash notation (e.g., `"project/label"`). This matches the Rundeck API format directly and removes unnecessary conversion logic. **Migration:** Update any `extra_config` keys from slashes to dots. Example: `"project/label"` → `"project.label"`. This change affects users who used `extra_config` in v1.0.0.
+
 ### Job Resource - Notification Ordering Requirement
 - **Notification ordering requirement** ([#209](https://github.com/rundeck/terraform-provider-rundeck/issues/209)) - Notifications must be defined in alphabetical order by type (`on_avg_duration`, `on_failure`, `on_retryable_failure`, `on_start`, `on_success`) to prevent plan drift. The Rundeck API returns notifications sorted alphabetically, so your Terraform configuration must match this order.
 
@@ -32,7 +37,7 @@ notification {
 - **Added validation for empty choice values** - When `require_predefined_choice = true` for a job option, the provider now validates that `value_choices` contains at least one non-empty value and no empty strings. Empty strings cause plan drift because the Rundeck API filters them out. This validation catches the issue at plan time with a helpful error message.
 
 ### Documentation
-- **Fixed `extra_config` example in project resource** ([#210](https://github.com/rundeck/terraform-provider-rundeck/issues/210)) - Corrected documentation examples to use `"project/label"` instead of `"project.label"`. Rundeck uses forward slashes as separators in project configuration keys, not dots. Using dots causes plan drift as Rundeck normalizes them to forward slashes.
+- **Updated `extra_config` format** - `extra_config` keys now use dot notation (e.g., `"project.label"`) to match the Rundeck API format directly. Previously, keys used slash notation (e.g., `"project/label"`) which was unnecessarily converted. This change simplifies the implementation and matches the actual API format.
 - Updated job resource documentation to clarify notification ordering requirement and add validation details
 
 ---

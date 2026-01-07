@@ -14,7 +14,46 @@ This guide covers important changes and migration steps for major version upgrad
 
 ## Upgrading to v1.1.0
 
-Version 1.1.0 includes important bug fixes. **Please review these changes before upgrading.**
+Version 1.1.0 includes important bug fixes and one breaking change. **Please review these changes before upgrading.**
+
+### Breaking Changes
+
+#### Project Resource - `extra_config` Format Change
+
+**Important:** If you use `extra_config` in your `rundeck_project` resources, you must update the key format from slash notation to dot notation.
+
+**Before (v1.0.0):**
+```hcl
+resource "rundeck_project" "example" {
+  name = "my-project"
+  # ... other config ...
+  
+  extra_config = {
+    "project/label" = "My Label"
+    "foo/bar"      = "baz"
+  }
+}
+```
+
+**After (v1.1.0+):**
+```hcl
+resource "rundeck_project" "example" {
+  name = "my-project"
+  # ... other config ...
+  
+  extra_config = {
+    "project.label" = "My Label"
+    "foo.bar"      = "baz"
+  }
+}
+```
+
+**Migration Steps:**
+1. Find all `extra_config` blocks in your `rundeck_project` resources
+2. Replace all forward slashes (`/`) with dots (`.`) in the key names
+3. Run `terraform plan` to verify the changes
+
+**Note:** This change affects users who used `extra_config` in v1.0.0. Since `extra_config` was only introduced in v1.0.0, the impact is limited. The new format matches the Rundeck API format directly, eliminating unnecessary conversion logic.
 
 ### Important Changes
 

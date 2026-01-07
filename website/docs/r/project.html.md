@@ -30,7 +30,7 @@ resource "rundeck_project" "terraform" {
     }
   }
   extra_config = {
-    "project/label" = "Terraform Example"
+    "project.label" = "Terraform Example"
   }
 }
 ```
@@ -73,9 +73,9 @@ The following arguments are supported:
 
 * `extra_config` - (Optional) Behind the scenes a Rundeck project is really an arbitrary set of
   key/value pairs. This map argument allows setting any configuration properties that aren't
-  explicitly supported by the other arguments described above, but due to limitations of Terraform
-  the key names must be written wrapped in double quotes. Do not use this argument to set
-  properties that the above arguments set, or undefined behavior will result.
+  explicitly supported by the other arguments described above. Key names should use dot notation
+  (e.g., `"project.label"`) as required by the Rundeck API, and must be wrapped in double quotes.
+  Do not use this argument to set properties that the above arguments set, or undefined behavior will result.
 
 `resource_model_source` blocks have the following nested arguments:
 
