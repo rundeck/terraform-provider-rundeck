@@ -290,6 +290,8 @@ func (r *projectResource) updateProjectConfig(ctx context.Context, apiCtx contex
 	updateMap := map[string]string{}
 
 	// Handle extra_config
+	// Filter out keys that are standard project attributes to prevent duplicates
+	// Standard attributes are handled separately below
 	if !plan.ExtraConfig.IsNull() && !plan.ExtraConfig.IsUnknown() {
 		extraConfig := make(map[string]types.String)
 		diags.Append(plan.ExtraConfig.ElementsAs(ctx, &extraConfig, false)...)
@@ -297,6 +299,14 @@ func (r *projectResource) updateProjectConfig(ctx context.Context, apiCtx contex
 			return
 		}
 		for k, v := range extraConfig {
+			// Skip keys that are standard project attributes - they're handled separately
+			if _, isStandardAttr := projectConfigAttributes[k]; isStandardAttr {
+				continue
+			}
+			// Skip resource model source keys - they're handled separately
+			if strings.HasPrefix(k, "resources.source.") {
+				continue
+			}
 			updateMap[k] = v.ValueString()
 		}
 	}

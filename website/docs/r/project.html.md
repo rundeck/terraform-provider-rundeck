@@ -75,7 +75,12 @@ The following arguments are supported:
   key/value pairs. This map argument allows setting any configuration properties that aren't
   explicitly supported by the other arguments described above. Key names should use dot notation
   (e.g., `"project.label"`) as required by the Rundeck API, and must be wrapped in double quotes.
-  Do not use this argument to set properties that the above arguments set, or undefined behavior will result.
+  
+  **Important:** Do not use `extra_config` to set properties that are handled by other arguments
+  (such as `default_node_file_copier_plugin`, `default_node_executor_plugin`, `description`, etc.).
+  These keys will be filtered out from `extra_config` and should be set using their dedicated
+  attributes instead. Using them in `extra_config` will cause plan drift as they are handled
+  separately by the provider.
 
 `resource_model_source` blocks have the following nested arguments:
 
