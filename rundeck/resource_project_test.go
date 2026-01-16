@@ -109,7 +109,7 @@ resource "rundeck_project" "main" {
   }
 
   extra_config = {
-    "foo/bar" = "baz"
+    "foo.bar" = "baz"
   }
 }
 `

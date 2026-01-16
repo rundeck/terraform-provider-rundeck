@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -319,6 +320,159 @@ func (r *jobResource) Configure(_ context.Context, req resource.ConfigureRequest
 	}
 
 	r.client = clients
+}
+
+func (r *jobResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var config jobResourceModel
+	diags := req.Config.Get(ctx, &config)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Validate notifications: check for duplicates and alphabetical ordering
+	if !config.Notification.IsNull() && !config.Notification.IsUnknown() {
+		var notifications []types.Object
+		diags := config.Notification.ElementsAs(ctx, &notifications, false)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		// Check for duplicates and collect types
+		seenTypes := make(map[string]int) // map of type -> index
+		var notificationTypes []string
+		for i, notif := range notifications {
+			attrs := notif.Attributes()
+			if typeAttr, ok := attrs["type"]; ok {
+				if typeStr, ok := typeAttr.(types.String); ok && !typeStr.IsNull() && !typeStr.IsUnknown() {
+					notifType := typeStr.ValueString()
+					if prevIdx, exists := seenTypes[notifType]; exists {
+						resp.Diagnostics.AddAttributeError(
+							path.Root("notification").AtListIndex(i).AtName("type"),
+							"Duplicate notification type",
+							fmt.Sprintf("Notification type %q is already defined at index %d. Each notification type can only be defined once.", notifType, prevIdx),
+						)
+					} else {
+						seenTypes[notifType] = i
+					}
+					notificationTypes = append(notificationTypes, notifType)
+				}
+			}
+		}
+
+		// Check alphabetical ordering
+		if len(notificationTypes) > 1 {
+			sortedTypes := make([]string, len(notificationTypes))
+			copy(sortedTypes, notificationTypes)
+			sort.Strings(sortedTypes)
+
+			for i, actualType := range notificationTypes {
+				if actualType != sortedTypes[i] {
+					expectedOrder := strings.Join(sortedTypes, ", ")
+					resp.Diagnostics.AddAttributeError(
+						path.Root("notification").AtListIndex(i).AtName("type"),
+						"Invalid notification order",
+						fmt.Sprintf("Notifications must be defined in alphabetical order by type. Found %q at index %d, but expected %q. Expected order: %s", actualType, i, sortedTypes[i], expectedOrder),
+					)
+					// Only report first error to avoid overwhelming the user
+					break
+				}
+			}
+		}
+	}
+
+	// Validate options: check value_choices when require_predefined_choice is true
+	if !config.Option.IsNull() && !config.Option.IsUnknown() {
+		var options []types.Object
+		diags := config.Option.ElementsAs(ctx, &options, false)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		for i, opt := range options {
+			attrs := opt.Attributes()
+
+			// Check if require_predefined_choice is true
+			var requirePredefined bool
+			if reqPredefinedAttr, ok := attrs["require_predefined_choice"]; ok {
+				if reqPredefinedBool, ok := reqPredefinedAttr.(types.Bool); ok && !reqPredefinedBool.IsNull() && !reqPredefinedBool.IsUnknown() {
+					requirePredefined = reqPredefinedBool.ValueBool()
+				}
+			}
+
+			if requirePredefined {
+				// Get option name for error message
+				optionName := "unnamed"
+				if nameAttr, ok := attrs["name"]; ok {
+					if nameStr, ok := nameAttr.(types.String); ok && !nameStr.IsNull() && !nameStr.IsUnknown() {
+						optionName = nameStr.ValueString()
+					}
+				}
+
+				// Check value_choices
+				valueChoicesAttr, hasValueChoices := attrs["value_choices"]
+				if !hasValueChoices {
+					resp.Diagnostics.AddAttributeError(
+						path.Root("option").AtListIndex(i).AtName("value_choices"),
+						"Missing value choices",
+						fmt.Sprintf("Option %q has require_predefined_choice set to true, but value_choices is not provided. When require_predefined_choice is true, value_choices must contain at least one non-empty value.", optionName),
+					)
+					continue
+				}
+
+				valueChoicesList, ok := valueChoicesAttr.(types.List)
+				if !ok || valueChoicesList.IsNull() || valueChoicesList.IsUnknown() {
+					resp.Diagnostics.AddAttributeError(
+						path.Root("option").AtListIndex(i).AtName("value_choices"),
+						"Missing value choices",
+						fmt.Sprintf("Option %q has require_predefined_choice set to true, but value_choices is not provided. When require_predefined_choice is true, value_choices must contain at least one non-empty value.", optionName),
+					)
+					continue
+				}
+
+				// Extract string values from the list
+				var valueChoices []types.String
+				diags := valueChoicesList.ElementsAs(ctx, &valueChoices, false)
+				resp.Diagnostics.Append(diags...)
+				if resp.Diagnostics.HasError() {
+					continue
+				}
+
+				// Check for at least one non-empty value and reject empty strings
+				hasNonEmptyValue := false
+				var emptyValueIndices []int
+				for j, choice := range valueChoices {
+					if choice.IsNull() || choice.IsUnknown() {
+						emptyValueIndices = append(emptyValueIndices, j)
+						continue
+					}
+					choiceValue := choice.ValueString()
+					if choiceValue == "" {
+						emptyValueIndices = append(emptyValueIndices, j)
+					} else {
+						hasNonEmptyValue = true
+					}
+				}
+
+				if !hasNonEmptyValue {
+					resp.Diagnostics.AddAttributeError(
+						path.Root("option").AtListIndex(i).AtName("value_choices"),
+						"Empty value choices",
+						fmt.Sprintf("Option %q has require_predefined_choice set to true, but value_choices contains no non-empty values. When require_predefined_choice is true, value_choices must contain at least one non-empty value.", optionName),
+					)
+				} else if len(emptyValueIndices) > 0 {
+					// Error on empty values - API filters them out causing plan drift
+					resp.Diagnostics.AddAttributeError(
+						path.Root("option").AtListIndex(i).AtName("value_choices"),
+						"Empty value choices",
+						fmt.Sprintf("Option %q has require_predefined_choice set to true, but value_choices contains empty values at indices %v. Empty values are not allowed when require_predefined_choice is true as they cause plan drift (Rundeck API filters them out).", optionName, emptyValueIndices),
+					)
+				}
+			}
+		}
+	}
 }
 
 func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -666,6 +820,27 @@ func (r *jobResource) Update(ctx context.Context, req resource.UpdateRequest, re
 		return
 	}
 
+	// Read the job back from API to ensure state matches what's actually stored
+	// This is important for fields like notifications which are sorted by the API
+	jobID := importResult.Succeeded[0].ID
+	apiJobData, err := GetJobJSON(r.client.V1, jobID)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error reading job after update",
+			fmt.Sprintf("Could not read job after update: %s", err.Error()),
+		)
+		return
+	}
+
+	// Update plan with values from API (ensures state matches what's actually in Rundeck)
+	if err = r.jobJSONAPIToState(ctx, apiJobData, &plan); err != nil {
+		resp.Diagnostics.AddError(
+			"Error reading job after update",
+			fmt.Sprintf("Could not convert job JSON to state: %s", err.Error()),
+		)
+		return
+	}
+
 	// Set computed fields that may not have been set in the plan
 	if plan.PreserveOptionsOrder.IsUnknown() {
 		plan.PreserveOptionsOrder = types.BoolValue(false)
@@ -854,8 +1029,13 @@ func (r *jobResource) planToJobJSON(ctx context.Context, plan *jobResourceModel)
 	}
 
 	// Convert notifications
+	// Sort notifications alphabetically before converting to JSON to match API behavior
 	if !plan.Notification.IsNull() && !plan.Notification.IsUnknown() {
-		notifications, diags := convertNotificationsToJSON(ctx, plan.Notification)
+		sortedNotifications, diags := r.sortNotificationsList(ctx, plan.Notification)
+		if diags.HasError() {
+			return nil, fmt.Errorf("error sorting notifications: %v", diags.Errors())
+		}
+		notifications, diags := convertNotificationsToJSON(ctx, sortedNotifications)
 		if diags.HasError() {
 			return nil, fmt.Errorf("error converting notifications: %v", diags.Errors())
 		}
@@ -990,7 +1170,7 @@ func (r *jobResource) jobJSONToState(ctx context.Context, job *jobJSON, state *j
 			threadCount, _ := strconv.ParseInt(job.NodeFilters.Dispatch.ThreadCount, 10, 64)
 			state.MaxThreadCount = types.Int64Value(threadCount)
 		}
-		state.ContinueOnError = types.BoolValue(job.NodeFilters.Dispatch.KeepGoing)
+		state.ContinueNextNodeOnError = types.BoolValue(job.NodeFilters.Dispatch.KeepGoing)
 		state.NodeFilterExcludePrecedence = types.BoolValue(job.NodeFilters.Dispatch.ExcludePrecedence)
 		if job.NodeFilters.Dispatch.RankOrder != "" {
 			state.RankOrder = types.StringValue(job.NodeFilters.Dispatch.RankOrder)
@@ -1047,10 +1227,15 @@ func (r *jobResource) jobJSONToState(ctx context.Context, job *jobJSON, state *j
 	}
 
 	// Convert notifications from JSON to state
+	// Sort notifications alphabetically after converting from JSON to match API behavior
 	if job.Notification != nil {
 		notificationsList, diags := convertNotificationsFromJSON(ctx, job.Notification)
 		if !diags.HasError() {
-			state.Notification = notificationsList
+			sortedNotifications, sortDiags := r.sortNotificationsList(ctx, notificationsList)
+			diags.Append(sortDiags...)
+			if !diags.HasError() {
+				state.Notification = sortedNotifications
+			}
 		}
 	}
 
@@ -1134,6 +1319,7 @@ func (r *jobResource) jobJSONAPIToState(ctx context.Context, job *JobJSON, state
 					state.MaxThreadCount = types.Int64Value(tc)
 				}
 			}
+			// continue_next_node_on_error comes from dispatch.keepgoing (dispatch-level setting)
 			if keepGoing, ok := dispatch["keepgoing"].(bool); ok {
 				state.ContinueNextNodeOnError = types.BoolValue(keepGoing)
 			}
@@ -1142,6 +1328,14 @@ func (r *jobResource) jobJSONAPIToState(ctx context.Context, job *JobJSON, state
 			}
 			if rankAttr, ok := dispatch["rankAttribute"].(string); ok {
 				state.RankAttribute = types.StringValue(rankAttr)
+			}
+			// Extract excludePrecedence from dispatch
+			if excludePrec, ok := dispatch["excludePrecedence"].(bool); ok {
+				state.NodeFilterExcludePrecedence = types.BoolValue(excludePrec)
+			}
+			// Extract successOnEmptyNodeFilter from dispatch
+			if successEmpty, ok := dispatch["successOnEmptyNodeFilter"].(bool); ok {
+				state.SuccessOnEmptyNodeFilter = types.BoolValue(successEmpty)
 			}
 		}
 	}
@@ -1237,6 +1431,10 @@ func (r *jobResource) jobJSONAPIToState(ctx context.Context, job *JobJSON, state
 		if err == nil {
 			state.Schedule = types.StringValue(cronStr)
 		}
+		// Extract timeZone from schedule object
+		if timeZone, ok := job.Schedule["timeZone"].(string); ok && timeZone != "" {
+			state.TimeZone = types.StringValue(timeZone)
+		}
 	}
 
 	// Convert orchestrator from JSON to state
@@ -1256,10 +1454,15 @@ func (r *jobResource) jobJSONAPIToState(ctx context.Context, job *JobJSON, state
 	}
 
 	// Convert notifications from JSON to state
+	// Sort notifications alphabetically after converting from JSON to match API behavior
 	if len(job.Notification) > 0 {
 		notificationsList, diags := convertNotificationsFromJSON(ctx, job.Notification)
 		if !diags.HasError() {
-			state.Notification = notificationsList
+			sortedNotifications, sortDiags := r.sortNotificationsList(ctx, notificationsList)
+			diags.Append(sortDiags...)
+			if !diags.HasError() {
+				state.Notification = sortedNotifications
+			}
 		}
 	}
 
@@ -1277,4 +1480,61 @@ func (r *jobResource) jobJSONAPIToState(ctx context.Context, job *JobJSON, state
 	}
 
 	return nil
+}
+
+// sortNotificationsList sorts a notifications list alphabetically by type
+// This ensures the plan matches what we'll get back from the API (which sorts notifications)
+func (r *jobResource) sortNotificationsList(ctx context.Context, notificationsList types.List) (types.List, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	if notificationsList.IsNull() || notificationsList.IsUnknown() {
+		return notificationsList, diags
+	}
+
+	var notifications []types.Object
+	diags.Append(notificationsList.ElementsAs(ctx, &notifications, false)...)
+	if diags.HasError() {
+		return notificationsList, diags
+	}
+
+	// Sort notifications alphabetically by type (same logic as convertNotificationsToJSON)
+	sort.Slice(notifications, func(i, j int) bool {
+		var typeI, typeJ string
+
+		// Safely extract type from notification i
+		if attrI, ok := notifications[i].Attributes()["type"]; ok {
+			if s, ok := attrI.(types.String); ok && !s.IsNull() && !s.IsUnknown() {
+				typeI = s.ValueString()
+			}
+		}
+
+		// Safely extract type from notification j
+		if attrJ, ok := notifications[j].Attributes()["type"]; ok {
+			if s, ok := attrJ.(types.String); ok && !s.IsNull() && !s.IsUnknown() {
+				typeJ = s.ValueString()
+			}
+		}
+
+		// Treat notifications with invalid or missing types as last in sort order
+		if typeI == "" {
+			typeI = "\uffff" // Unicode max character - sorts last
+		}
+		if typeJ == "" {
+			typeJ = "\uffff"
+		}
+
+		return typeI < typeJ
+	})
+
+	// Get the element type from the original list
+	elementType := notificationsList.ElementType(ctx)
+
+	// Convert []types.Object to []attr.Value (types.Object implements attr.Value)
+	notificationValues := make([]attr.Value, len(notifications))
+	for i, notif := range notifications {
+		notificationValues[i] = notif
+	}
+
+	// Create a new sorted list
+	return types.ListValueMust(elementType, notificationValues), diags
 }

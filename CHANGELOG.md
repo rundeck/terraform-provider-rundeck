@@ -1,3 +1,47 @@
+## 1.1.0
+
+**Important Changes**
+
+### Breaking Changes
+
+#### Project Resource - `extra_config` Format Change
+- **`extra_config` key format** - Keys in `extra_config` now use dot notation (e.g., `"project.label"`) instead of slash notation (e.g., `"project/label"`). This matches the Rundeck API format directly and removes unnecessary conversion logic. **Migration:** Update any `extra_config` keys from slashes to dots. Example: `"project/label"` → `"project.label"`. This change affects users who used `extra_config` in v1.0.0.
+
+### Job Resource - Notification Ordering Requirement
+- **Notification ordering requirement** ([#209](https://github.com/rundeck/terraform-provider-rundeck/issues/209)) - Notifications must be defined in alphabetical order by type (`on_avg_duration`, `on_failure`, `on_retryable_failure`, `on_start`, `on_success`) to prevent plan drift. The Rundeck API returns notifications sorted alphabetically, so your Terraform configuration must match this order.
+
+**Why:** The Rundeck API returns notifications sorted alphabetically by type. If your Terraform configuration defines them in a different order, Terraform will detect plan drift and attempt to reorder them, causing "Provider produced inconsistent result" errors. By defining notifications in alphabetical order, your configuration matches what the API returns, eliminating plan drift.
+
+**Example:**
+```hcl
+# Correct - alphabetical order (on_failure before on_success)
+notification {
+  type = "on_failure"
+  webhook_urls = ["https://example.com/webhook"]
+}
+
+notification {
+  type = "on_success"
+  email {
+    recipients = ["user@example.com"]
+  }
+}
+```
+
+**Bug Fixes**
+
+### Job Resource
+- **Fixed notification ordering requirement** ([#209](https://github.com/rundeck/terraform-provider-rundeck/issues/209)) - The provider now sorts notifications alphabetically by type before sending to the API and after reading from the API, ensuring consistent state. This eliminates confusing "Provider produced inconsistent result" errors when notifications are defined in non-alphabetical order. Users must define notifications in alphabetical order to match the API's behavior.
+- **Fixed lossy job imports** ([#213](https://github.com/rundeck/terraform-provider-rundeck/issues/213)) - Job imports now correctly extract all fields from the Rundeck API, including `continue_on_error`, `time_zone`, `node_filter_exclude_precedence`, `success_on_empty_node_filter`, and enhanced `node_step` handling for job references. Previously, many fields were missing from imported jobs, making imports unusable compared to v0.5.0.
+- **Added UUID support for error_handler job references** ([#212](https://github.com/rundeck/terraform-provider-rundeck/issues/212)) - Error handler job references now support UUID-based references (like regular job references), making them immutable and resilient to job renames. Previously, error handler job references only supported name-based references which could break if the referenced job was renamed. This brings error handler job references to feature parity with regular job references, including support for `project_name`, `node_step`, `node_filters`, and other advanced options.
+- **Added validation for empty choice values** - When `require_predefined_choice = true` for a job option, the provider now validates that `value_choices` contains at least one non-empty value and no empty strings. Empty strings cause plan drift because the Rundeck API filters them out. This validation catches the issue at plan time with a helpful error message.
+
+### Documentation
+- **Updated `extra_config` format** - `extra_config` keys now use dot notation (e.g., `"project.label"`) to match the Rundeck API format directly. Previously, keys used slash notation (e.g., `"project/label"`) which was unnecessarily converted. This change simplifies the implementation and matches the actual API format.
+- Updated job resource documentation to clarify notification ordering requirement and add validation details
+
+---
+
 ## 1.0.0
 
 **Major Release - Provider Modernization**

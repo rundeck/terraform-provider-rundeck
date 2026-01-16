@@ -12,12 +12,12 @@ Define your runbook automation workflows as code. Jobs represent executable auto
 
 **Key capabilities:** Multi-step workflows, parallel execution, retry logic, webhooks, log filtering, project schedules (Enterprise), and execution lifecycle plugins.
 
-## Upgrading to v1.0.0
+## Upgrading
 
-**If upgrading from a pre-1.0.0 version, please review the [Upgrade Guide](../guides/upgrading.html#upgrading-to-v1-0-0).** Key changes affecting jobs:
+**If upgrading from a pre-1.1.0 version, please review the [Upgrade Guide](../guides/upgrading.html).** Key changes affecting jobs:
 
-1. **Notifications must be alphabetically ordered** by type (see note in notification section below)
-2. **Execution lifecycle plugins** may need to be re-applied (they were silently ignored in previous versions)
+1. **Notification ordering requirement** - Notifications must be defined in alphabetical order by type (`on_avg_duration`, `on_failure`, `on_retryable_failure`, `on_start`, `on_success`) to prevent plan drift. The Rundeck API returns notifications sorted alphabetically, so your Terraform configuration must match this order.
+2. **Execution lifecycle plugins** may need to be re-applied if upgrading from pre-1.0.0 (they were silently ignored in previous versions)
 3. **All command types now work correctly** (script interpreter, plugins, job references, error handlers)
 
 ## Example Usage
@@ -454,22 +454,11 @@ A command's `log_filter_plugin`, `step_plugin`  or `node_step_plugin` block both
 
 * `config`: (Optional) Map of arbitrary configuration parameters for the selected plugin.
 
-`notification` blocks have the following structure:
+`notification` is a nested block with the following structure:
 
 * `type`: (Required) The name of the type of notification. Can be of type `on_success`, `on_failure`, `on_start`, `on_retryable_failure`, `on_avg_duration`.
 
-**REQUIRED: Notification Ordering** - When defining multiple notifications, you **must** arrange them alphabetically by type (i.e., `on_failure`, `on_retryable_failure`, `on_start`, `on_success`) in your Terraform configuration. Rundeck's API returns notifications as an object (not an array), so alphabetical ordering ensures deterministic behavior and prevents plan drift.
-
-```hcl
-# Correct - alphabetical order
-notification { type = "on_failure" ... }
-notification { type = "on_start" ... }
-notification { type = "on_success" ... }
-
-# Wrong - will cause plan drift
-notification { type = "on_success" ... }
-notification { type = "on_failure" ... }
-```
+**Important:** Notifications must be defined in alphabetical order by `type` to prevent plan drift. The Rundeck API returns notifications sorted alphabetically, so your Terraform configuration must match this order. The provider validates this requirement and will show an error if notifications are out of order or if duplicate notification types are defined.
 
 * `email`: (Optional) block listed below to send emails as notification.
 
@@ -479,9 +468,9 @@ notification { type = "on_failure" ... }
 
 * `http_method` - (Optional) HTTP method to use for webhook delivery. Values can be `post` or `get`. (Useful only with `webhook_urls`)
 
-* `plugin`: (Optional) A block listed below to send notifications using a plugin.
+* `plugin`: (Optional) List of plugin notification objects (see structure below).
 
-A notification's `email` block has the following structure:
+A notification's `email` list element has the following structure:
 
 * `attach_log`: (Optional) A boolean to attach log to email or not. Defaults to false.
 
@@ -489,7 +478,7 @@ A notification's `email` block has the following structure:
 
 * `subject`: (Optional) Name of email subject.
 
-A notification's `plugin` block has the following structure:
+A notification's `plugin` list element has the following structure:
 
 * `type` - (Required) The name of the plugin to use.
 

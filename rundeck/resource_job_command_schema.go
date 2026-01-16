@@ -243,19 +243,83 @@ func jobCommandNestedBlock() schema.ListNestedBlock {
 								},
 							},
 							"job": schema.ListNestedBlock{
+								Description: "Reference to another job to execute as error handler. Either uuid or name must be specified.",
 								NestedObject: schema.NestedBlockObject{
 									Attributes: map[string]schema.Attribute{
+										"uuid": schema.StringAttribute{
+											Optional:    true,
+											Description: "UUID of the job to reference (immutable, preferred). Can reference another rundeck_job's id attribute.",
+										},
 										"name": schema.StringAttribute{
-											Required: true,
+											Optional:    true,
+											Description: "Name of the job to reference. Required if uuid is not specified.",
 										},
 										"group_name": schema.StringAttribute{
-											Optional: true,
+											Optional:    true,
+											Description: "Group path of the job. Used with name-based references.",
+										},
+										"project_name": schema.StringAttribute{
+											Optional:    true,
+											Description: "Project containing the job. Used with name-based references.",
 										},
 										"run_for_each_node": schema.BoolAttribute{
 											Optional: true,
 										},
+										"node_step": schema.BoolAttribute{
+											Optional:    true,
+											Description: "Run the referenced job as a node step (once per node)",
+										},
 										"args": schema.StringAttribute{
 											Optional: true,
+										},
+										"import_options": schema.BoolAttribute{
+											Optional: true,
+										},
+										"child_nodes": schema.BoolAttribute{
+											Optional: true,
+										},
+										"fail_on_disable": schema.BoolAttribute{
+											Optional: true,
+										},
+										"ignore_notifications": schema.BoolAttribute{
+											Optional: true,
+										},
+									},
+									Blocks: map[string]schema.Block{
+										"node_filters": schema.ListNestedBlock{
+											NestedObject: schema.NestedBlockObject{
+												Attributes: map[string]schema.Attribute{
+													"filter": schema.StringAttribute{
+														Optional: true,
+													},
+													"exclude_filter": schema.StringAttribute{
+														Optional: true,
+													},
+													"exclude_precedence": schema.BoolAttribute{
+														Optional: true,
+													},
+												},
+												Blocks: map[string]schema.Block{
+													"dispatch": schema.ListNestedBlock{
+														NestedObject: schema.NestedBlockObject{
+															Attributes: map[string]schema.Attribute{
+																"thread_count": schema.Int64Attribute{
+																	Optional: true,
+																},
+																"keep_going": schema.BoolAttribute{
+																	Optional: true,
+																},
+																"rank_attribute": schema.StringAttribute{
+																	Optional: true,
+																},
+																"rank_order": schema.StringAttribute{
+																	Optional: true,
+																},
+															},
+														},
+													},
+												},
+											},
 										},
 									},
 								},
@@ -364,6 +428,8 @@ func jobOptionNestedBlock() schema.ListNestedBlock {
 }
 
 // Notification nested block schema
+// Using ListNestedBlock - notifications must be defined in alphabetical order by type
+// to prevent plan drift (Rundeck API returns them sorted alphabetically)
 func jobNotificationNestedBlock() schema.ListNestedBlock {
 	return schema.ListNestedBlock{
 		Description: "Job notifications",
@@ -371,20 +437,20 @@ func jobNotificationNestedBlock() schema.ListNestedBlock {
 			Attributes: map[string]schema.Attribute{
 				"type": schema.StringAttribute{
 					Required:    true,
-					Description: "Notification trigger type: on_success, on_failure, on_start, on_retryablefailure, on_avgduration",
+					Description: "Notification type (on_success, on_failure, on_start, on_avg_duration, on_retryable_failure)",
+				},
+				"webhook_urls": schema.ListAttribute{
+					ElementType: types.StringType,
+					Optional:    true,
+					Description: "Webhook URLs for webhook notifications",
 				},
 				"format": schema.StringAttribute{
 					Optional:    true,
-					Description: "Webhook payload format (json or xml)",
+					Description: "Format for webhook notifications (json, xml, form)",
 				},
 				"http_method": schema.StringAttribute{
 					Optional:    true,
-					Description: "HTTP method for webhook (post or get)",
-				},
-				"webhook_urls": schema.ListAttribute{
-					Optional:    true,
-					ElementType: types.StringType,
-					Description: "List of webhook URLs",
+					Description: "HTTP method for webhook notifications (GET, POST, PUT, DELETE)",
 				},
 			},
 			Blocks: map[string]schema.Block{
@@ -392,15 +458,18 @@ func jobNotificationNestedBlock() schema.ListNestedBlock {
 					Description: "Email notification configuration",
 					NestedObject: schema.NestedBlockObject{
 						Attributes: map[string]schema.Attribute{
-							"attach_log": schema.BoolAttribute{
-								Optional: true,
-							},
 							"recipients": schema.ListAttribute{
-								Required:    true,
 								ElementType: types.StringType,
+								Required:    true,
+								Description: "Email recipients",
 							},
 							"subject": schema.StringAttribute{
-								Optional: true,
+								Optional:    true,
+								Description: "Email subject",
+							},
+							"attach_log": schema.BoolAttribute{
+								Optional:    true,
+								Description: "Attach execution log to email",
 							},
 						},
 					},
@@ -410,11 +479,13 @@ func jobNotificationNestedBlock() schema.ListNestedBlock {
 					NestedObject: schema.NestedBlockObject{
 						Attributes: map[string]schema.Attribute{
 							"type": schema.StringAttribute{
-								Required: true,
+								Required:    true,
+								Description: "Plugin type",
 							},
 							"config": schema.MapAttribute{
-								Optional:    true,
 								ElementType: types.StringType,
+								Optional:    true,
+								Description: "Plugin configuration",
 							},
 						},
 					},

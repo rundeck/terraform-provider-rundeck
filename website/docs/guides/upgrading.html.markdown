@@ -12,9 +12,108 @@ This guide covers important changes and migration steps for major version upgrad
 
 ---
 
-## Upgrading to v1.0.0
+## Upgrading to v1.1.0
 
-Version 1.0.0 is a major release with significant improvements and some breaking changes. **Please review these migration steps before upgrading.**
+Version 1.1.0 includes important bug fixes and one breaking change. **Please review these changes before upgrading.**
+
+### Breaking Changes
+
+#### Project Resource - `extra_config` Format Change
+
+**Important:** If you use `extra_config` in your `rundeck_project` resources, you must update the key format from slash notation to dot notation.
+
+**Before (v1.0.0):**
+```hcl
+resource "rundeck_project" "example" {
+  name = "my-project"
+  # ... other config ...
+  
+  extra_config = {
+    "project/label" = "My Label"
+    "foo/bar"      = "baz"
+  }
+}
+```
+
+**After (v1.1.0+):**
+```hcl
+resource "rundeck_project" "example" {
+  name = "my-project"
+  # ... other config ...
+  
+  extra_config = {
+    "project.label" = "My Label"
+    "foo.bar"      = "baz"
+  }
+}
+```
+
+**Migration Steps:**
+1. Find all `extra_config` blocks in your `rundeck_project` resources
+2. Replace all forward slashes (`/`) with dots (`.`) in the key names
+3. Run `terraform plan` to verify the changes
+
+**Note:** This change affects users who used `extra_config` in v1.0.0. Since `extra_config` was only introduced in v1.0.0, the impact is limited. The new format matches the Rundeck API format directly, eliminating unnecessary conversion logic.
+
+### Important Changes
+
+#### Notification Ordering Requirement
+
+**Important:** Notifications must be defined in alphabetical order by type to prevent plan drift. The Rundeck API returns notifications sorted alphabetically, so your Terraform configuration must match this order. v1.1.0 adds validation to catch ordering issues at plan time, helping ensure proper plan drift handling.
+
+**Valid notification types (in alphabetical order):**
+- `on_avg_duration`
+- `on_failure`
+- `on_retryable_failure`
+- `on_start`
+- `on_success`
+
+```hcl
+# Correct syntax (v1.1.0+ - alphabetical order)
+resource "rundeck_job" "example" {
+  name         = "Example Job"
+  project_name = "my-project"
+  
+  # on_failure comes before on_success alphabetically
+  notification {
+    type = "on_failure"
+    webhook_urls = ["https://example.com/webhook"]
+  }
+  
+  notification {
+    type = "on_success"
+    email {
+      recipients = ["user@example.com"]
+      attach_log = true
+    }
+  }
+  
+  command {
+    shell_command = "echo hello"
+  }
+}
+```
+
+**Why:** The Rundeck API returns notifications sorted alphabetically by type. If your Terraform configuration defines them in a different order, Terraform will detect plan drift and attempt to reorder them, causing "Provider produced inconsistent result" errors. v1.1.0 refines this requirement by adding validation that catches ordering issues at plan time, ensuring your configuration matches what the API returns and eliminating plan drift.
+
+**Migration Steps:**
+1. Review all `notification {` blocks in your `.tf` files
+2. Reorder them alphabetically by `type` (`on_avg_duration`, `on_failure`, `on_retryable_failure`, `on_start`, `on_success`)
+3. Run `terraform plan` to verify no unexpected changes
+
+### Bug Fixes
+
+- **Fixed notification ordering requirement** ([#209](https://github.com/rundeck/terraform-provider-rundeck/issues/209)) - The provider now sorts notifications alphabetically by type before sending to the API and after reading from the API, ensuring consistent state. This eliminates confusing "Provider produced inconsistent result" errors. Users must define notifications in alphabetical order to match the API's behavior.
+- **Fixed lossy job imports** ([#213](https://github.com/rundeck/terraform-provider-rundeck/issues/213)) - Job imports now correctly extract all fields from the Rundeck API.
+- **Added UUID support for error_handler job references** ([#212](https://github.com/rundeck/terraform-provider-rundeck/issues/212)) - Error handler job references now support UUID-based references.
+
+---
+
+## Upgrading to v1.0.0 (Not Recommended)
+
+**Note:** v1.0.0 introduced a notification ordering limitation that was fixed in v1.1.0. **We recommend upgrading directly to v1.1.0 by following the steps above** to avoid the notification ordering requirement and the subsequent syntax change.
+
+If you plan to upgrade to v1.0.0 and stop there (not upgrading to v1.1.0+), please review these migration steps:
 
 ### Overview
 
@@ -31,7 +130,7 @@ v1.0.0 brings:
 #### Minimum Versions
 
 - **Rundeck:** 5.0.0+ (API v46+) required
-- **Rundeck Enterprise:** 5.17.0+ (API v56) required for runner resources
+- **Rundeck Enterprise:** 5.17.0+ (API v56) required for Enterprise Runner resources
 - **Go:** 1.24+ required for building from source
 - **Terraform:** 0.12+ (tested through 1.9)
 
@@ -43,32 +142,36 @@ v1.0.0 brings:
 
 ### Required Configuration Changes
 
-#### 1. Notification Ordering
+#### 1. Notification Ordering Requirement
 
-**ACTION REQUIRED:** Notifications must be ordered alphabetically by type to prevent plan drift.
+**ACTION REQUIRED:** Notifications must be defined in alphabetical order by type. This requirement exists in v1.0.0 and continues in v1.1.0+. The Rundeck API returns notifications sorted alphabetically, so your Terraform configuration must match this order to prevent plan drift.
+
+**Valid notification types (in alphabetical order):**
+- `on_avg_duration`
+- `on_failure`
+- `on_retryable_failure`
+- `on_start`
+- `on_success`
 
 ```hcl
-# Correct (alphabetical order)
+# Correct syntax (v1.0.0+ - alphabetical order)
 resource "rundeck_job" "example" {
   name         = "Example Job"
   project_name = "my-project"
   
-  notification { type = "on_failure" ... }
-  notification { type = "on_start" ... }
-  notification { type = "on_success" ... }
-  
-  command {
-    shell_command = "echo hello"
+  # on_failure comes before on_success alphabetically
+  notification {
+    type = "on_failure"
+    webhook_urls = ["https://example.com/webhook"]
   }
-}
-
-# Incorrect (will show drift)
-resource "rundeck_job" "example" {
-  name         = "Example Job"
-  project_name = "my-project"
   
-  notification { type = "on_success" ... }
-  notification { type = "on_failure" ... }  # Wrong order!
+  notification {
+    type = "on_success"
+    email {
+      recipients = ["user@example.com"]
+      attach_log = true
+    }
+  }
   
   command {
     shell_command = "echo hello"
@@ -76,12 +179,14 @@ resource "rundeck_job" "example" {
 }
 ```
 
-**Why:** Rundeck's API returns notifications as an object (not array). The provider sorts them alphabetically for deterministic state management.
+**Why:** The Rundeck API returns notifications sorted alphabetically by type. If your Terraform configuration defines them in a different order, Terraform will detect plan drift and attempt to reorder them, causing "Provider produced inconsistent result" errors. v1.1.0 refines this requirement by adding validation that catches ordering issues at plan time, ensuring your configuration matches what the API returns and eliminating plan drift.
 
 **Migration Steps:**
-1. Review all jobs with multiple notifications
-2. Reorder them alphabetically in your `.tf` files
+1. Review all `notification {` blocks in your `.tf` files
+2. Reorder them alphabetically by `type` (`on_avg_duration`, `on_failure`, `on_retryable_failure`, `on_start`, `on_success`)
 3. Run `terraform plan` to verify no unexpected changes
+
+**Note:** v1.1.0 adds validation to catch ordering issues at plan time with helpful error messages. v1.0.0 will only show the error during apply.
 
 #### 2. Execution Lifecycle Plugins
 

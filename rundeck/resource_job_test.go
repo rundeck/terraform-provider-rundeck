@@ -220,30 +220,40 @@ func TestAccJobNotification_wrongType(t *testing.T) {
 }
 
 func TestAccJobNotification_multiple(t *testing.T) {
-	t.Skip("DEFERRED: Provider-side schema validation for duplicate notification blocks (not a bug - API already validates)")
-
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccJobNotification_multiple,
-				ExpectError: regexp.MustCompile("a block with on_success already exists"),
+				ExpectError: regexp.MustCompile("Duplicate notification type"),
+			},
+		},
+	})
+}
+
+// TestAccJobNotification_outOfOrderValidation tests that validation catches out-of-order notifications
+func TestAccJobNotification_outOfOrderValidation(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		Steps: []resource.TestStep{
+			{
+				Config:      testAccJobNotification_outOfOrderValidation,
+				ExpectError: regexp.MustCompile("Invalid notification order"),
 			},
 		},
 	})
 }
 
 func TestAccJobOptions_empty_choice(t *testing.T) {
-	t.Skip("DEFERRED: Provider-side schema validation for empty choice values (not a bug - API already validates)")
-
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccJobOptions_empty_choice,
-				ExpectError: regexp.MustCompile("argument \"value_choices\" can not have empty values; try \"required\""),
+				ExpectError: regexp.MustCompile("Empty value choices"),
 			},
 		},
 	})
@@ -329,7 +339,8 @@ func TestAccJobWebhookNotification(t *testing.T) {
 					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "description", "A job with webhook notifications"),
 					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "execution_enabled", "true"),
 
-					// Notifications are ordered alphabetically: onfailure, onstart, onsuccess
+					// Notifications are normalized to a deterministic, alphabetical order by type
+					// Normalized order: on_failure (0), on_start (1), on_success (2)
 
 					// Verify on_failure notification (index 0)
 					resource.TestCheckResourceAttr("rundeck_job.test_webhook", "notification.0.type", "on_failure"),
@@ -377,19 +388,17 @@ resource "rundeck_job" "test_webhook" {
     shell_command = "echo Hello World"
   }
   
-  # Notifications are ordered alphabetically: onfailure, onstart, onsuccess
+  # Notifications must be defined in alphabetical order by type to prevent plan drift
   notification {
     type = "on_failure"
     webhook_urls = ["https://example.com/webhook"]
   }
-  
   notification {
     type = "on_start"
     format = "json"
     http_method = "post"
     webhook_urls = ["https://example.com/webhook"]
   }
-  
   notification {
     type = "on_success"
     format = "json"
@@ -889,6 +898,53 @@ resource "rundeck_job" "test" {
 }
 `
 
+const testAccJobNotification_outOfOrderValidation = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-job-notification-order-validation"
+  description = "parent project for job acceptance tests"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
+    }
+  }
+}
+resource "rundeck_job" "test" {
+  project_name = "${rundeck_project.test.name}"
+  name = "basic-job"
+  description = "A basic job"
+  execution_enabled = true
+  node_filter_query = "example"
+  allow_concurrent_executions = true
+  max_thread_count = 1
+  rank_order = "ascending"
+  schedule = "0 0 12 * * * *"
+  option {
+    name = "foo"
+    default_value = "bar"
+  }
+  command {
+    description = "Prints Hello World"
+    shell_command = "echo Hello World"
+  }
+  # Intentionally out of order: on_success before on_failure
+  notification {
+    type = "on_success"
+    email {
+      recipients = ["foo@foo.bar"]
+    }
+  }
+  notification {
+    type = "on_failure"
+    email {
+      recipients = ["foo@foo.bar"]
+    }
+  }
+}
+`
+
 const testAccJobOptions_empty_choice = `
 resource "rundeck_project" "test" {
   name = "terraform-acc-test-job-option-choices-empty"
@@ -909,8 +965,9 @@ resource "rundeck_job" "test" {
 
   option {
     name = "foo"
-	default_value = "bar"
-	value_choices = ["", "foo"]
+    default_value = "bar"
+    require_predefined_choice = true
+    value_choices = ["", "foo"]
   }
 
   command {
@@ -1625,6 +1682,143 @@ resource "rundeck_job" "test" {
 	  email {
 		  recipients = ["foo@foo.bar"]
 	  }
+  }
+}
+`
+
+// TestAccJobNotification_alphabeticalOrder tests that notifications defined in alphabetical order
+// work correctly. The provider normalizes notifications to alphabetical order by type,
+// so configurations must match this order to prevent plan drift.
+func TestAccJobNotification_alphabeticalOrder(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		CheckDestroy:             testAccJobCheckDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_notificationOutOfOrder,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "name", "test-notifications"),
+					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "project_name", "terraform-acc-test-notification-order"),
+					// Notifications are sorted alphabetically by type (on_failure before on_success)
+					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "notification.0.type", "on_failure"),
+					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "notification.0.email.0.recipients.0", "foo@example.org"),
+					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "notification.0.email.0.attach_log", "true"),
+					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "notification.1.type", "on_success"),
+					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "notification.1.email.0.recipients.0", "foo@example.org"),
+					resource.TestCheckResourceAttr("rundeck_job.test_notifications", "notification.1.email.0.attach_log", "true"),
+				),
+			},
+		},
+	})
+}
+
+// Test configuration for GitHub Issue #209 - notifications defined in non-alphabetical order
+const testAccJobConfig_notificationOutOfOrder = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-notification-order"
+  description = "Test project for notification ordering"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
+    }
+  }
+}
+
+resource "rundeck_job" "test_notifications" {
+  name         = "test-notifications"
+  project_name = rundeck_project.test.name
+  description  = "Perform a test notification"
+
+  command {
+    shell_command = "echo 'test'"
+  }
+
+  # Notifications must be defined in alphabetical order by type to prevent plan drift
+  # Rundeck API returns notifications sorted alphabetically, so Terraform config must match
+  notification {
+    type = "on_failure"
+    email {
+      recipients = ["foo@example.org"]
+      attach_log = true
+    }
+  }
+  notification {
+    type = "on_success"
+    email {
+      recipients = ["foo@example.org"]
+      attach_log = true
+    }
+  }
+}
+`
+
+// TestAccJob_errorHandler_job_uuid tests that error_handler job references support UUID
+// Reproduces GitHub Issue #212 - error_handler job references should support UUID like regular job references
+func TestAccJob_errorHandler_job_uuid(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		CheckDestroy:             testAccJobCheckDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_errorHandler_job_uuid,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("rundeck_job.handler_job", "name", "handler-job"),
+					resource.TestCheckResourceAttr("rundeck_job.test_job", "name", "test-job-with-error-handler"),
+					// Verify the error_handler job reference uses UUID
+					resource.TestCheckResourceAttrSet("rundeck_job.test_job", "command.0.error_handler.0.job.0.uuid"),
+					// Verify UUID matches the handler job's ID
+					resource.TestCheckResourceAttrPair("rundeck_job.test_job", "command.0.error_handler.0.job.0.uuid", "rundeck_job.handler_job", "id"),
+				),
+			},
+		},
+	})
+}
+
+// Test configuration for GitHub Issue #212 - error_handler job reference with UUID
+const testAccJobConfig_errorHandler_job_uuid = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-error-handler-uuid"
+  description = "Test project for error handler UUID job references"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
+    }
+  }
+}
+
+resource "rundeck_job" "handler_job" {
+  project_name = rundeck_project.test.name
+  name         = "handler-job"
+  description  = "Job to be referenced as error handler"
+  execution_enabled = true
+  
+  command {
+    shell_command = "echo 'Error handler executed'"
+  }
+}
+
+resource "rundeck_job" "test_job" {
+  project_name = rundeck_project.test.name
+  name         = "test-job-with-error-handler"
+  description  = "Job with error handler referencing another job by UUID"
+  execution_enabled = true
+  
+  command {
+    shell_command = "exit 1"  # Intentionally fail to trigger error handler
+    
+    error_handler {
+      job {
+        uuid = rundeck_job.handler_job.id
+      }
+    }
   }
 }
 `

@@ -134,7 +134,7 @@ func (r *projectResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Optional:    true,
 			},
 			"extra_config": schema.MapAttribute{
-				Description: "Additional raw configuration parameters to include in the project configuration, with dots replaced with slashes in the key names due to limitations in Terraform's config language.",
+				Description: "Additional raw configuration parameters to include in the project configuration. Keys should use dot notation (e.g., \"foo.bar\") as required by the Rundeck API.",
 				ElementType: types.StringType,
 				Optional:    true,
 				Computed:    true,
@@ -290,7 +290,8 @@ func (r *projectResource) updateProjectConfig(ctx context.Context, apiCtx contex
 	updateMap := map[string]string{}
 
 	// Handle extra_config
-	slashReplacer := strings.NewReplacer("/", ".")
+	// Filter out keys that are standard project attributes to prevent duplicates
+	// Standard attributes are handled separately below
 	if !plan.ExtraConfig.IsNull() && !plan.ExtraConfig.IsUnknown() {
 		extraConfig := make(map[string]types.String)
 		diags.Append(plan.ExtraConfig.ElementsAs(ctx, &extraConfig, false)...)
@@ -298,7 +299,15 @@ func (r *projectResource) updateProjectConfig(ctx context.Context, apiCtx contex
 			return
 		}
 		for k, v := range extraConfig {
-			updateMap[slashReplacer.Replace(k)] = v.ValueString()
+			// Skip keys that are standard project attributes - they're handled separately
+			if _, isStandardAttr := projectConfigAttributes[k]; isStandardAttr {
+				continue
+			}
+			// Skip resource model source keys - they're handled separately
+			if strings.HasPrefix(k, "resources.source.") {
+				continue
+			}
+			updateMap[k] = v.ValueString()
 		}
 	}
 
@@ -499,9 +508,8 @@ func (r *projectResource) readProject(ctx context.Context, apiCtx context.Contex
 
 	// Handle extra_config
 	extraConfig := map[string]attr.Value{}
-	dotReplacer := strings.NewReplacer(".", "/")
 	for k, v := range projectConfig {
-		extraConfig[dotReplacer.Replace(k)] = types.StringValue(v.(string))
+		extraConfig[k] = types.StringValue(v.(string))
 	}
 	extraConfigMap, diagsMap := types.MapValue(types.StringType, extraConfig)
 	diags.Append(diagsMap...)
