@@ -1072,7 +1072,7 @@ func convertScheduleObjectToCron(scheduleObj interface{}) (string, error) {
 	// - If day-of-week has a specific value (not ? or *), day-of-month must be ?
 	// - Both can be * (meaning every day)
 	// - At least one should be non-? (if both are ?, default day-of-week to *)
-	
+
 	// Check if both are "?" - invalid state, default to daily schedule
 	if dayOfMonth == "?" && dayOfWeek == "?" {
 		dayOfWeek = "*" // Default to every day of week
