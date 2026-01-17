@@ -9,6 +9,7 @@ That file contains comprehensive guidelines for:
 - Code style requirements
 - Documentation standards
 - PR review checklist
+- Always use `make fmt` before commits to ensure CI/CD will pass.
 
 When working on this codebase, reference those instructions for detailed guidance.
 
