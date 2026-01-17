@@ -1057,9 +1057,7 @@ func (r *jobResource) planToJobJSON(ctx context.Context, plan *jobResourceModel)
 
 	// Set regular cron schedule (if specified and not using project schedules)
 	if !plan.Schedule.IsNull() && !plan.Schedule.IsUnknown() {
-		// Normalize schedule to use "?" for day-of-month (Rundeck doesn't store/use it)
-		normalizedSchedule := normalizeCronSchedule(plan.Schedule.ValueString())
-		scheduleObj, err := convertCronToScheduleObject(normalizedSchedule)
+		scheduleObj, err := convertCronToScheduleObject(plan.Schedule.ValueString())
 		if err != nil {
 			return nil, fmt.Errorf("error converting schedule: %v", err)
 		}

@@ -1,3 +1,12 @@
+## 1.1.1
+
+**Bug Fixes**
+
+### Job Resource
+- **Fixed schedule day-of-month support** ([#215](https://github.com/rundeck/terraform-provider-rundeck/issues/215)) - Jobs can now be scheduled on specific days of the month using the day-of-month field in cron expressions (e.g., `schedule = "00 00 09 10 * ? *"` for 9am on the 10th of each month). Previously, the provider incorrectly replaced day-of-month values with `?`, causing "Provider produced inconsistent result" errors. The fix uses Rundeck's `crontab` schedule format to preserve the complete cron expression.
+
+---
+
 ## 1.1.0
 
 **Important Changes**
