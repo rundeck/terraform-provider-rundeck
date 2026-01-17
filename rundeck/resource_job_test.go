@@ -1686,6 +1686,75 @@ resource "rundeck_job" "test" {
 }
 `
 
+// TestAccJob_scheduleDayOfMonth tests that jobs can be scheduled on specific days of the month.
+// This validates the fix for issue #215 where day-of-month values were incorrectly replaced with "?".
+func TestAccJob_scheduleDayOfMonth(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		CheckDestroy:             testAccJobCheckDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_scheduleDayOfMonth,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("rundeck_job.test", "name", "job-day-of-month-schedule"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "schedule", "00 00 09 10 * ? *"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "schedule_enabled", "true"),
+				),
+			},
+			{
+				// Test that updating to a different day-of-month works
+				Config: testAccJobConfig_scheduleDayOfMonthUpdated,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("rundeck_job.test", "name", "job-day-of-month-schedule"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "schedule", "00 00 14 1 * ? *"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "schedule_enabled", "true"),
+				),
+			},
+		},
+	})
+}
+
+const testAccJobConfig_scheduleDayOfMonth = `
+resource "rundeck_project" "test" {
+  name        = "terraform-acc-test-job-schedule-dom"
+  description = "Test project for day-of-month schedules"
+}
+
+resource "rundeck_job" "test" {
+  project_name = rundeck_project.test.name
+  name = "job-day-of-month-schedule"
+  description = "A job scheduled on day-of-month"
+  
+  schedule = "00 00 09 10 * ? *"  # 9am on 10th of each month
+  schedule_enabled = true
+  
+  command {
+    shell_command = "echo 'Monthly job on 10th'"
+  }
+}
+`
+
+const testAccJobConfig_scheduleDayOfMonthUpdated = `
+resource "rundeck_project" "test" {
+  name        = "terraform-acc-test-job-schedule-dom"
+  description = "Test project for day-of-month schedules"
+}
+
+resource "rundeck_job" "test" {
+  project_name = rundeck_project.test.name
+  name = "job-day-of-month-schedule"
+  description = "A job scheduled on day-of-month"
+  
+  schedule = "00 00 14 1 * ? *"  # 2pm on 1st of each month
+  schedule_enabled = true
+  
+  command {
+    shell_command = "echo 'Monthly job on 1st'"
+  }
+}
+`
+
 // TestAccJobNotification_alphabeticalOrder tests that notifications defined in alphabetical order
 // work correctly. The provider normalizes notifications to alphabetical order by type,
 // so configurations must match this order to prevent plan drift.

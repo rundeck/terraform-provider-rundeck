@@ -1067,14 +1067,23 @@ func convertScheduleObjectToCron(scheduleObj interface{}) (string, error) {
 	}
 
 	// Build cron string: seconds minutes hours day-of-month month day-of-week year
-	// If dayOfMonth is set (not ?), use it and set dayOfWeek to ?
-	// If dayOfWeek is set (not ?), use it and set dayOfMonth to ?
-	// Both cannot be non-? values per Quartz cron specification
-	if dayOfMonth != "?" && dayOfMonth != "*" {
+	// Per Quartz cron specification:
+	// - If day-of-month has a specific value (not ? or *), day-of-week must be ?
+	// - If day-of-week has a specific value (not ? or *), day-of-month must be ?
+	// - Both can be * (meaning every day)
+	// - At least one should be non-? (if both are ?, default day-of-week to *)
+	
+	// Check if both are "?" - invalid state, default to daily schedule
+	if dayOfMonth == "?" && dayOfWeek == "?" {
+		dayOfWeek = "*" // Default to every day of week
+	} else if dayOfMonth != "?" && dayOfMonth != "*" {
+		// Specific day-of-month set, force day-of-week to ?
 		dayOfWeek = "?"
 	} else if dayOfWeek != "?" && dayOfWeek != "*" {
+		// Specific day-of-week set, force day-of-month to ?
 		dayOfMonth = "?"
 	}
+	// Note: If both are "*", leave as-is (means every day in both contexts)
 
 	cronStr := fmt.Sprintf("%s %s %s %s %s %s %s", seconds, minutes, hours, dayOfMonth, month, dayOfWeek, year)
 

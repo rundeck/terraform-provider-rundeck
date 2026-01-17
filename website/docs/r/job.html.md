@@ -91,6 +91,59 @@ resource "rundeck_job" "alternative_deploy" {
 
 **UUID vs Name:** UUID references are immutable and survive job renames, making them more reliable for production. Name-based references are more readable and work across different Rundeck instances (dev/staging/prod).
 
+## Example Usage (Scheduled Jobs)
+
+Jobs can be scheduled using Quartz cron expressions with seven fields: seconds, minutes, hours, day-of-month, month, day-of-week, and year.
+
+```hcl
+# Daily schedule - runs every day at 9:00 AM
+resource "rundeck_job" "daily_backup" {
+  name         = "daily-backup"
+  project_name = rundeck_project.main.name
+  description  = "Run daily backup at 9am"
+  
+  schedule         = "0 0 09 ? * * *"  # 9am every day
+  schedule_enabled = true
+  
+  command {
+    shell_command = "/scripts/backup.sh"
+  }
+}
+
+# Monthly schedule - runs on specific day of month
+resource "rundeck_job" "monthly_report" {
+  name         = "monthly-report"
+  project_name = rundeck_project.main.name
+  description  = "Generate monthly reports on the 1st at 8am"
+  
+  schedule         = "0 0 08 1 * ? *"  # 8am on 1st of each month
+  schedule_enabled = true
+  
+  command {
+    shell_command = "/scripts/generate_monthly_report.sh"
+  }
+}
+
+# Weekly schedule - runs on specific day of week
+resource "rundeck_job" "weekly_cleanup" {
+  name         = "weekly-cleanup"
+  project_name = rundeck_project.main.name
+  description  = "Clean up old logs every Monday at 2am"
+  
+  schedule         = "0 0 02 ? * MON *"  # 2am every Monday
+  schedule_enabled = true
+  
+  command {
+    shell_command = "find /var/log -type f -mtime +30 -delete"
+  }
+}
+```
+
+**Note:** In Quartz cron expressions, day-of-month and day-of-week are mutually exclusive. Use `?` for the field you're not specifying:
+- For day-of-month schedules: use `?` for day-of-week (e.g., `0 0 08 15 * ? *` = 8am on 15th)
+- For day-of-week schedules: use `?` for day-of-month (e.g., `0 0 08 ? * MON *` = 8am every Monday)
+- For daily schedules: use `?` for day-of-month and `*` for day-of-week (e.g., `0 0 08 ? * * *` = 8am daily)
+
 ## Example Usage (Key-Value Data Log filter to pass data between jobs)
 
 ```hcl
