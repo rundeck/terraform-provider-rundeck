@@ -998,63 +998,42 @@ func convertGlobalLogFiltersToJSON(ctx context.Context, filtersList types.List) 
 	return result, diags
 }
 
-// normalizeCronSchedule normalizes a cron expression for Rundeck compatibility
-// Rundeck ignores day-of-month, so we normalize it to "?" to avoid drift
-func normalizeCronSchedule(cronExpr string) string {
-	parts := strings.Fields(cronExpr)
-	if len(parts) != 7 {
-		return cronExpr // Return as-is if invalid format
-	}
-
-	// Replace day-of-month (position 3) with "?" since Rundeck doesn't use it
-	parts[3] = "?"
-	return strings.Join(parts, " ")
-}
-
 // convertCronToScheduleObject converts a Quartz cron expression to Rundeck's schedule object format
+// using the crontab field. This preserves the full cron expression including day-of-month.
 // Cron format: "seconds minutes hours day-of-month month day-of-week year"
-// Example: "* 0/40 * ? * * *" or "0 0 12 ? * * *"
-// Note: day-of-month is ignored by Rundeck and will be normalized to "?"
+// Example: "0 0 09 10 * ? *" (9am on 10th of each month)
+// Example: "0 0 12 ? * * *" (12pm every day using weekday wildcard)
 func convertCronToScheduleObject(cronExpr string) (map[string]interface{}, error) {
 	parts := strings.Fields(cronExpr)
 	if len(parts) != 7 {
 		return nil, fmt.Errorf("invalid cron expression: expected 7 fields (seconds minutes hours day-of-month month day-of-week year), got %d", len(parts))
 	}
 
-	// Parse: seconds minutes hours day-of-month month day-of-week year
-	seconds := parts[0]
-	minutes := parts[1]
-	hours := parts[2]
-	// dayOfMonth := parts[3]  // Not used in Rundeck's format - always normalized to "?"
-	month := parts[4]
-	dayOfWeek := parts[5]
-	year := parts[6]
-
+	// Use the crontab field to preserve the full cron expression
+	// This allows Rundeck to properly handle day-of-month and day-of-week
 	schedule := map[string]interface{}{
-		"time": map[string]interface{}{
-			"seconds": seconds,
-			"minute":  minutes,
-			"hour":    hours,
-		},
-		"month": month,
-		"weekday": map[string]interface{}{
-			"day": dayOfWeek,
-		},
-		"year": year,
+		"crontab": cronExpr,
 	}
 
 	return schedule, nil
 }
 
 // convertScheduleObjectToCron converts Rundeck's schedule object back to Quartz cron string
-// Input: {"month":"*","time":{"hour":"*","minute":"0/40","seconds":"*"},"weekday":{"day":"*"},"year":"*"}
-// Output: "* 0/40 * ? * * *"
+// Handles both formats:
+// 1. Crontab format: {"crontab":"0 0 09 10 * ? *"}
+// 2. Structured format: {"month":"*","time":{"hour":"*","minute":"0/40","seconds":"*"},"weekday":{"day":"*"},"dayofmonth":{"day":"10"},"year":"*"}
 func convertScheduleObjectToCron(scheduleObj interface{}) (string, error) {
 	schedMap, ok := scheduleObj.(map[string]interface{})
 	if !ok {
 		return "", fmt.Errorf("schedule is not a map")
 	}
 
+	// Check if using crontab format (preferred)
+	if crontab, ok := schedMap["crontab"].(string); ok && crontab != "" {
+		return crontab, nil
+	}
+
+	// Otherwise, convert from structured format
 	// Extract time fields
 	timeMap, ok := schedMap["time"].(map[string]interface{})
 	if !ok {
@@ -1068,19 +1047,36 @@ func convertScheduleObjectToCron(scheduleObj interface{}) (string, error) {
 	// Extract month
 	month, _ := schedMap["month"].(string)
 
-	// Extract weekday
-	weekdayMap, ok := schedMap["weekday"].(map[string]interface{})
-	var dayOfWeek string
-	if ok {
-		dayOfWeek, _ = weekdayMap["day"].(string)
-	}
-
 	// Extract year
 	year, _ := schedMap["year"].(string)
 
+	// Extract day-of-month (if present)
+	var dayOfMonth string = "?"
+	if dayOfMonthMap, ok := schedMap["dayofmonth"].(map[string]interface{}); ok {
+		if day, ok := dayOfMonthMap["day"].(string); ok && day != "" {
+			dayOfMonth = day
+		}
+	}
+
+	// Extract weekday (if present)
+	var dayOfWeek string = "?"
+	if weekdayMap, ok := schedMap["weekday"].(map[string]interface{}); ok {
+		if day, ok := weekdayMap["day"].(string); ok && day != "" {
+			dayOfWeek = day
+		}
+	}
+
 	// Build cron string: seconds minutes hours day-of-month month day-of-week year
-	// Rundeck uses ? for day-of-month when day-of-week is specified
-	cronStr := fmt.Sprintf("%s %s %s ? %s %s %s", seconds, minutes, hours, month, dayOfWeek, year)
+	// If dayOfMonth is set (not ?), use it and set dayOfWeek to ?
+	// If dayOfWeek is set (not ?), use it and set dayOfMonth to ?
+	// Both cannot be non-? values per Quartz cron specification
+	if dayOfMonth != "?" && dayOfMonth != "*" {
+		dayOfWeek = "?"
+	} else if dayOfWeek != "?" && dayOfWeek != "*" {
+		dayOfMonth = "?"
+	}
+
+	cronStr := fmt.Sprintf("%s %s %s %s %s %s %s", seconds, minutes, hours, dayOfMonth, month, dayOfWeek, year)
 
 	return cronStr, nil
 }
