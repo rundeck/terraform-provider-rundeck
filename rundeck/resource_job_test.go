@@ -1719,6 +1719,13 @@ const testAccJobConfig_scheduleDayOfMonth = `
 resource "rundeck_project" "test" {
   name        = "terraform-acc-test-job-schedule-dom"
   description = "Test project for day-of-month schedules"
+  
+  resource_model_source {
+    type = "file"
+    config = {
+      format = "resourceyaml"
+    }
+  }
 }
 
 resource "rundeck_job" "test" {
@@ -1739,6 +1746,13 @@ const testAccJobConfig_scheduleDayOfMonthUpdated = `
 resource "rundeck_project" "test" {
   name        = "terraform-acc-test-job-schedule-dom"
   description = "Test project for day-of-month schedules"
+  
+  resource_model_source {
+    type = "file"
+    config = {
+      format = "resourceyaml"
+    }
+  }
 }
 
 resource "rundeck_job" "test" {

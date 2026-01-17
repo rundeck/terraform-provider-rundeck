@@ -462,6 +462,13 @@ const testAccJobConfig_ScheduleDayOfMonthIntegration = `
 resource "rundeck_project" "test" {
   name        = "terraform-acc-test-schedule-dom-integration"
   description = "Test project for day-of-month schedule integration"
+  
+  resource_model_source {
+    type = "file"
+    config = {
+      format = "resourceyaml"
+    }
+  }
 }
 
 resource "rundeck_job" "schedule_test" {
