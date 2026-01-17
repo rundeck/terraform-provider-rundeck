@@ -419,7 +419,7 @@ func TestAccJob_ScheduleDayOfMonthIntegration(t *testing.T) {
 				Config: testAccJobConfig_ScheduleDayOfMonthIntegration,
 				Check: resource.ComposeTestCheckFunc(
 					testAccJobGetID("rundeck_job.schedule_test", &jobID),
-					resource.TestCheckResourceAttr("rundeck_job.schedule_test", "schedule", "00 00 09 10 * ? *"),
+					resource.TestCheckResourceAttr("rundeck_job.schedule_test", "schedule", "0 0 09 10 * ? *"),
 					resource.TestCheckResourceAttr("rundeck_job.schedule_test", "schedule_enabled", "true"),
 
 					// API validation - verify schedule is stored correctly with day-of-month
@@ -433,8 +433,8 @@ func TestAccJob_ScheduleDayOfMonthIntegration(t *testing.T) {
 						// Check for crontab format (new format)
 						if crontab, ok := schedule["crontab"].(string); ok {
 							// Verify crontab contains day-of-month value (10)
-							if crontab != "00 00 09 10 * ? *" {
-								return fmt.Errorf("Expected crontab='00 00 09 10 * ? *', got '%s'", crontab)
+							if crontab != "0 0 09 10 * ? *" {
+								return fmt.Errorf("Expected crontab='0 0 09 10 * ? *', got '%s'", crontab)
 							}
 							return nil
 						}
@@ -476,7 +476,7 @@ resource "rundeck_job" "schedule_test" {
   name         = "schedule-day-of-month-test"
   description  = "Job with day-of-month schedule for API validation"
   
-  schedule         = "00 00 09 10 * ? *"  # 9am on 10th of each month
+  schedule         = "0 0 09 10 * ? *"  # 9am on 10th of each month
   schedule_enabled = true
   
   command {

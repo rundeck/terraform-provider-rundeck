@@ -1698,7 +1698,7 @@ func TestAccJob_scheduleDayOfMonth(t *testing.T) {
 				Config: testAccJobConfig_scheduleDayOfMonth,
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("rundeck_job.test", "name", "job-day-of-month-schedule"),
-					resource.TestCheckResourceAttr("rundeck_job.test", "schedule", "00 00 09 10 * ? *"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "schedule", "0 0 09 10 * ? *"),
 					resource.TestCheckResourceAttr("rundeck_job.test", "schedule_enabled", "true"),
 				),
 			},
@@ -1707,7 +1707,7 @@ func TestAccJob_scheduleDayOfMonth(t *testing.T) {
 				Config: testAccJobConfig_scheduleDayOfMonthUpdated,
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("rundeck_job.test", "name", "job-day-of-month-schedule"),
-					resource.TestCheckResourceAttr("rundeck_job.test", "schedule", "00 00 14 1 * ? *"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "schedule", "0 0 14 1 * ? *"),
 					resource.TestCheckResourceAttr("rundeck_job.test", "schedule_enabled", "true"),
 				),
 			},
@@ -1733,7 +1733,7 @@ resource "rundeck_job" "test" {
   name = "job-day-of-month-schedule"
   description = "A job scheduled on day-of-month"
   
-  schedule = "00 00 09 10 * ? *"  # 9am on 10th of each month
+  schedule = "0 0 09 10 * ? *"  # 9am on 10th of each month
   schedule_enabled = true
   
   command {
@@ -1760,7 +1760,7 @@ resource "rundeck_job" "test" {
   name = "job-day-of-month-schedule"
   description = "A job scheduled on day-of-month"
   
-  schedule = "00 00 14 1 * ? *"  # 2pm on 1st of each month
+  schedule = "0 0 14 1 * ? *"  # 2pm on 1st of each month
   schedule_enabled = true
   
   command {
