@@ -5,6 +5,9 @@
 ### Job Resource
 - **Fixed schedule day-of-month support** ([#215](https://github.com/rundeck/terraform-provider-rundeck/issues/215)) - Jobs can now be scheduled on specific days of the month using the day-of-month field in cron expressions (e.g., `schedule = "00 00 09 10 * ? *"` for 9am on the 10th of each month). Previously, the provider incorrectly replaced day-of-month values with `?`, causing "Provider produced inconsistent result" errors. The fix uses Rundeck's `crontab` schedule format to preserve the complete cron expression.
 
+### Provider Authentication
+- **Fixed excessive token creation** - The provider now reuses existing "terraform-token" entries instead of creating a new token on every Terraform run. Previously, each `terraform plan`, `apply`, or `refresh` would create a new "terraform-token" in Rundeck, leading to hundreds or thousands of unused tokens accumulating over time. The provider now checks for existing valid tokens before creating new ones. If multiple "terraform-token" entries exist (from previous versions), the provider will reuse the first valid one found. Users can manually clean up duplicate tokens via the Rundeck UI or API if desired.
+
 ---
 
 ## 1.1.0
