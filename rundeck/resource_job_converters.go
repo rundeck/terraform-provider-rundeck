@@ -1294,21 +1294,40 @@ func convertNotificationsFromJSON(ctx context.Context, notificationsObj interfac
 
 		// Each notification type maps to an OBJECT with target types as keys
 		// Format: { "email": {...}, "urls": "...", "plugin": [...] }
+		// A single notification block can have multiple targets (email + plugin, webhook + email, etc.)
 		targetMap, ok := notifData.(map[string]interface{})
 		if !ok {
 			continue
 		}
 
-		// Determine notification types by checking what fields are present in the target map
-		// 1. Webhook: has "urls" key (Rundeck export uses "urls", not a "webhook" wrapper)
-		// 2. Email: has "email" key
-		// 3. Plugin: has "plugin" key
+		// Create ONE notification block that contains ALL targets present in the API response
+		// This matches how users can define notifications in Terraform with multiple targets
+		notifAttrs := make(map[string]attr.Value)
+		notifAttrs["type"] = types.StringValue(terraformType)
+
+		// Initialize all fields as null, then populate the ones that exist in the API response
+		notifAttrs["webhook_urls"] = types.ListNull(types.StringType)
+		notifAttrs["format"] = types.StringNull()
+		notifAttrs["http_method"] = types.StringNull()
+		notifAttrs["email"] = types.ListNull(types.ObjectType{
+			AttrTypes: map[string]attr.Type{
+				"recipients": types.ListType{ElemType: types.StringType},
+				"subject":    types.StringType,
+				"attach_log": types.BoolType,
+			},
+		})
+		notifAttrs["plugin"] = types.ListNull(types.ObjectType{
+			AttrTypes: map[string]attr.Type{
+				"type":   types.StringType,
+				"config": types.MapType{ElemType: types.StringType},
+			},
+		})
+
+		hasAnyTarget := false
 
 		// Check for webhook (urls, format, httpMethod at top level in the targetMap)
 		if urls, hasUrls := targetMap["urls"].(string); hasUrls {
-			notifAttrs := make(map[string]attr.Value)
-			notifAttrs["type"] = types.StringValue(terraformType)
-
+			hasAnyTarget = true
 			urlList := strings.Split(urls, ",")
 			urlValues := make([]attr.Value, len(urlList))
 			for i, url := range urlList {
@@ -1316,73 +1335,17 @@ func convertNotificationsFromJSON(ctx context.Context, notificationsObj interfac
 			}
 			notifAttrs["webhook_urls"] = types.ListValueMust(types.StringType, urlValues)
 
-			// Parse format and http_method for webhook (at top level)
 			if format, ok := targetMap["format"].(string); ok {
 				notifAttrs["format"] = types.StringValue(format)
-			} else {
-				notifAttrs["format"] = types.StringNull()
 			}
-
 			if httpMethod, ok := targetMap["httpMethod"].(string); ok {
 				notifAttrs["http_method"] = types.StringValue(httpMethod)
-			} else {
-				notifAttrs["http_method"] = types.StringNull()
 			}
-
-			// Null out other targets
-			notifAttrs["email"] = types.ListNull(types.ObjectType{
-				AttrTypes: map[string]attr.Type{
-					"recipients": types.ListType{ElemType: types.StringType},
-					"subject":    types.StringType,
-					"attach_log": types.BoolType,
-				},
-			})
-			notifAttrs["plugin"] = types.ListNull(types.ObjectType{
-				AttrTypes: map[string]attr.Type{
-					"type":   types.StringType,
-					"config": types.MapType{ElemType: types.StringType},
-				},
-			})
-
-			notifObj := types.ObjectValueMust(
-				map[string]attr.Type{
-					"type":         types.StringType,
-					"webhook_urls": types.ListType{ElemType: types.StringType},
-					"format":       types.StringType,
-					"http_method":  types.StringType,
-					"email": types.ListType{
-						ElemType: types.ObjectType{
-							AttrTypes: map[string]attr.Type{
-								"recipients": types.ListType{ElemType: types.StringType},
-								"subject":    types.StringType,
-								"attach_log": types.BoolType,
-							},
-						},
-					},
-					"plugin": types.ListType{
-						ElemType: types.ObjectType{
-							AttrTypes: map[string]attr.Type{
-								"type":   types.StringType,
-								"config": types.MapType{ElemType: types.StringType},
-							},
-						},
-					},
-				},
-				notifAttrs,
-			)
-			notifList = append(notifList, notifObj)
 		}
 
 		// Check for email notification
 		if email, ok := targetMap["email"].(map[string]interface{}); ok {
-			notifAttrs := make(map[string]attr.Value)
-			notifAttrs["type"] = types.StringValue(terraformType)
-
-			// Null out webhook fields
-			notifAttrs["webhook_urls"] = types.ListNull(types.StringType)
-			notifAttrs["format"] = types.StringNull()
-			notifAttrs["http_method"] = types.StringNull()
-
+			hasAnyTarget = true
 			emailAttrs := make(map[string]attr.Value)
 
 			if recipients, ok := email["recipients"].(string); ok {
@@ -1403,7 +1366,6 @@ func convertNotificationsFromJSON(ctx context.Context, notificationsObj interfac
 			}
 
 			// attach_log - only set if present in API response
-			// If not present, leave as null to avoid drift when user doesn't specify it
 			if attachLog, ok := email["attachLog"].(bool); ok {
 				emailAttrs["attach_log"] = types.BoolValue(attachLog)
 			} else {
@@ -1428,80 +1390,21 @@ func convertNotificationsFromJSON(ctx context.Context, notificationsObj interfac
 				},
 				[]attr.Value{emailObj},
 			)
-
-			// Null out plugin
-			notifAttrs["plugin"] = types.ListNull(types.ObjectType{
-				AttrTypes: map[string]attr.Type{
-					"type":   types.StringType,
-					"config": types.MapType{ElemType: types.StringType},
-				},
-			})
-
-			notifObj := types.ObjectValueMust(
-				map[string]attr.Type{
-					"type":         types.StringType,
-					"webhook_urls": types.ListType{ElemType: types.StringType},
-					"format":       types.StringType,
-					"http_method":  types.StringType,
-					"email": types.ListType{
-						ElemType: types.ObjectType{
-							AttrTypes: map[string]attr.Type{
-								"recipients": types.ListType{ElemType: types.StringType},
-								"subject":    types.StringType,
-								"attach_log": types.BoolType,
-							},
-						},
-					},
-					"plugin": types.ListType{
-						ElemType: types.ObjectType{
-							AttrTypes: map[string]attr.Type{
-								"type":   types.StringType,
-								"config": types.MapType{ElemType: types.StringType},
-							},
-						},
-					},
-				},
-				notifAttrs,
-			)
-			notifList = append(notifList, notifObj)
 		}
 
 		// Check for plugin notification
 		// Rundeck API can return plugins in two formats:
 		// 1. Array format (multiple plugins): "plugin": [{"type": "...", "configuration": {...}}, ...]
 		// 2. Single object format (one plugin): "plugin": {"type": "...", "configuration": {...}}
-		// We need to handle both cases to avoid losing notifications
-
 		var pluginArray []interface{}
 		if arr, ok := targetMap["plugin"].([]interface{}); ok {
-			// Multiple plugins returned as array
 			pluginArray = arr
 		} else if singlePlugin, ok := targetMap["plugin"].(map[string]interface{}); ok {
-			// Single plugin returned as object - wrap it in an array
 			pluginArray = []interface{}{singlePlugin}
 		}
 
 		if len(pluginArray) > 0 {
-			// For Rundeck API, multiple plugins in one notification target are in an array
-			// For Terraform, we represent each plugin as a separate entry in the plugin list
-
-			// Create ONE Terraform notification block with ALL plugins from this target
-			notifAttrs := make(map[string]attr.Value)
-			notifAttrs["type"] = types.StringValue(terraformType)
-
-			// Null out webhook and email fields
-			notifAttrs["webhook_urls"] = types.ListNull(types.StringType)
-			notifAttrs["format"] = types.StringNull()
-			notifAttrs["http_method"] = types.StringNull()
-			notifAttrs["email"] = types.ListNull(types.ObjectType{
-				AttrTypes: map[string]attr.Type{
-					"recipients": types.ListType{ElemType: types.StringType},
-					"subject":    types.StringType,
-					"attach_log": types.BoolType,
-				},
-			})
-
-			// Parse all plugins in the array
+			hasAnyTarget = true
 			var pluginObjs []attr.Value
 			for _, p := range pluginArray {
 				pluginMap, ok := p.(map[string]interface{})
@@ -1549,35 +1452,38 @@ func convertNotificationsFromJSON(ctx context.Context, notificationsObj interfac
 					},
 					pluginObjs,
 				)
+			}
+		}
 
-				notifObj := types.ObjectValueMust(
-					map[string]attr.Type{
-						"type":         types.StringType,
-						"webhook_urls": types.ListType{ElemType: types.StringType},
-						"format":       types.StringType,
-						"http_method":  types.StringType,
-						"email": types.ListType{
-							ElemType: types.ObjectType{
-								AttrTypes: map[string]attr.Type{
-									"recipients": types.ListType{ElemType: types.StringType},
-									"subject":    types.StringType,
-									"attach_log": types.BoolType,
-								},
-							},
-						},
-						"plugin": types.ListType{
-							ElemType: types.ObjectType{
-								AttrTypes: map[string]attr.Type{
-									"type":   types.StringType,
-									"config": types.MapType{ElemType: types.StringType},
-								},
+		// Only add the notification if it has at least one target
+		if hasAnyTarget {
+			notifObj := types.ObjectValueMust(
+				map[string]attr.Type{
+					"type":         types.StringType,
+					"webhook_urls": types.ListType{ElemType: types.StringType},
+					"format":       types.StringType,
+					"http_method":  types.StringType,
+					"email": types.ListType{
+						ElemType: types.ObjectType{
+							AttrTypes: map[string]attr.Type{
+								"recipients": types.ListType{ElemType: types.StringType},
+								"subject":    types.StringType,
+								"attach_log": types.BoolType,
 							},
 						},
 					},
-					notifAttrs,
-				)
-				notifList = append(notifList, notifObj)
-			}
+					"plugin": types.ListType{
+						ElemType: types.ObjectType{
+							AttrTypes: map[string]attr.Type{
+								"type":   types.StringType,
+								"config": types.MapType{ElemType: types.StringType},
+							},
+						},
+					},
+				},
+				notifAttrs,
+			)
+			notifList = append(notifList, notifObj)
 		}
 	}
 

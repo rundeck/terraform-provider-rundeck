@@ -9,6 +9,8 @@
   - Array format (multiple plugins): `"plugin": [{"type": "...", "configuration": {...}}]`
   - Single object format (one plugin): `"plugin": {"type": "...", "configuration": {...}}`
 
+- **Fixed combined notification targets** - Notification blocks with multiple targets (e.g., email + plugin in the same block) now work correctly. Previously, the provider would read these as separate notification blocks, causing "block count changed from 1 to 2" errors. Now a single notification block with multiple targets is preserved correctly.
+
 ### Provider Authentication
 - **Fixed excessive token creation** - The provider now reuses existing "terraform-token" entries instead of creating a new token on every Terraform run. Previously, each `terraform plan`, `apply`, or `refresh` would create a new "terraform-token" in Rundeck, leading to hundreds or thousands of unused tokens accumulating over time. The provider now checks for existing valid tokens before creating new ones. If multiple "terraform-token" entries exist (from previous versions), the provider will reuse the first valid one found. Users can manually clean up duplicate tokens via the Rundeck UI or API if desired.
 
