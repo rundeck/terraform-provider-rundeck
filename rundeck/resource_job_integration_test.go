@@ -403,3 +403,84 @@ resource "rundeck_job" "notification_test" {
   }
 }
 `
+
+// TestAccJob_ScheduleDayOfMonthIntegration tests day-of-month schedule functionality
+// and validates that the schedule is correctly stored in Rundeck by querying the API.
+// This test validates the fix for issue #215.
+func TestAccJob_ScheduleDayOfMonthIntegration(t *testing.T) {
+	var jobID string
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		CheckDestroy:             testAccJobCheckDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_ScheduleDayOfMonthIntegration,
+				Check: resource.ComposeTestCheckFunc(
+					testAccJobGetID("rundeck_job.schedule_test", &jobID),
+					resource.TestCheckResourceAttr("rundeck_job.schedule_test", "schedule", "0 0 09 10 * ? *"),
+					resource.TestCheckResourceAttr("rundeck_job.schedule_test", "schedule_enabled", "true"),
+
+					// API validation - verify schedule is stored correctly with day-of-month
+					testAccJobValidateAPI(&jobID, func(jobData map[string]interface{}) error {
+						// Check if schedule exists
+						schedule, ok := jobData["schedule"].(map[string]interface{})
+						if !ok {
+							return fmt.Errorf("Schedule not found in API response")
+						}
+
+						// Check for crontab format (new format)
+						if crontab, ok := schedule["crontab"].(string); ok {
+							// Verify crontab contains day-of-month value (10)
+							if crontab != "0 0 09 10 * ? *" {
+								return fmt.Errorf("Expected crontab='0 0 09 10 * ? *', got '%s'", crontab)
+							}
+							return nil
+						}
+
+						// Check for structured format (legacy format with dayofmonth field)
+						if dayOfMonthMap, ok := schedule["dayofmonth"].(map[string]interface{}); ok {
+							if day, ok := dayOfMonthMap["day"].(string); ok {
+								if day != "10" {
+									return fmt.Errorf("Expected dayofmonth.day='10', got '%s'", day)
+								}
+								return nil
+							}
+						}
+
+						// If neither format has day-of-month, it's incorrect
+						return fmt.Errorf("Schedule missing day-of-month specification. Schedule object: %+v", schedule)
+					}),
+				),
+			},
+		},
+	})
+}
+
+const testAccJobConfig_ScheduleDayOfMonthIntegration = `
+resource "rundeck_project" "test" {
+  name        = "terraform-acc-test-schedule-dom-integration"
+  description = "Test project for day-of-month schedule integration"
+  
+  resource_model_source {
+    type = "file"
+    config = {
+      format = "resourceyaml"
+    }
+  }
+}
+
+resource "rundeck_job" "schedule_test" {
+  project_name = rundeck_project.test.name
+  name         = "schedule-day-of-month-test"
+  description  = "Job with day-of-month schedule for API validation"
+  
+  schedule         = "0 0 09 10 * ? *"  # 9am on 10th of each month
+  schedule_enabled = true
+  
+  command {
+    shell_command = "echo 'Running on day 10 of month'"
+  }
+}
+`

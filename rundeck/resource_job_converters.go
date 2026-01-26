@@ -998,63 +998,42 @@ func convertGlobalLogFiltersToJSON(ctx context.Context, filtersList types.List) 
 	return result, diags
 }
 
-// normalizeCronSchedule normalizes a cron expression for Rundeck compatibility
-// Rundeck ignores day-of-month, so we normalize it to "?" to avoid drift
-func normalizeCronSchedule(cronExpr string) string {
-	parts := strings.Fields(cronExpr)
-	if len(parts) != 7 {
-		return cronExpr // Return as-is if invalid format
-	}
-
-	// Replace day-of-month (position 3) with "?" since Rundeck doesn't use it
-	parts[3] = "?"
-	return strings.Join(parts, " ")
-}
-
 // convertCronToScheduleObject converts a Quartz cron expression to Rundeck's schedule object format
+// using the crontab field. This preserves the full cron expression including day-of-month.
 // Cron format: "seconds minutes hours day-of-month month day-of-week year"
-// Example: "* 0/40 * ? * * *" or "0 0 12 ? * * *"
-// Note: day-of-month is ignored by Rundeck and will be normalized to "?"
+// Example: "0 0 09 10 * ? *" (9am on 10th of each month)
+// Example: "0 0 12 ? * * *" (12pm every day using weekday wildcard)
 func convertCronToScheduleObject(cronExpr string) (map[string]interface{}, error) {
 	parts := strings.Fields(cronExpr)
 	if len(parts) != 7 {
 		return nil, fmt.Errorf("invalid cron expression: expected 7 fields (seconds minutes hours day-of-month month day-of-week year), got %d", len(parts))
 	}
 
-	// Parse: seconds minutes hours day-of-month month day-of-week year
-	seconds := parts[0]
-	minutes := parts[1]
-	hours := parts[2]
-	// dayOfMonth := parts[3]  // Not used in Rundeck's format - always normalized to "?"
-	month := parts[4]
-	dayOfWeek := parts[5]
-	year := parts[6]
-
+	// Use the crontab field to preserve the full cron expression
+	// This allows Rundeck to properly handle day-of-month and day-of-week
 	schedule := map[string]interface{}{
-		"time": map[string]interface{}{
-			"seconds": seconds,
-			"minute":  minutes,
-			"hour":    hours,
-		},
-		"month": month,
-		"weekday": map[string]interface{}{
-			"day": dayOfWeek,
-		},
-		"year": year,
+		"crontab": cronExpr,
 	}
 
 	return schedule, nil
 }
 
 // convertScheduleObjectToCron converts Rundeck's schedule object back to Quartz cron string
-// Input: {"month":"*","time":{"hour":"*","minute":"0/40","seconds":"*"},"weekday":{"day":"*"},"year":"*"}
-// Output: "* 0/40 * ? * * *"
+// Handles both formats:
+// 1. Crontab format: {"crontab":"0 0 09 10 * ? *"}
+// 2. Structured format: {"month":"*","time":{"hour":"*","minute":"0/40","seconds":"*"},"weekday":{"day":"*"},"dayofmonth":{"day":"10"},"year":"*"}
 func convertScheduleObjectToCron(scheduleObj interface{}) (string, error) {
 	schedMap, ok := scheduleObj.(map[string]interface{})
 	if !ok {
 		return "", fmt.Errorf("schedule is not a map")
 	}
 
+	// Check if using crontab format (preferred)
+	if crontab, ok := schedMap["crontab"].(string); ok && crontab != "" {
+		return crontab, nil
+	}
+
+	// Otherwise, convert from structured format
 	// Extract time fields
 	timeMap, ok := schedMap["time"].(map[string]interface{})
 	if !ok {
@@ -1068,19 +1047,45 @@ func convertScheduleObjectToCron(scheduleObj interface{}) (string, error) {
 	// Extract month
 	month, _ := schedMap["month"].(string)
 
-	// Extract weekday
-	weekdayMap, ok := schedMap["weekday"].(map[string]interface{})
-	var dayOfWeek string
-	if ok {
-		dayOfWeek, _ = weekdayMap["day"].(string)
-	}
-
 	// Extract year
 	year, _ := schedMap["year"].(string)
 
+	// Extract day-of-month (if present)
+	var dayOfMonth string = "?"
+	if dayOfMonthMap, ok := schedMap["dayofmonth"].(map[string]interface{}); ok {
+		if day, ok := dayOfMonthMap["day"].(string); ok && day != "" {
+			dayOfMonth = day
+		}
+	}
+
+	// Extract weekday (if present)
+	var dayOfWeek string = "?"
+	if weekdayMap, ok := schedMap["weekday"].(map[string]interface{}); ok {
+		if day, ok := weekdayMap["day"].(string); ok && day != "" {
+			dayOfWeek = day
+		}
+	}
+
 	// Build cron string: seconds minutes hours day-of-month month day-of-week year
-	// Rundeck uses ? for day-of-month when day-of-week is specified
-	cronStr := fmt.Sprintf("%s %s %s ? %s %s %s", seconds, minutes, hours, month, dayOfWeek, year)
+	// Per Quartz cron specification:
+	// - If day-of-month has a specific value (not ? or *), day-of-week must be ?
+	// - If day-of-week has a specific value (not ? or *), day-of-month must be ?
+	// - Both can be * (meaning every day)
+	// - At least one should be non-? (if both are ?, default day-of-week to *)
+
+	// Check if both are "?" - invalid state, default to daily schedule
+	if dayOfMonth == "?" && dayOfWeek == "?" {
+		dayOfWeek = "*" // Default to every day of week
+	} else if dayOfMonth != "?" && dayOfMonth != "*" {
+		// Specific day-of-month set, force day-of-week to ?
+		dayOfWeek = "?"
+	} else if dayOfWeek != "?" && dayOfWeek != "*" {
+		// Specific day-of-week set, force day-of-month to ?
+		dayOfMonth = "?"
+	}
+	// Note: If both are "*", leave as-is (means every day in both contexts)
+
+	cronStr := fmt.Sprintf("%s %s %s %s %s %s %s", seconds, minutes, hours, dayOfMonth, month, dayOfWeek, year)
 
 	return cronStr, nil
 }
@@ -1289,21 +1294,40 @@ func convertNotificationsFromJSON(ctx context.Context, notificationsObj interfac
 
 		// Each notification type maps to an OBJECT with target types as keys
 		// Format: { "email": {...}, "urls": "...", "plugin": [...] }
+		// A single notification block can have multiple targets (email + plugin, webhook + email, etc.)
 		targetMap, ok := notifData.(map[string]interface{})
 		if !ok {
 			continue
 		}
 
-		// Determine notification types by checking what fields are present in the target map
-		// 1. Webhook: has "urls" key (Rundeck export uses "urls", not a "webhook" wrapper)
-		// 2. Email: has "email" key
-		// 3. Plugin: has "plugin" key
+		// Create ONE notification block that contains ALL targets present in the API response
+		// This matches how users can define notifications in Terraform with multiple targets
+		notifAttrs := make(map[string]attr.Value)
+		notifAttrs["type"] = types.StringValue(terraformType)
+
+		// Initialize all fields as null, then populate the ones that exist in the API response
+		notifAttrs["webhook_urls"] = types.ListNull(types.StringType)
+		notifAttrs["format"] = types.StringNull()
+		notifAttrs["http_method"] = types.StringNull()
+		notifAttrs["email"] = types.ListNull(types.ObjectType{
+			AttrTypes: map[string]attr.Type{
+				"recipients": types.ListType{ElemType: types.StringType},
+				"subject":    types.StringType,
+				"attach_log": types.BoolType,
+			},
+		})
+		notifAttrs["plugin"] = types.ListNull(types.ObjectType{
+			AttrTypes: map[string]attr.Type{
+				"type":   types.StringType,
+				"config": types.MapType{ElemType: types.StringType},
+			},
+		})
+
+		hasAnyTarget := false
 
 		// Check for webhook (urls, format, httpMethod at top level in the targetMap)
 		if urls, hasUrls := targetMap["urls"].(string); hasUrls {
-			notifAttrs := make(map[string]attr.Value)
-			notifAttrs["type"] = types.StringValue(terraformType)
-
+			hasAnyTarget = true
 			urlList := strings.Split(urls, ",")
 			urlValues := make([]attr.Value, len(urlList))
 			for i, url := range urlList {
@@ -1311,73 +1335,17 @@ func convertNotificationsFromJSON(ctx context.Context, notificationsObj interfac
 			}
 			notifAttrs["webhook_urls"] = types.ListValueMust(types.StringType, urlValues)
 
-			// Parse format and http_method for webhook (at top level)
 			if format, ok := targetMap["format"].(string); ok {
 				notifAttrs["format"] = types.StringValue(format)
-			} else {
-				notifAttrs["format"] = types.StringNull()
 			}
-
 			if httpMethod, ok := targetMap["httpMethod"].(string); ok {
 				notifAttrs["http_method"] = types.StringValue(httpMethod)
-			} else {
-				notifAttrs["http_method"] = types.StringNull()
 			}
-
-			// Null out other targets
-			notifAttrs["email"] = types.ListNull(types.ObjectType{
-				AttrTypes: map[string]attr.Type{
-					"recipients": types.ListType{ElemType: types.StringType},
-					"subject":    types.StringType,
-					"attach_log": types.BoolType,
-				},
-			})
-			notifAttrs["plugin"] = types.ListNull(types.ObjectType{
-				AttrTypes: map[string]attr.Type{
-					"type":   types.StringType,
-					"config": types.MapType{ElemType: types.StringType},
-				},
-			})
-
-			notifObj := types.ObjectValueMust(
-				map[string]attr.Type{
-					"type":         types.StringType,
-					"webhook_urls": types.ListType{ElemType: types.StringType},
-					"format":       types.StringType,
-					"http_method":  types.StringType,
-					"email": types.ListType{
-						ElemType: types.ObjectType{
-							AttrTypes: map[string]attr.Type{
-								"recipients": types.ListType{ElemType: types.StringType},
-								"subject":    types.StringType,
-								"attach_log": types.BoolType,
-							},
-						},
-					},
-					"plugin": types.ListType{
-						ElemType: types.ObjectType{
-							AttrTypes: map[string]attr.Type{
-								"type":   types.StringType,
-								"config": types.MapType{ElemType: types.StringType},
-							},
-						},
-					},
-				},
-				notifAttrs,
-			)
-			notifList = append(notifList, notifObj)
 		}
 
 		// Check for email notification
 		if email, ok := targetMap["email"].(map[string]interface{}); ok {
-			notifAttrs := make(map[string]attr.Value)
-			notifAttrs["type"] = types.StringValue(terraformType)
-
-			// Null out webhook fields
-			notifAttrs["webhook_urls"] = types.ListNull(types.StringType)
-			notifAttrs["format"] = types.StringNull()
-			notifAttrs["http_method"] = types.StringNull()
-
+			hasAnyTarget = true
 			emailAttrs := make(map[string]attr.Value)
 
 			if recipients, ok := email["recipients"].(string); ok {
@@ -1398,7 +1366,6 @@ func convertNotificationsFromJSON(ctx context.Context, notificationsObj interfac
 			}
 
 			// attach_log - only set if present in API response
-			// If not present, leave as null to avoid drift when user doesn't specify it
 			if attachLog, ok := email["attachLog"].(bool); ok {
 				emailAttrs["attach_log"] = types.BoolValue(attachLog)
 			} else {
@@ -1423,66 +1390,21 @@ func convertNotificationsFromJSON(ctx context.Context, notificationsObj interfac
 				},
 				[]attr.Value{emailObj},
 			)
-
-			// Null out plugin
-			notifAttrs["plugin"] = types.ListNull(types.ObjectType{
-				AttrTypes: map[string]attr.Type{
-					"type":   types.StringType,
-					"config": types.MapType{ElemType: types.StringType},
-				},
-			})
-
-			notifObj := types.ObjectValueMust(
-				map[string]attr.Type{
-					"type":         types.StringType,
-					"webhook_urls": types.ListType{ElemType: types.StringType},
-					"format":       types.StringType,
-					"http_method":  types.StringType,
-					"email": types.ListType{
-						ElemType: types.ObjectType{
-							AttrTypes: map[string]attr.Type{
-								"recipients": types.ListType{ElemType: types.StringType},
-								"subject":    types.StringType,
-								"attach_log": types.BoolType,
-							},
-						},
-					},
-					"plugin": types.ListType{
-						ElemType: types.ObjectType{
-							AttrTypes: map[string]attr.Type{
-								"type":   types.StringType,
-								"config": types.MapType{ElemType: types.StringType},
-							},
-						},
-					},
-				},
-				notifAttrs,
-			)
-			notifList = append(notifList, notifObj)
 		}
 
-		// Check for plugin notification (plugin is an ARRAY, can contain multiple plugins)
-		if pluginArray, ok := targetMap["plugin"].([]interface{}); ok {
-			// For Rundeck API, multiple plugins in one notification target are in an array
-			// For Terraform, we represent each plugin as a separate entry in the plugin list
+		// Check for plugin notification
+		// Rundeck API can return plugins in two formats:
+		// 1. Array format (multiple plugins): "plugin": [{"type": "...", "configuration": {...}}, ...]
+		// 2. Single object format (one plugin): "plugin": {"type": "...", "configuration": {...}}
+		var pluginArray []interface{}
+		if arr, ok := targetMap["plugin"].([]interface{}); ok {
+			pluginArray = arr
+		} else if singlePlugin, ok := targetMap["plugin"].(map[string]interface{}); ok {
+			pluginArray = []interface{}{singlePlugin}
+		}
 
-			// Create ONE Terraform notification block with ALL plugins from this target
-			notifAttrs := make(map[string]attr.Value)
-			notifAttrs["type"] = types.StringValue(terraformType)
-
-			// Null out webhook and email fields
-			notifAttrs["webhook_urls"] = types.ListNull(types.StringType)
-			notifAttrs["format"] = types.StringNull()
-			notifAttrs["http_method"] = types.StringNull()
-			notifAttrs["email"] = types.ListNull(types.ObjectType{
-				AttrTypes: map[string]attr.Type{
-					"recipients": types.ListType{ElemType: types.StringType},
-					"subject":    types.StringType,
-					"attach_log": types.BoolType,
-				},
-			})
-
-			// Parse all plugins in the array
+		if len(pluginArray) > 0 {
+			hasAnyTarget = true
 			var pluginObjs []attr.Value
 			for _, p := range pluginArray {
 				pluginMap, ok := p.(map[string]interface{})
@@ -1530,35 +1452,38 @@ func convertNotificationsFromJSON(ctx context.Context, notificationsObj interfac
 					},
 					pluginObjs,
 				)
+			}
+		}
 
-				notifObj := types.ObjectValueMust(
-					map[string]attr.Type{
-						"type":         types.StringType,
-						"webhook_urls": types.ListType{ElemType: types.StringType},
-						"format":       types.StringType,
-						"http_method":  types.StringType,
-						"email": types.ListType{
-							ElemType: types.ObjectType{
-								AttrTypes: map[string]attr.Type{
-									"recipients": types.ListType{ElemType: types.StringType},
-									"subject":    types.StringType,
-									"attach_log": types.BoolType,
-								},
-							},
-						},
-						"plugin": types.ListType{
-							ElemType: types.ObjectType{
-								AttrTypes: map[string]attr.Type{
-									"type":   types.StringType,
-									"config": types.MapType{ElemType: types.StringType},
-								},
+		// Only add the notification if it has at least one target
+		if hasAnyTarget {
+			notifObj := types.ObjectValueMust(
+				map[string]attr.Type{
+					"type":         types.StringType,
+					"webhook_urls": types.ListType{ElemType: types.StringType},
+					"format":       types.StringType,
+					"http_method":  types.StringType,
+					"email": types.ListType{
+						ElemType: types.ObjectType{
+							AttrTypes: map[string]attr.Type{
+								"recipients": types.ListType{ElemType: types.StringType},
+								"subject":    types.StringType,
+								"attach_log": types.BoolType,
 							},
 						},
 					},
-					notifAttrs,
-				)
-				notifList = append(notifList, notifObj)
-			}
+					"plugin": types.ListType{
+						ElemType: types.ObjectType{
+							AttrTypes: map[string]attr.Type{
+								"type":   types.StringType,
+								"config": types.MapType{ElemType: types.StringType},
+							},
+						},
+					},
+				},
+				notifAttrs,
+			)
+			notifList = append(notifList, notifObj)
 		}
 	}
 
