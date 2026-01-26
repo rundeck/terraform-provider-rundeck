@@ -1466,8 +1466,22 @@ func convertNotificationsFromJSON(ctx context.Context, notificationsObj interfac
 			notifList = append(notifList, notifObj)
 		}
 
-		// Check for plugin notification (plugin is an ARRAY, can contain multiple plugins)
-		if pluginArray, ok := targetMap["plugin"].([]interface{}); ok {
+		// Check for plugin notification
+		// Rundeck API can return plugins in two formats:
+		// 1. Array format (multiple plugins): "plugin": [{"type": "...", "configuration": {...}}, ...]
+		// 2. Single object format (one plugin): "plugin": {"type": "...", "configuration": {...}}
+		// We need to handle both cases to avoid losing notifications
+
+		var pluginArray []interface{}
+		if arr, ok := targetMap["plugin"].([]interface{}); ok {
+			// Multiple plugins returned as array
+			pluginArray = arr
+		} else if singlePlugin, ok := targetMap["plugin"].(map[string]interface{}); ok {
+			// Single plugin returned as object - wrap it in an array
+			pluginArray = []interface{}{singlePlugin}
+		}
+
+		if len(pluginArray) > 0 {
 			// For Rundeck API, multiple plugins in one notification target are in an array
 			// For Terraform, we represent each plugin as a separate entry in the plugin list
 
