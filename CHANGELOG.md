@@ -1,3 +1,12 @@
+## 1.1.2
+
+**Bug Fixes**
+
+### Job Resource
+- **Fixed validation error with variable-based value_choices** ([#218](https://github.com/rundeck/terraform-provider-rundeck/issues/218)) - Job options with `require_predefined_choice = true` and `value_choices` set to a Terraform variable no longer fail validation during plan phase. The provider now correctly skips validation when values are unknown (e.g., from variables or computed values) and validates during apply phase when values are concrete. This fixes the regression introduced in v1.1.0 where users received "Missing value choices" errors even when variables were properly defined.
+
+---
+
 ## 1.1.1
 
 **Bug Fixes**

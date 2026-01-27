@@ -303,6 +303,34 @@ func TestAccJobOptions_option_type(t *testing.T) {
 	})
 }
 
+// TestAccJobOptions_value_choices_from_variable tests Issue #218 fix
+// Verifies that value_choices can be set from a variable without triggering
+// "Missing value choices" validation error during plan phase
+func TestAccJobOptions_value_choices_from_variable(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobOptions_value_choices_from_variable,
+				Check: resource.ComposeTestCheckFunc(
+					// Verify the job was created successfully
+					resource.TestCheckResourceAttr("rundeck_job.test", "name", "job-with-variable-choices"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "execution_enabled", "true"),
+					// Verify the option configuration
+					resource.TestCheckResourceAttr("rundeck_job.test", "option.0.name", "environment"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "option.0.require_predefined_choice", "true"),
+					// Verify value_choices were properly set from the variable
+					resource.TestCheckResourceAttr("rundeck_job.test", "option.0.value_choices.#", "3"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "option.0.value_choices.0", "dev"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "option.0.value_choices.1", "staging"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "option.0.value_choices.2", "prod"),
+				),
+			},
+		},
+	})
+}
+
 func TestAccJob_plugins(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -1045,6 +1073,48 @@ resource "rundeck_job" "test" {
   command {
     description = "Prints the contents of the input file"
     shell_command = "cat $${file.input_file} > $${option.output_file_name}.$${option.output_file_extension}"
+  }
+}
+`
+
+// Test configuration for Issue #218 - value_choices from variable
+const testAccJobOptions_value_choices_from_variable = `
+variable "environment_choices" {
+  type    = list(string)
+  default = ["dev", "staging", "prod"]
+}
+
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-job-option-var-choices"
+  description = "parent project for job acceptance tests"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
+    }
+  }
+}
+
+resource "rundeck_job" "test" {
+  project_name = rundeck_project.test.name
+  name = "job-with-variable-choices"
+  description = "A job with value_choices from variable"
+
+  option {
+    name                      = "environment"
+    label                     = "Environment"
+    description               = "Target environment"
+    required                  = true
+    default_value             = "dev"
+    value_choices             = var.environment_choices
+    require_predefined_choice = true
+  }
+
+  command {
+    description = "Echo environment"
+    shell_command = "echo $${option.environment}"
   }
 }
 `

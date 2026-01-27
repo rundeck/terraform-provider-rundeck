@@ -423,12 +423,18 @@ func (r *jobResource) ValidateConfig(ctx context.Context, req resource.ValidateC
 				}
 
 				valueChoicesList, ok := valueChoicesAttr.(types.List)
-				if !ok || valueChoicesList.IsNull() || valueChoicesList.IsUnknown() {
+				if !ok || valueChoicesList.IsNull() {
 					resp.Diagnostics.AddAttributeError(
 						path.Root("option").AtListIndex(i).AtName("value_choices"),
 						"Missing value choices",
 						fmt.Sprintf("Option %q has require_predefined_choice set to true, but value_choices is not provided. When require_predefined_choice is true, value_choices must contain at least one non-empty value.", optionName),
 					)
+					continue
+				}
+
+				// Skip validation if value_choices is unknown (e.g., from a variable or computed value)
+				// Validation will occur during apply when the value is known
+				if valueChoicesList.IsUnknown() {
 					continue
 				}
 
@@ -442,9 +448,15 @@ func (r *jobResource) ValidateConfig(ctx context.Context, req resource.ValidateC
 
 				// Check for at least one non-empty value and reject empty strings
 				hasNonEmptyValue := false
+				hasUnknownValue := false
 				var emptyValueIndices []int
 				for j, choice := range valueChoices {
-					if choice.IsNull() || choice.IsUnknown() {
+					if choice.IsUnknown() {
+						// If any element is unknown, skip validation entirely
+						hasUnknownValue = true
+						break
+					}
+					if choice.IsNull() {
 						emptyValueIndices = append(emptyValueIndices, j)
 						continue
 					}
@@ -454,6 +466,11 @@ func (r *jobResource) ValidateConfig(ctx context.Context, req resource.ValidateC
 					} else {
 						hasNonEmptyValue = true
 					}
+				}
+
+				// Skip validation if any element is unknown
+				if hasUnknownValue {
+					continue
 				}
 
 				if !hasNonEmptyValue {

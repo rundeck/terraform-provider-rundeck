@@ -89,6 +89,8 @@ jobs:
         TF_ACC: 1
         RUNDECK_URL: http://localhost:4440
         RUNDECK_AUTH_TOKEN: 1d08bf61-f962-467f-8ba3-ab8a463b3467
+        RUNDECK_AUTH_USERNAME: admin
+        RUNDECK_AUTH_PASSWORD: admin  # This is the default password for the admin user in Rundeck
         # Don't run Enterprise tests in CI (Community Edition)
         RUNDECK_ENTERPRISE_TESTS: 0
     
