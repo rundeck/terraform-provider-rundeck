@@ -1,3 +1,21 @@
+## 1.1.2
+
+**Bug Fixes**
+
+### Job Resource
+- **Fixed validation error with variable-based value_choices** ([#218](https://github.com/rundeck/terraform-provider-rundeck/issues/218)) - Job options with `require_predefined_choice = true` and `value_choices` set to a Terraform variable no longer fail validation during plan phase. The provider now correctly skips validation when values are unknown (e.g., from variables or computed values) and validates during apply phase when values are concrete. This fixes the regression introduced in v1.1.0 where users received "Missing value choices" errors even when variables were properly defined.
+
+- **Fixed node_filter_exclude_query not working** - The `node_filter_exclude_query` field was not being sent to Rundeck correctly. The provider was using `excludeFilter` as the JSON field name, but Rundeck's API expects `filterExclude`. Jobs with node exclusion filters now work correctly:
+  ```hcl
+  resource "rundeck_job" "example" {
+    # ...
+    node_filter_query         = "tags: webserver"
+    node_filter_exclude_query = "name: maintenance-*"
+  }
+  ```
+
+---
+
 ## 1.1.1
 
 **Bug Fixes**

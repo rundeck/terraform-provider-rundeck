@@ -73,6 +73,32 @@ func TestAccJob_cmd_nodefilter(t *testing.T) {
 	})
 }
 
+// TestAccJob_node_filter_exclude tests the node_filter_exclude_query field
+// This verifies that the filterExclude field is correctly sent to and read from Rundeck API
+func TestAccJob_node_filter_exclude(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		CheckDestroy:             testAccJobCheckDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_node_filter_exclude,
+				Check: resource.ComposeTestCheckFunc(
+					// Test job with only exclude filter
+					resource.TestCheckResourceAttr("rundeck_job.test_exclude_only", "name", "Test-Exclude-Only"),
+					resource.TestCheckResourceAttr("rundeck_job.test_exclude_only", "node_filter_query", ".*"),
+					resource.TestCheckResourceAttr("rundeck_job.test_exclude_only", "node_filter_exclude_query", "name: localhost"),
+					// Test job with both include and exclude filters
+					resource.TestCheckResourceAttr("rundeck_job.test_both_filters", "name", "Test-Both-Filters"),
+					resource.TestCheckResourceAttr("rundeck_job.test_both_filters", "node_filter_query", "tags: webserver"),
+					resource.TestCheckResourceAttr("rundeck_job.test_both_filters", "node_filter_exclude_query", "name: maintenance-*"),
+					resource.TestCheckResourceAttr("rundeck_job.test_both_filters", "node_filter_exclude_precedence", "true"),
+				),
+			},
+		},
+	})
+}
+
 func TestAccJob_cmd_referred_job(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -297,6 +323,34 @@ func TestAccJobOptions_option_type(t *testing.T) {
 					resource.TestCheckResourceAttr("rundeck_job.test", "option.1.name", "output_file_name"),
 					resource.TestCheckResourceAttr("rundeck_job.test", "option.2.name", "output_file_extension"),
 					resource.TestCheckResourceAttr("rundeck_job.test", "option.2.type", "text"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccJobOptions_value_choices_from_variable tests Issue #218 fix
+// Verifies that value_choices can be set from a variable without triggering
+// "Missing value choices" validation error during plan phase
+func TestAccJobOptions_value_choices_from_variable(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobOptions_value_choices_from_variable,
+				Check: resource.ComposeTestCheckFunc(
+					// Verify the job was created successfully
+					resource.TestCheckResourceAttr("rundeck_job.test", "name", "job-with-variable-choices"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "execution_enabled", "true"),
+					// Verify the option configuration
+					resource.TestCheckResourceAttr("rundeck_job.test", "option.0.name", "environment"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "option.0.require_predefined_choice", "true"),
+					// Verify value_choices were properly set from the variable
+					resource.TestCheckResourceAttr("rundeck_job.test", "option.0.value_choices.#", "3"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "option.0.value_choices.0", "dev"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "option.0.value_choices.1", "staging"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "option.0.value_choices.2", "prod"),
 				),
 			},
 		},
@@ -667,6 +721,56 @@ resource "rundeck_job" "source_test_job" {
 	  email {
 		  recipients = ["foo@foo.bar"]
 	  }
+  }
+}
+`
+
+// Test configuration for node_filter_exclude_query
+const testAccJobConfig_node_filter_exclude = `
+resource "rundeck_project" "test_exclude" {
+  name = "terraform-acc-test-node-filter-exclude"
+  description = "Test project for node_filter_exclude_query"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
+    }
+  }
+}
+
+resource "rundeck_job" "test_exclude_only" {
+  project_name      = rundeck_project.test_exclude.name
+  name              = "Test-Exclude-Only"
+  description       = "Tests node_filter_exclude_query with include filter"
+  execution_enabled = true
+
+  node_filter_query         = ".*"
+  node_filter_exclude_query = "name: localhost"
+  max_thread_count          = 1
+
+  command {
+    description   = "Echo test"
+    shell_command = "echo 'Testing exclude filter'"
+  }
+}
+
+resource "rundeck_job" "test_both_filters" {
+  project_name      = rundeck_project.test_exclude.name
+  name              = "Test-Both-Filters"
+  description       = "Tests both node_filter_query and node_filter_exclude_query"
+  execution_enabled = true
+
+  node_filter_query              = "tags: webserver"
+  node_filter_exclude_query      = "name: maintenance-*"
+  node_filter_exclude_precedence = true
+  max_thread_count               = 5
+  continue_next_node_on_error    = true
+
+  command {
+    description   = "Echo test"
+    shell_command = "echo 'Testing both filters'"
   }
 }
 `
@@ -1045,6 +1149,48 @@ resource "rundeck_job" "test" {
   command {
     description = "Prints the contents of the input file"
     shell_command = "cat $${file.input_file} > $${option.output_file_name}.$${option.output_file_extension}"
+  }
+}
+`
+
+// Test configuration for Issue #218 - value_choices from variable
+const testAccJobOptions_value_choices_from_variable = `
+variable "environment_choices" {
+  type    = list(string)
+  default = ["dev", "staging", "prod"]
+}
+
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-job-option-var-choices"
+  description = "parent project for job acceptance tests"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
+    }
+  }
+}
+
+resource "rundeck_job" "test" {
+  project_name = rundeck_project.test.name
+  name = "job-with-variable-choices"
+  description = "A job with value_choices from variable"
+
+  option {
+    name                      = "environment"
+    label                     = "Environment"
+    description               = "Target environment"
+    required                  = true
+    default_value             = "dev"
+    value_choices             = var.environment_choices
+    require_predefined_choice = true
+  }
+
+  command {
+    description = "Echo environment"
+    shell_command = "echo $${option.environment}"
   }
 }
 `
