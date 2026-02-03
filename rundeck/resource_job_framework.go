@@ -129,7 +129,7 @@ type jobRetry struct {
 
 type jobNodeFilters struct {
 	Filter        string       `json:"filter,omitempty"`
-	ExcludeFilter string       `json:"excludeFilter,omitempty"`
+	FilterExclude string       `json:"filterExclude,omitempty"`
 	Dispatch      *jobDispatch `json:"dispatch,omitempty"`
 }
 
@@ -965,6 +965,8 @@ func (r *jobResource) planToJobJSON(ctx context.Context, plan *jobResourceModel)
 	// Note: When a job has node filters (dispatches to nodes), the dispatch config
 	// is nested INSIDE nodefilters, not at the root level.
 	// This applies to both Open Source and Enterprise Rundeck.
+	//
+	// Rundeck uses "filter" for include patterns and "filterExclude" for exclude patterns.
 	hasNodeFilters := !plan.NodeFilterQuery.IsNull() || !plan.NodeFilterExcludeQuery.IsNull()
 	hasDispatchConfig := !plan.MaxThreadCount.IsNull() || !plan.ContinueNextNodeOnError.IsNull() ||
 		!plan.RankOrder.IsNull() || !plan.RankAttribute.IsNull() ||
@@ -973,12 +975,12 @@ func (r *jobResource) planToJobJSON(ctx context.Context, plan *jobResourceModel)
 	if hasNodeFilters || hasDispatchConfig {
 		job.NodeFilters = &jobNodeFilters{}
 
-		// Set filter fields
-		if !plan.NodeFilterQuery.IsNull() {
+		// Set filter fields - Rundeck uses separate "filter" and "filterExclude" fields
+		if !plan.NodeFilterQuery.IsNull() && plan.NodeFilterQuery.ValueString() != "" {
 			job.NodeFilters.Filter = plan.NodeFilterQuery.ValueString()
 		}
-		if !plan.NodeFilterExcludeQuery.IsNull() {
-			job.NodeFilters.ExcludeFilter = plan.NodeFilterExcludeQuery.ValueString()
+		if !plan.NodeFilterExcludeQuery.IsNull() && plan.NodeFilterExcludeQuery.ValueString() != "" {
+			job.NodeFilters.FilterExclude = plan.NodeFilterExcludeQuery.ValueString()
 		}
 
 		// Set dispatch configuration (nested inside nodefilters)
@@ -1169,12 +1171,13 @@ func (r *jobResource) jobJSONToState(ctx context.Context, job *jobJSON, state *j
 	}
 
 	// Handle node filters
+	// Rundeck uses separate "filter" and "filterExclude" fields
 	if job.NodeFilters != nil {
 		if job.NodeFilters.Filter != "" {
 			state.NodeFilterQuery = types.StringValue(job.NodeFilters.Filter)
 		}
-		if job.NodeFilters.ExcludeFilter != "" {
-			state.NodeFilterExcludeQuery = types.StringValue(job.NodeFilters.ExcludeFilter)
+		if job.NodeFilters.FilterExclude != "" {
+			state.NodeFilterExcludeQuery = types.StringValue(job.NodeFilters.FilterExclude)
 		}
 	}
 
@@ -1319,12 +1322,13 @@ func (r *jobResource) jobJSONAPIToState(ctx context.Context, job *JobJSON, state
 	}
 
 	// Handle node filters and dispatch (nested inside nodefilters)
+	// Rundeck uses separate "filter" and "filterExclude" fields
 	if job.NodeFilters != nil {
 		if filter, ok := job.NodeFilters["filter"].(string); ok && filter != "" {
 			state.NodeFilterQuery = types.StringValue(filter)
 		}
-		if excludeFilter, ok := job.NodeFilters["excludeFilter"].(string); ok && excludeFilter != "" {
-			state.NodeFilterExcludeQuery = types.StringValue(excludeFilter)
+		if filterExclude, ok := job.NodeFilters["filterExclude"].(string); ok && filterExclude != "" {
+			state.NodeFilterExcludeQuery = types.StringValue(filterExclude)
 		}
 
 		// Dispatch is nested inside nodefilters
