@@ -17,7 +17,7 @@ func TestAccToken(t *testing.T) {
 	url := os.Getenv("RUNDECK_URL")
 
 	if username != "" && password != "" {
-		_, err := _getToken(url, apiVersion, username, password)
+		_, err := _getToken(url, apiVersion, username, password, "test")
 		if err != nil {
 			t.Fatalf("failed to get a token: %s", err)
 		}
@@ -42,7 +42,7 @@ func TestAccTokenReuse(t *testing.T) {
 	}
 
 	// Get token first time - this may create a new token or reuse existing
-	token1, err := _getToken(url, apiVersion, username, password)
+	token1, err := _getToken(url, apiVersion, username, password, "test")
 	if err != nil {
 		t.Fatalf("failed to get token first time: %s", err)
 	}
@@ -52,7 +52,7 @@ func TestAccTokenReuse(t *testing.T) {
 	}
 
 	// Get token second time - should reuse the existing token
-	token2, err := _getToken(url, apiVersion, username, password)
+	token2, err := _getToken(url, apiVersion, username, password, "test")
 	if err != nil {
 		t.Fatalf("failed to get token second time: %s", err)
 	}

@@ -126,7 +126,7 @@ func (p *frameworkProvider) Configure(ctx context.Context, req provider.Configur
 		token = authToken
 	} else if authUsername != "" && authPassword != "" {
 		// Generate token from username/password (same logic as SDKv2 provider)
-		t, err := _getToken(urlString, apiVersion, authUsername, authPassword)
+		t, err := _getToken(urlString, apiVersion, authUsername, authPassword, p.version)
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Authentication Failed",
@@ -154,14 +154,16 @@ func (p *frameworkProvider) Configure(ctx context.Context, req provider.Configur
 		return
 	}
 
-	// Create the V1 client
+	// Create the V1 client with custom User-Agent
 	clientV1 := rundeck.NewRundeckWithBaseURI(apiURL.String())
+	clientV1.UserAgent = buildUserAgent(p.version)
 	clientV1.Authorizer = &auth.TokenAuthorizer{Token: token}
 
-	// Create the V2 client
+	// Create the V2 client with custom User-Agent
 	cfg := openapi.NewConfiguration()
 	cfg.Host = apiURL.Host
 	cfg.Scheme = apiURL.Scheme
+	cfg.HTTPClient = newHTTPClientWithUserAgent(p.version)
 
 	clientV2 := openapi.NewAPIClient(cfg)
 

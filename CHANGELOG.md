@@ -1,3 +1,12 @@
+## 1.2.0
+
+**Enhancements**
+
+### Provider
+- **Added User-Agent header to all API requests** - The provider now automatically includes a User-Agent header in all HTTP requests to Rundeck, enabling better usage tracking and analytics for SaaS deployments. The User-Agent format is `terraform-provider-rundeck/<version> (go<go-version>; <os>)`, for example: `terraform-provider-rundeck/1.2.0 (go1.24.10; darwin)`. This is transparent to users and requires no configuration. You can use this header to track provider adoption and version distribution across your organization.
+
+---
+
 ## 1.1.2
 
 **Bug Fixes**
