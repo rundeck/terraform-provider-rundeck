@@ -73,6 +73,32 @@ func TestAccJob_cmd_nodefilter(t *testing.T) {
 	})
 }
 
+// TestAccJob_node_filter_exclude tests the node_filter_exclude_query field
+// This verifies that the filterExclude field is correctly sent to and read from Rundeck API
+func TestAccJob_node_filter_exclude(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		CheckDestroy:             testAccJobCheckDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_node_filter_exclude,
+				Check: resource.ComposeTestCheckFunc(
+					// Test job with only exclude filter
+					resource.TestCheckResourceAttr("rundeck_job.test_exclude_only", "name", "Test-Exclude-Only"),
+					resource.TestCheckResourceAttr("rundeck_job.test_exclude_only", "node_filter_query", ".*"),
+					resource.TestCheckResourceAttr("rundeck_job.test_exclude_only", "node_filter_exclude_query", "name: localhost"),
+					// Test job with both include and exclude filters
+					resource.TestCheckResourceAttr("rundeck_job.test_both_filters", "name", "Test-Both-Filters"),
+					resource.TestCheckResourceAttr("rundeck_job.test_both_filters", "node_filter_query", "tags: webserver"),
+					resource.TestCheckResourceAttr("rundeck_job.test_both_filters", "node_filter_exclude_query", "name: maintenance-*"),
+					resource.TestCheckResourceAttr("rundeck_job.test_both_filters", "node_filter_exclude_precedence", "true"),
+				),
+			},
+		},
+	})
+}
+
 func TestAccJob_cmd_referred_job(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -695,6 +721,56 @@ resource "rundeck_job" "source_test_job" {
 	  email {
 		  recipients = ["foo@foo.bar"]
 	  }
+  }
+}
+`
+
+// Test configuration for node_filter_exclude_query
+const testAccJobConfig_node_filter_exclude = `
+resource "rundeck_project" "test_exclude" {
+  name = "terraform-acc-test-node-filter-exclude"
+  description = "Test project for node_filter_exclude_query"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
+    }
+  }
+}
+
+resource "rundeck_job" "test_exclude_only" {
+  project_name      = rundeck_project.test_exclude.name
+  name              = "Test-Exclude-Only"
+  description       = "Tests node_filter_exclude_query with include filter"
+  execution_enabled = true
+
+  node_filter_query         = ".*"
+  node_filter_exclude_query = "name: localhost"
+  max_thread_count          = 1
+
+  command {
+    description   = "Echo test"
+    shell_command = "echo 'Testing exclude filter'"
+  }
+}
+
+resource "rundeck_job" "test_both_filters" {
+  project_name      = rundeck_project.test_exclude.name
+  name              = "Test-Both-Filters"
+  description       = "Tests both node_filter_query and node_filter_exclude_query"
+  execution_enabled = true
+
+  node_filter_query              = "tags: webserver"
+  node_filter_exclude_query      = "name: maintenance-*"
+  node_filter_exclude_precedence = true
+  max_thread_count               = 5
+  continue_next_node_on_error    = true
+
+  command {
+    description   = "Echo test"
+    shell_command = "echo 'Testing both filters'"
   }
 }
 `
