@@ -329,7 +329,7 @@ resource "rundeck_webhook" "pagerduty_v3" {
 
     rules {
       name   = "Incident Triggered V3"
-      job_id = rundeck_job.incident_handler.id
+      job_id = rundeck_job.pagerduty_incident_handler.id
 
       job_options {
         name  = "event_id"

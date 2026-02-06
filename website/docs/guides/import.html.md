@@ -199,14 +199,14 @@ curl -H "X-Rundeck-Auth-Token: $RUNDECK_AUTH_TOKEN" \
 # Create the resource block
 cat >> main.tf <<EOF
 resource "rundeck_webhook" "github_deploy" {
-  project = "production"
-  name    = "GitHub Deploy Webhook"
-  user    = "admin"
-  roles   = ["admin"]
-  enabled = true
+  project      = "production"
+  name         = "GitHub Deploy Webhook"
+  user         = "admin"
+  roles        = "admin"
+  enabled      = true
+  event_plugin = "webhook-run-job"
   
   config {
-    plugin = "webhook-run-job"
     job_id = "\${rundeck_job.deploy_app.id}"
   }
 }
