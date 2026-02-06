@@ -10,7 +10,7 @@ description: |-
 
 Enable external systems to trigger automation in Rundeck through HTTP webhooks. Webhooks support job execution, event logging, and advanced integrations with platforms like GitHub, PagerDuty, DataDog, and AWS SNS.
 
-**Requirements:** Requires Rundeck 5.0.0+ (API v33+). Enterprise plugins require Rundeck Enterprise.
+**Requirements:** Requires Rundeck with API v33+ (introduced in Rundeck 3.3.0). The provider defaults to API v56. Enterprise plugins require Rundeck Enterprise.
 
 **Key capabilities:** Simple event logging, job triggering, conditional job execution based on webhook payload, batch processing, and third-party platform integrations.
 
@@ -160,7 +160,7 @@ resource "rundeck_webhook" "advanced_alerts" {
     # Warning alerts rule (different job, different conditions)
     rules {
       name   = "Warning Alerts"
-      job_id = rundeck_job.warning_handler.id
+      job_id = rundeck_job.critical_alert_handler.id
 
       conditions {
         path      = "data.severity"

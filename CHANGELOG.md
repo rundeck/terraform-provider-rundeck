@@ -17,7 +17,7 @@
   - Automatic auth token generation (stored securely in state)
   - Import support for existing webhooks
 
-  **Requirements:** Rundeck 5.0.0+ (API v56+). Enterprise plugins require Rundeck Enterprise.
+  **Requirements:** Rundeck with API v33+ (introduced in Rundeck 3.3.0). The provider defaults to API v56. Enterprise plugins require Rundeck Enterprise.
 
 **Enhancements**
 
