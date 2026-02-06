@@ -217,8 +217,8 @@ terraform import rundeck_webhook.github_deploy production/123
 ```
 
 **Important Notes:**
-- **Auth tokens are NOT imported** - The `auth_token` will be regenerated on the first `terraform apply`
-- After import, the webhook URL will change due to the new auth token
+- **Auth tokens are NOT imported** - The `auth_token` value cannot be retrieved after import and will remain `null` in Terraform state. If you need the existing token, record it before importing the webhook, or delete and recreate the webhook so Terraform can obtain a new token.
+- Importing a webhook does **not** change the existing webhook URL. Terraform manages the webhook by its ID, but cannot display or rotate the auth token automatically after import. A new token (and URL) is only created when the webhook itself is recreated.
 - The `config` block structure varies by plugin type (webhook-run-job, advanced-run-job, etc.)
 - Enterprise plugins (DataDog, PagerDuty, GitHub, AWS SNS) have additional configuration fields
 - See the [webhook resource documentation](../r/webhook.html.md) for detailed `config` schema per plugin
