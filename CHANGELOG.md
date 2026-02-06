@@ -1,3 +1,35 @@
+## 1.2.0
+
+**New Resources**
+
+### Webhook Resource
+- **Added `rundeck_webhook` resource** - Manage Rundeck webhooks as code with full support for OSS and Enterprise plugins. Enable external systems to trigger automation in Rundeck through HTTP webhooks with support for job execution, event logging, and advanced integrations with platforms like GitHub, PagerDuty, DataDog, and AWS SNS.
+
+  **Supported Plugins:**
+  - OSS: `log-webhook-event`, `webhook-run-job` (with arguments, node filters, and user override)
+  - Enterprise: `advanced-run-job`, `datadog-run-job`, `pagerduty-run-job`, `pagerduty-V3-run-job`, `github-webhook`, `aws-sns-webhook`
+
+  **Key Features:**
+  - Nested rules blocks for conditional job execution based on webhook payload
+  - Job options with JSONPath extraction from webhook data
+  - Multiple conditions per rule with AND/OR policy support
+  - Batch processing support for handling arrays of events
+  - Automatic auth token generation (stored securely in state)
+  - Import support for existing webhooks
+
+  **Requirements:** Rundeck with API v33+ (introduced in Rundeck 3.3.0). The provider defaults to API v56. Enterprise plugins require Rundeck Enterprise.
+
+**Enhancements**
+
+### Provider
+- **Added User-Agent header to all API requests** - The provider now automatically includes a User-Agent header in all HTTP requests to Rundeck, enabling better usage tracking and analytics for SaaS deployments. The User-Agent format is `terraform-provider-rundeck/<version> (go<go-version>; <os>)`, for example: `terraform-provider-rundeck/1.2.0 (go1.24.10; darwin)`. This is transparent to users and requires no configuration. You can use this header to track provider adoption and version distribution across your organization.
+
+**Documentation**
+
+- **Added comprehensive Import Guide** - New guide covering import procedures for all resources (projects, jobs, webhooks, ACL policies, key storage, and runners). Includes resource-specific examples, bulk import scripts, troubleshooting tips, and best practices for migrating existing Rundeck instances to Terraform management.
+
+---
+
 ## 1.1.2
 
 **Bug Fixes**
