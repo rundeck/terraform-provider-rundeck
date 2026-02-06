@@ -2,8 +2,8 @@
 
 Forward-looking tasks for the Rundeck Terraform Provider.
 
-**Current Status**: v1.1.0 ready for release - All critical bugs fixed!  
-**Last Updated**: 2025-12-31 (v1.1.0 release preparation)
+**Current Status**: v1.2.0 in development - Webhook resource implementation complete!  
+**Last Updated**: 2026-01-29 (v1.2.0 development)
 
 ---
 
@@ -12,21 +12,18 @@ Forward-looking tasks for the Rundeck Terraform Provider.
 ---
 
 ### Documentation Improvements
-**Effort**: Medium (1-2 days)  
-**Status**: Core docs complete, guides deferred  
-**Why Important**: Reduces support burden and improves onboarding for new users upgrading from 0.x to 1.0.
+**Effort**: Small (1 day)  
+**Status**: Import Guide complete! Enterprise guide still deferred  
+**Why Important**: Reduces support burden and improves onboarding for new users.
 
-**Nice-to-have guide pages:**
-- **Import Guide** (`website/docs/guides/import.html.md`)
-  - Step-by-step import workflow
-  - Known limitations for complex structures
-  - Post-import cleanup best practices
+**Completed in v1.2.0:**
+- ✅ **Import Guide** (`website/docs/guides/import.html.md`)
+  - Comprehensive step-by-step import workflow for all resources
+  - Resource-specific examples (projects, jobs, webhooks, ACLs, keys, runners)
+  - Bulk import scripts and common patterns
+  - Troubleshooting section with solutions
 
-- **Migration Guide** (`website/docs/guides/migration-v1.html.md`)
-  - 0.x → 1.0 upgrade path (covered in CHANGELOG/PR description for now)
-  - Breaking changes with examples
-  - Rundeck version compatibility matrix
-
+**Nice-to-have guide page:**
 - **Enterprise Features** (`website/docs/guides/enterprise.html.md`)
   - Feature comparison table (OSS vs Enterprise)
   - Runner management patterns
@@ -162,11 +159,12 @@ After:  Error creating job "my-job" in project "prod": Rundeck returned validati
   - Option 2: Scheduled runs on internal Enterprise instance
   - Option 3: Manual verification before releases
 
-**Skipped in CI/CD** (9 tests):
+**Skipped in CI/CD** (15 tests):
 - 1 execution lifecycle plugin test (multiple plugins)
 - 3 project schedule tests (API not available yet)
 - 3 project runner tests (Enterprise feature)
 - 2 system runner tests (Enterprise feature)
+- 6 webhook Enterprise plugin tests (advanced-run-job, datadog-run-job, pagerduty-run-job, pagerduty-V3-run-job, github-webhook, aws-sns-webhook)
 
 ---
 
@@ -229,9 +227,11 @@ Add support for Rundeck's Source Control Management (SCM) integration, allowing 
 
 **Candidates**:
 - `rundeck_node_source` - Dynamic node sources (Medium priority)
-- `rundeck_webhook` - Webhook event handlers (Low priority)
 - `rundeck_user` / `rundeck_role` - User management (if API supports)
 - `rundeck_execution` - Trigger/manage executions (questionable use case)
+
+**Completed in v1.2.0**:
+- ✅ `rundeck_webhook` - Webhook event handlers (fully implemented with all 8 plugin types)
 
 **Approach**: Validate demand before implementation
 
