@@ -83,6 +83,15 @@ jobs:
         # Give it a few more seconds to fully initialize
         sleep 10
     
+    - name: Initialize admin user
+      run: |
+        echo "Initializing admin user in Rundeck user database..."
+        # Make an authenticated API call to trigger user creation
+        curl -s -X GET \
+          -H "X-Rundeck-Auth-Token: 1d08bf61-f962-467f-8ba3-ab8a463b3467" \
+          http://localhost:4440/api/56/system/info > /dev/null
+        echo "Admin user initialized."
+    
     - name: Run acceptance tests
       run: make testacc
       env:
