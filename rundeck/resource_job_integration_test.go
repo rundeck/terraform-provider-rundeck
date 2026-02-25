@@ -135,7 +135,15 @@ func TestAccJob_ComplexIntegration(t *testing.T) {
 							if name := option["name"]; name != "environment" {
 								return fmt.Errorf("Expected option name=environment, got %v", name)
 							}
-							// Check if enforcedValues is set (or inferred from values presence)
+							// Check if enforced is set to true in API response
+							if enforced, ok := option["enforced"].(bool); ok {
+								if !enforced {
+									return fmt.Errorf("Expected option enforced=true, got false")
+								}
+							} else {
+								return fmt.Errorf("Expected option to have enforced field set to true")
+							}
+							// Verify values are present
 							if values, hasValues := option["values"]; hasValues {
 								valuesList, ok := values.([]interface{})
 								if !ok || len(valuesList) == 0 {

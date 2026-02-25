@@ -48,7 +48,6 @@ func TestAccRundeckJob_Import(t *testing.T) {
 					"option",
 					"notification",
 					// These fields are preserved correctly but may have minor formatting differences
-					"project_name",
 					"schedule",
 					"node_filter_query",
 				},

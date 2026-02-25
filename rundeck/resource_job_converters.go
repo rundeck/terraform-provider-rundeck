@@ -484,7 +484,7 @@ func convertOptionsToJSON(ctx context.Context, optionsList types.List) ([]interf
 			optMap["sortValues"] = v.ValueBool()
 		}
 		if v, ok := attrs["require_predefined_choice"].(types.Bool); ok && !v.IsNull() {
-			optMap["enforcedValues"] = v.ValueBool()
+			optMap["enforced"] = v.ValueBool()
 		}
 		if v, ok := attrs["allow_multiple_values"].(types.Bool); ok && !v.IsNull() {
 			optMap["multivalued"] = v.ValueBool()
@@ -1580,23 +1580,16 @@ func convertOptionsFromJSON(ctx context.Context, optionsArray []interface{}) (ty
 			optAttrs["allow_multiple_values"] = types.BoolNull()
 		}
 
-		// API field is "enforcedValues" not "enforced"
-		// Debug: check what fields are actually in optMap
-		if enforced, ok := optMap["enforcedValues"].(bool); ok {
+		// API field is "enforced" according to Job-JSON v44 documentation
+		if enforced, ok := optMap["enforced"].(bool); ok {
 			optAttrs["require_predefined_choice"] = types.BoolValue(enforced)
-		} else if enforced, ok := optMap["enforced"].(bool); ok {
-			// Try alternate field name
+		} else if enforced, ok := optMap["enforcedValues"].(bool); ok {
+			// Some API versions may use "enforcedValues" as alternate field name
 			optAttrs["require_predefined_choice"] = types.BoolValue(enforced)
 		} else {
-			// If value_choices is specified, enforcedValues defaults to true
-			// Check if values or valuesList exists to infer the default
-			if _, hasValues := optMap["values"]; hasValues {
-				optAttrs["require_predefined_choice"] = types.BoolValue(true)
-			} else if _, hasValuesList := optMap["valuesList"]; hasValuesList {
-				optAttrs["require_predefined_choice"] = types.BoolValue(true)
-			} else {
-				optAttrs["require_predefined_choice"] = types.BoolNull()
-			}
+			// If the API doesn't return "enforced", default to false
+			// This allows options with value_choices but without enforcement (dropdown suggestions)
+			optAttrs["require_predefined_choice"] = types.BoolValue(false)
 		}
 
 		if isDate, ok := optMap["isDate"].(bool); ok {

@@ -898,6 +898,7 @@ func (r *jobResource) ImportState(ctx context.Context, req resource.ImportStateR
 	// 1. Just job ID: "job-uuid"
 	// 2. Project and job ID: "project-name/job-uuid"
 	id := req.ID
+	var projectName string
 
 	// Check if the ID contains a slash (project/job format)
 	if strings.Contains(id, "/") {
@@ -910,7 +911,8 @@ func (r *jobResource) ImportState(ctx context.Context, req resource.ImportStateR
 			)
 			return
 		}
-		// Use just the job ID part
+		// Extract both project name and job ID
+		projectName = parts[0]
 		id = parts[1]
 	}
 
@@ -920,6 +922,14 @@ func (r *jobResource) ImportState(ctx context.Context, req resource.ImportStateR
 	// Override the ID if we parsed it from project/job-id format
 	if id != req.ID {
 		resp.State.SetAttribute(ctx, path.Root("id"), id)
+	}
+
+	// Set the project name if it was provided in the import ID
+	// This is critical because the Rundeck API's GET /job/{id} endpoint
+	// doesn't always return the project field, which would cause Terraform
+	// to want to recreate the resource since project_name is required
+	if projectName != "" {
+		resp.State.SetAttribute(ctx, path.Root("project_name"), projectName)
 	}
 }
 
