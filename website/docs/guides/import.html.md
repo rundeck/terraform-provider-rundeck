@@ -224,8 +224,8 @@ terraform import rundeck_webhook.github_deploy production/123
 - See the [webhook resource documentation](../r/webhook.html.md) for detailed `config` schema per plugin
 
 **Post-Import Cleanup:**
-1. Update any systems using the old webhook URL with the new URL (shown in `terraform apply` output)
-2. Verify the `config` block matches the webhook plugin type
+1. Verify the imported resource attributes (`project`, `name`, `event_plugin`, and `config`) match the existing webhook in Rundeck
+2. Confirm any external systems using this webhook continue to work as expected. Import does not change the webhook URL or auth token
 3. For advanced plugins with `rules`, `job_options`, or `conditions`, ensure nested blocks are correctly structured
 
 ---

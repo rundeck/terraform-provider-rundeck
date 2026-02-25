@@ -19,8 +19,11 @@ Enable external systems to trigger automation in Rundeck through HTTP webhooks. 
 ### Immutable Fields
 
 The following fields **cannot** be updated after creation and will force resource recreation:
+- `project` - Project the webhook belongs to
 - `name` - Webhook name
+- `user` - Run-as user for webhook-triggered executions
 - `roles` - Authorization roles
+- `event_plugin` - Event plugin used by the webhook
 - `enabled` - Whether webhook is enabled
 
 ### Auth Token Handling
