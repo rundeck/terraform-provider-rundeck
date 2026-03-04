@@ -36,6 +36,11 @@
 ### Project Resource
 - **Fixed null value handling in resource_model_source and extra_config** ([#227](https://github.com/rundeck/terraform-provider-rundeck/issues/227)) - Null values in `resource_model_source` config maps and `extra_config` maps are now properly treated as omitted attributes (per Terraform semantics). Previously, null values would cause errors when the provider attempted to convert them to strings. This enables dynamic blocks with conditional null values to work correctly.
 
+- **Fixed empty config handling in resource_model_source** - When `resource_model_source` blocks have no `config` attribute (valid for source types like "local"), the provider now correctly stores `null` instead of an empty map. This prevents "Provider produced inconsistent result after apply" errors where Terraform sees `null != {}` drift.
+
+### Webhook Resource
+- **Fixed roles reordering causing plan drift** - Webhook roles are now normalized by sorting alphabetically before storing in state. This prevents "Provider produced inconsistent result after apply" errors when the Rundeck API returns roles in a different order than specified (e.g., user specifies "admin,webhook" but API returns "webhook,admin").
+
 **Documentation**
 
 - **Added comprehensive Import Guide** - New guide covering import procedures for all resources (projects, jobs, webhooks, ACL policies, key storage, and runners). Includes resource-specific examples, bulk import scripts, troubleshooting tips, and best practices for migrating existing Rundeck instances to Terraform management.

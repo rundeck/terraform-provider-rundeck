@@ -95,6 +95,46 @@ func testAccProjectCheckExists(rn string, project *rundeck.Project) resource.Tes
 	}
 }
 
+func TestAccProject_localSourceNoConfig(t *testing.T) {
+	var project rundeck.Project
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		CheckDestroy:             testAccProjectCheckDestroy(&project),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccProjectConfig_localSourceNoConfig,
+				Check: resource.ComposeTestCheckFunc(
+					testAccProjectCheckExists("rundeck_project.test", &project),
+					func(s *terraform.State) error {
+						if expected := "terraform-acc-test-local-no-config"; *project.Name != expected {
+							return fmt.Errorf("wrong name; expected %v, got %v", expected, project.Name)
+						}
+						return nil
+					},
+				),
+			},
+			// Verify no plan drift on refresh
+			{
+				RefreshState: true,
+				PlanOnly:     true,
+			},
+		},
+	})
+}
+
+const testAccProjectConfig_localSourceNoConfig = `
+resource "rundeck_project" "test" {
+  name        = "terraform-acc-test-local-no-config"
+  description = "Test project for local source without config"
+
+  resource_model_source {
+    type = "local"
+  }
+}
+`
+
 const testAccProjectConfig_basic = `
 resource "rundeck_project" "main" {
   name = "terraform-acc-test-basic"

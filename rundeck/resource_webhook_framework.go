@@ -3,6 +3,7 @@ package rundeck
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -871,7 +872,13 @@ func (r *webhookResource) Read(ctx context.Context, req resource.ReadRequest, re
 		state.User = types.StringValue(user)
 	}
 	if roles, ok := apiResp["roles"].(string); ok {
-		state.Roles = types.StringValue(roles)
+		// Normalize roles by sorting to prevent plan drift from API reordering
+		parts := strings.Split(roles, ",")
+		for i := range parts {
+			parts[i] = strings.TrimSpace(parts[i])
+		}
+		sort.Strings(parts)
+		state.Roles = types.StringValue(strings.Join(parts, ","))
 	}
 	if eventPlugin, ok := apiResp["eventPlugin"].(string); ok {
 		state.EventPlugin = types.StringValue(eventPlugin)
@@ -996,7 +1003,13 @@ func (r *webhookResource) Update(ctx context.Context, req resource.UpdateRequest
 		plan.User = types.StringValue(user)
 	}
 	if roles, ok := apiResp["roles"].(string); ok {
-		plan.Roles = types.StringValue(roles)
+		// Normalize roles by sorting to prevent plan drift from API reordering
+		parts := strings.Split(roles, ",")
+		for i := range parts {
+			parts[i] = strings.TrimSpace(parts[i])
+		}
+		sort.Strings(parts)
+		plan.Roles = types.StringValue(strings.Join(parts, ","))
 	}
 	if eventPlugin, ok := apiResp["eventPlugin"].(string); ok {
 		plan.EventPlugin = types.StringValue(eventPlugin)

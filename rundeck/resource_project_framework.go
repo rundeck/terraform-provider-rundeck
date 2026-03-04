@@ -478,8 +478,15 @@ func (r *projectResource) readProject(ctx context.Context, apiCtx context.Contex
 		}
 
 		sourceModel := resourceModelSourceModel{
-			Type:   types.StringValue(source["type"].(string)),
-			Config: types.MapValueMust(types.StringType, configMap),
+			Type: types.StringValue(source["type"].(string)),
+		}
+
+		// Only set Config if there are actual config values
+		// This prevents null != {} drift when config is omitted
+		if len(configMap) == 0 {
+			sourceModel.Config = types.MapNull(types.StringType)
+		} else {
+			sourceModel.Config = types.MapValueMust(types.StringType, configMap)
 		}
 
 		objType := types.ObjectType{

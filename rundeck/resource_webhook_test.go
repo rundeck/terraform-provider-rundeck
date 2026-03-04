@@ -909,3 +909,66 @@ resource "rundeck_webhook" "test" {
   }
 }
 `
+
+// Test for multiple roles (verifies normalization prevents reordering drift)
+func TestAccRundeckWebhook_multipleRoles(t *testing.T) {
+	var webhookID string
+	projectName := "terraform-acc-test-webhook-multiple-roles"
+	webhookName := "multi-role-webhook"
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		CheckDestroy:             testAccWebhookCheckDestroy(projectName, &webhookID),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccRundeckWebhookConfig_multipleRoles,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					testAccWebhookCheckExists("rundeck_webhook.test", &webhookID),
+					resource.TestCheckResourceAttr("rundeck_webhook.test", "project", projectName),
+					resource.TestCheckResourceAttr("rundeck_webhook.test", "name", webhookName),
+					resource.TestCheckResourceAttr("rundeck_webhook.test", "user", "admin"),
+					// Roles should be normalized (sorted) even if API reorders them
+					resource.TestCheckResourceAttr("rundeck_webhook.test", "roles", "admin,webhook"),
+					resource.TestCheckResourceAttr("rundeck_webhook.test", "enabled", "true"),
+					resource.TestCheckResourceAttr("rundeck_webhook.test", "event_plugin", "log-webhook-event"),
+				),
+			},
+			// Verify no plan drift on refresh
+			{
+				RefreshState: true,
+				PlanOnly:     true,
+			},
+		},
+	})
+}
+
+const testAccRundeckWebhookConfig_multipleRoles = `
+resource "rundeck_project" "test" {
+  name        = "terraform-acc-test-webhook-multiple-roles"
+  description = "Test project for webhook with multiple roles"
+
+  resource_model_source {
+    type = "file"
+    config = {
+      format                    = "resourcexml"
+      file                      = "/tmp/terraform-acc-test-webhook-multiple-roles.xml"
+      generateFileAutomatically = "true"
+      includeServerNode         = "true"
+    }
+  }
+}
+
+resource "rundeck_webhook" "test" {
+  project      = rundeck_project.test.name
+  name         = "multi-role-webhook"
+  user         = "admin"
+  roles        = "admin,webhook"
+  enabled      = true
+  event_plugin = "log-webhook-event"
+  
+  config {
+    log_level = "INFO"
+  }
+}
+`
