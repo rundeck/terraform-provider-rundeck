@@ -1,3 +1,55 @@
+## 1.2.0
+
+**New Resources**
+
+### Webhook Resource
+- **Added `rundeck_webhook` resource** - Manage Rundeck webhooks as code with full support for OSS and Enterprise plugins. Enable external systems to trigger automation in Rundeck through HTTP webhooks with support for job execution, event logging, and advanced integrations with platforms like GitHub, PagerDuty, DataDog, and AWS SNS.
+
+  **Supported Plugins:**
+  - OSS: `log-webhook-event`, `webhook-run-job` (with arguments, node filters, and user override)
+  - Enterprise: `advanced-run-job`, `datadog-run-job`, `pagerduty-run-job`, `pagerduty-V3-run-job`, `github-webhook`, `aws-sns-webhook`
+
+  **Key Features:**
+  - Nested rules blocks for conditional job execution based on webhook payload
+  - Job options with JSONPath extraction from webhook data
+  - Multiple conditions per rule with AND/OR policy support
+  - Batch processing support for handling arrays of events
+  - Automatic auth token generation (stored securely in state)
+  - Import support for existing webhooks
+
+  **Requirements:** Rundeck with API v33+ (introduced in Rundeck 3.3.0). The provider defaults to API v56. Enterprise plugins require Rundeck Enterprise.
+
+**Enhancements**
+
+### Provider
+- **Added User-Agent header to all API requests** - The provider now automatically includes a User-Agent header in all HTTP requests to Rundeck, enabling better usage tracking and analytics for SaaS deployments. The User-Agent format is `terraform-provider-rundeck/<version> (go<go-version>; <os>)`, for example: `terraform-provider-rundeck/1.2.0 (go1.24.10; darwin)`. This is transparent to users and requires no configuration. You can use this header to track provider adoption and version distribution across your organization.
+
+**Bug Fixes**
+
+### Job Resource
+- **Fixed job import not preserving project_name** ([#223](https://github.com/rundeck/terraform-provider-rundeck/issues/223)) - When importing jobs using the `project-name/job-id` format, the project name is now properly preserved in state even when the Rundeck API doesn't return it in the response. This prevents Terraform from wanting to recreate the job after import.
+
+- **Fixed require_predefined_choice not enforcing dropdown values** ([#224](https://github.com/rundeck/terraform-provider-rundeck/issues/224)) - Job options with `require_predefined_choice = true` now correctly enforce the "Enforced from Allowed Values" restriction in the Rundeck UI. The provider was sending the wrong API field name (`enforcedValues` instead of `enforced`), causing Rundeck to ignore the restriction setting.
+
+- **Fixed require_predefined_choice incorrectly inferred as true** ([#228](https://github.com/rundeck/terraform-provider-rundeck/issues/228)) - Job options with `value_choices` set and `require_predefined_choice = false` now work correctly. Previously, the provider would incorrectly infer `require_predefined_choice = true` when reading from the API if `value_choices` existed, causing plan drift and validation errors. This prevented the valid use case of having dropdown suggestions without enforcing selection from the list.
+
+### Project Resource
+- **Fixed null value handling in resource_model_source and extra_config** ([#227](https://github.com/rundeck/terraform-provider-rundeck/issues/227)) - Null values in `resource_model_source` config maps and `extra_config` maps are now properly treated as omitted attributes (per Terraform semantics). Previously, null values would cause errors when the provider attempted to convert them to strings. This enables dynamic blocks with conditional null values to work correctly.
+
+- **Fixed empty config handling in resource_model_source** - When `resource_model_source` blocks have no `config` attribute (valid for source types like "local"), the provider now correctly stores `null` instead of an empty map. This prevents "Provider produced inconsistent result after apply" errors where Terraform sees `null != {}` drift.
+
+### Webhook Resource
+- **Fixed roles reordering causing plan drift** - Webhook roles are now normalized by sorting alphabetically before storing in state. This prevents "Provider produced inconsistent result after apply" errors when the Rundeck API returns roles in a different order than specified (e.g., user specifies "admin,webhook" but API returns "webhook,admin").
+
+**Documentation**
+
+- **Added comprehensive Import Guide** - New guide covering import procedures for all resources (projects, jobs, webhooks, ACL policies, key storage, and runners). Includes resource-specific examples, bulk import scripts, troubleshooting tips, and best practices for migrating existing Rundeck instances to Terraform management.
+
+- **Added Upgrade Guide** - New guide covering the upgrade process from v0.5.x to v1.x with step-by-step instructions for provider namespace migration, configuration updates, and common issues. Includes troubleshooting section for addressing replacement scenarios and state migration.
+
+
+---
+
 ## 1.1.2
 
 **Bug Fixes**

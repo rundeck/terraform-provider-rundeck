@@ -385,6 +385,7 @@ func jobOptionNestedBlock() schema.ListNestedBlock {
 				},
 				"require_predefined_choice": schema.BoolAttribute{
 					Optional: true,
+					Computed: true,
 				},
 				"validation_regex": schema.StringAttribute{
 					Optional: true,

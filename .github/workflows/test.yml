@@ -83,6 +83,21 @@ jobs:
         # Give it a few more seconds to fully initialize
         sleep 10
     
+    - name: Initialize admin user
+      run: |
+        echo "Initializing admin user in Rundeck user database..."
+        # Authenticate with username/password to trigger user registration
+        curl -s -X POST \
+          -H "Content-Type: application/x-www-form-urlencoded" \
+          -d "j_username=admin&j_password=admin" \
+          -c /tmp/cookies.txt \
+          http://localhost:4440/j_security_check
+        # Make a follow-up request to ensure the session is established
+        curl -s -b /tmp/cookies.txt \
+          http://localhost:4440/api/56/system/info > /dev/null
+        rm -f /tmp/cookies.txt
+        echo "Admin user initialized."
+    
     - name: Run acceptance tests
       run: make testacc
       env:

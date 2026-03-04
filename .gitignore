@@ -39,3 +39,4 @@ website/vendor
 
 backups
 .vscode
+.cursor

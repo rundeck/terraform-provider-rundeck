@@ -307,6 +307,10 @@ func (r *projectResource) updateProjectConfig(ctx context.Context, apiCtx contex
 			if strings.HasPrefix(k, "resources.source.") {
 				continue
 			}
+			// Skip null and unknown values - Terraform treats null as "omit this attribute"
+			if v.IsNull() || v.IsUnknown() {
+				continue
+			}
 			updateMap[k] = v.ValueString()
 		}
 	}
@@ -351,6 +355,10 @@ func (r *projectResource) updateProjectConfig(ctx context.Context, apiCtx contex
 			return
 		}
 		for k, v := range config {
+			// Skip null and unknown values - Terraform treats null as "omit this attribute"
+			if v.IsNull() || v.IsUnknown() {
+				continue
+			}
 			updateMap[configKeyPrefix+k] = v.ValueString()
 		}
 	}
@@ -470,8 +478,15 @@ func (r *projectResource) readProject(ctx context.Context, apiCtx context.Contex
 		}
 
 		sourceModel := resourceModelSourceModel{
-			Type:   types.StringValue(source["type"].(string)),
-			Config: types.MapValueMust(types.StringType, configMap),
+			Type: types.StringValue(source["type"].(string)),
+		}
+
+		// Only set Config if there are actual config values
+		// This prevents null != {} drift when config is omitted
+		if len(configMap) == 0 {
+			sourceModel.Config = types.MapNull(types.StringType)
+		} else {
+			sourceModel.Config = types.MapValueMust(types.StringType, configMap)
 		}
 
 		objType := types.ObjectType{

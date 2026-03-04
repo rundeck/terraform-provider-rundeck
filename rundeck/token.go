@@ -31,11 +31,12 @@ func getToken(d *schema.ResourceData) (string, error) {
 	username, _ := d.Get("auth_username").(string)
 	password, _ := d.Get("auth_password").(string)
 
-	return _getToken(urlP, apiVersion, username, password)
+	return _getToken(urlP, apiVersion, username, password, "dev")
 
 }
 
 // listTokensForUser retrieves all tokens for a given user
+// The client parameter should already have the User-Agent transport configured
 func listTokensForUser(client *http.Client, urlP string, username string) ([]TokenResp, error) {
 	// Use API v43 for token listing (same as token creation)
 	tokenUrlString := fmt.Sprintf("%s/api/%s/tokens/%s", urlP, "43", username)
@@ -88,7 +89,7 @@ func findValidTerraformToken(tokens []TokenResp) *TokenResp {
 	return nil
 }
 
-func _getToken(urlP string, apiVersion string, username string, password string) (string, error) {
+func _getToken(urlP string, apiVersion string, username string, password string, version string) (string, error) {
 
 	secCheckUrlString := fmt.Sprintf("%s/j_security_check", urlP)
 	secCheckUrl, err := url.Parse(secCheckUrlString)
@@ -103,7 +104,8 @@ func _getToken(urlP string, apiVersion string, username string, password string)
 	}
 
 	client := &http.Client{
-		Jar: jar,
+		Jar:       jar,
+		Transport: newUserAgentTransport(nil, version),
 	}
 
 	data := url.Values{

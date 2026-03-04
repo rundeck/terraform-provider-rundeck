@@ -66,6 +66,18 @@ The provider configuration block accepts the following arguments:
 > **Note:** Username/password authentication only works with local Rundeck accounts, not SSO. 
 > API tokens are recommended for better security and to avoid storing passwords in plan files.
 
+### User-Agent Header
+
+The provider automatically includes a User-Agent header in all HTTP requests to Rundeck. This enables usage tracking and analytics for your deployments. The format is:
+
+```
+terraform-provider-rundeck/<version> (go<go-version>; <os>)
+```
+
+Example: `terraform-provider-rundeck/1.2.0 (go1.24.10; darwin)`
+
+This is transparent to users and requires no configuration. You can use this header to track provider adoption and version distribution across your organization.
+
 Use the navigation to the left to read about the available resources.
 
 ## Example Usage
