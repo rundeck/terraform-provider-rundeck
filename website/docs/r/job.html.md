@@ -144,6 +144,56 @@ resource "rundeck_job" "weekly_cleanup" {
 - For day-of-week schedules: use `?` for day-of-month (e.g., `0 0 08 ? * MON *` = 8am every Monday)
 - For daily schedules: use `?` for day-of-month and `*` for day-of-week (e.g., `0 0 08 ? * * *` = 8am daily)
 
+## Example Usage (Concurrent Execution Control)
+
+Jobs can be configured to allow multiple concurrent executions with an optional limit on the maximum number of simultaneous runs.
+
+```hcl
+# Allow unlimited concurrent executions
+resource "rundeck_job" "parallel_task" {
+  name                        = "parallel-data-processor"
+  project_name                = rundeck_project.main.name
+  description                 = "Process data files in parallel"
+  allow_concurrent_executions = true
+  
+  command {
+    shell_command = "process_data.sh ${option.file_path}"
+  }
+  
+  option {
+    name = "file_path"
+    required = true
+  }
+}
+
+# Limit to 5 concurrent executions
+resource "rundeck_job" "limited_concurrent" {
+  name                        = "resource-intensive-job"
+  project_name                = rundeck_project.main.name
+  description                 = "Job with controlled concurrency"
+  allow_concurrent_executions = true
+  max_concurrent_executions   = 5
+  
+  command {
+    shell_command = "run_heavy_process.sh"
+  }
+}
+
+# Sequential execution only (default behavior)
+resource "rundeck_job" "sequential_task" {
+  name                        = "sequential-deployment"
+  project_name                = rundeck_project.main.name
+  description                 = "Must run one at a time"
+  allow_concurrent_executions = false
+  
+  command {
+    shell_command = "deploy.sh"
+  }
+}
+```
+
+**Concurrency Control:** Use `max_concurrent_executions` to prevent resource exhaustion when jobs are triggered frequently (e.g., via webhooks or API). Additional execution requests will be queued until a slot becomes available.
+
 ## Example Usage (Key-Value Data Log filter to pass data between jobs)
 
 ```hcl
@@ -275,6 +325,12 @@ The following arguments are supported:
 * `allow_concurrent_executions` - (Optional) Boolean defining whether two or more executions of
   this job can run concurrently. The default is `false`, meaning that jobs will only run
   sequentially.
+
+* `max_concurrent_executions` - (Optional) Integer defining the maximum number of concurrent
+  executions allowed for this job. Only applies when `allow_concurrent_executions` is `true`.
+  If not specified, there is no limit on concurrent executions. Example: Setting this to `5`
+  allows up to 5 simultaneous executions of the job, with additional execution requests queued
+  until a slot becomes available.
 
 * `retry` - (Optional) Maximum number of times to retry execution when this job is directly invoked.
   Retry will occur if the job fails or times out, but not if it is manually killed. Can use an option

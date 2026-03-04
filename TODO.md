@@ -2,8 +2,8 @@
 
 Forward-looking tasks for the Rundeck Terraform Provider.
 
-**Current Status**: v1.2.0 in development - Webhook resource implementation complete!  
-**Last Updated**: 2026-01-29 (v1.2.0 development)
+**Current Status**: v1.2.0 released with webhooks, bug fixes, and max_concurrent_executions!  
+**Last Updated**: 2026-02-25 (v1.2.0 released)
 
 ---
 
@@ -32,42 +32,6 @@ Forward-looking tasks for the Rundeck Terraform Provider.
 ---
 
 ## 🟡 Medium Priority
-
-### Job: Add max_concurrent_executions Support
-**Effort**: Small (1-2 days)  
-**Why Important**: Complete concurrent execution control for jobs.  
-**GitHub Issue**: [#226](https://github.com/rundeck/terraform-provider-rundeck/issues/226)
-
-**Feature Request**:
-Add support for limiting the number of concurrent executions via the `maxMultipleExecutions` field in Rundeck's API.
-
-**Current Support**:
-- ✅ `allow_concurrent_executions` (maps to `multipleExecutions`) - Enable/disable concurrent executions
-- ❌ `max_concurrent_executions` (maps to `maxMultipleExecutions`) - Limit number of concurrent executions
-
-**Implementation**:
-- Add `max_concurrent_executions` as optional Int64 attribute to job resource schema
-- Map to `maxMultipleExecutions` field in API
-- Only applies when `allow_concurrent_executions = true`
-- Add validation to ensure value is positive integer
-- Add acceptance test with API validation
-
-**Example Usage**:
-```hcl
-resource "rundeck_job" "example" {
-  name                        = "concurrent-job"
-  project_name                = "my-project"
-  description                 = "Job with limited concurrency"
-  allow_concurrent_executions = true
-  max_concurrent_executions   = 10  # Limit to 10 concurrent runs
-  
-  command {
-    shell_command = "echo 'Running...'"
-  }
-}
-```
-
----
 
 ### Implement Data Sources
 **Effort**: Medium (1 week)  

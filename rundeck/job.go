@@ -65,6 +65,7 @@ type JobJSON struct {
 	ScheduleEnabled        bool                     `json:"scheduleEnabled"`
 	LogLevel               string                   `json:"loglevel,omitempty"`
 	AllowConcurrentExec    bool                     `json:"multipleExecutions,omitempty"`
+	MaxMultipleExecutions  string                   `json:"maxMultipleExecutions,omitempty"`
 	NodeFilterEditable     bool                     `json:"nodeFilterEditable"`
 	NodesSelectedByDefault bool                     `json:"nodesSelectedByDefault"`
 	DefaultTab             string                   `json:"defaultTab,omitempty"`

@@ -24,6 +24,9 @@
 ### Provider
 - **Added User-Agent header to all API requests** - The provider now automatically includes a User-Agent header in all HTTP requests to Rundeck, enabling better usage tracking and analytics for SaaS deployments. The User-Agent format is `terraform-provider-rundeck/<version> (go<go-version>; <os>)`, for example: `terraform-provider-rundeck/1.2.0 (go1.24.10; darwin)`. This is transparent to users and requires no configuration. You can use this header to track provider adoption and version distribution across your organization.
 
+### Job Resource
+- **Added max_concurrent_executions support** ([#226](https://github.com/rundeck/terraform-provider-rundeck/issues/226)) - Jobs can now limit the number of concurrent executions using the `max_concurrent_executions` attribute. This maps to the `maxMultipleExecutions` field in Rundeck's API and only applies when `allow_concurrent_executions = true`. Use this to prevent resource exhaustion when jobs are triggered frequently via webhooks or API. Example: `max_concurrent_executions = 5` allows up to 5 simultaneous executions, with additional requests queued.
+
 **Bug Fixes**
 
 ### Job Resource
