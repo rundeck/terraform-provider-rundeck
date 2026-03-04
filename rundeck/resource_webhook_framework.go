@@ -23,6 +23,17 @@ var (
 	_ resource.ResourceWithImportState = &webhookResource{}
 )
 
+// normalizeRoles sorts a comma-separated roles string alphabetically
+// to prevent plan drift caused by API reordering.
+func normalizeRoles(roles string) string {
+	parts := strings.Split(roles, ",")
+	for i := range parts {
+		parts[i] = strings.TrimSpace(parts[i])
+	}
+	sort.Strings(parts)
+	return strings.Join(parts, ",")
+}
+
 func NewWebhookResource() resource.Resource {
 	return &webhookResource{}
 }
@@ -807,7 +818,7 @@ func (r *webhookResource) Create(ctx context.Context, req resource.CreateRequest
 		Project:     plan.Project,
 		Name:        types.StringValue(getStringFromMap(fullWebhook, "name")),
 		User:        types.StringValue(getStringFromMap(fullWebhook, "user")),
-		Roles:       types.StringValue(getStringFromMap(fullWebhook, "roles")),
+		Roles:       types.StringValue(normalizeRoles(getStringFromMap(fullWebhook, "roles"))),
 		EventPlugin: types.StringValue(getStringFromMap(fullWebhook, "eventPlugin")),
 		Enabled:     types.BoolValue(getBoolFromMap(fullWebhook, "enabled", true)),
 		AuthToken:   types.StringValue(authToken), // From list response, not returned by Get
@@ -872,13 +883,7 @@ func (r *webhookResource) Read(ctx context.Context, req resource.ReadRequest, re
 		state.User = types.StringValue(user)
 	}
 	if roles, ok := apiResp["roles"].(string); ok {
-		// Normalize roles by sorting to prevent plan drift from API reordering
-		parts := strings.Split(roles, ",")
-		for i := range parts {
-			parts[i] = strings.TrimSpace(parts[i])
-		}
-		sort.Strings(parts)
-		state.Roles = types.StringValue(strings.Join(parts, ","))
+		state.Roles = types.StringValue(normalizeRoles(roles))
 	}
 	if eventPlugin, ok := apiResp["eventPlugin"].(string); ok {
 		state.EventPlugin = types.StringValue(eventPlugin)
@@ -1003,13 +1008,7 @@ func (r *webhookResource) Update(ctx context.Context, req resource.UpdateRequest
 		plan.User = types.StringValue(user)
 	}
 	if roles, ok := apiResp["roles"].(string); ok {
-		// Normalize roles by sorting to prevent plan drift from API reordering
-		parts := strings.Split(roles, ",")
-		for i := range parts {
-			parts[i] = strings.TrimSpace(parts[i])
-		}
-		sort.Strings(parts)
-		plan.Roles = types.StringValue(strings.Join(parts, ","))
+		plan.Roles = types.StringValue(normalizeRoles(roles))
 	}
 	if eventPlugin, ok := apiResp["eventPlugin"].(string); ok {
 		plan.EventPlugin = types.StringValue(eventPlugin)
