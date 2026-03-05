@@ -40,6 +40,7 @@ type jobResourceModel struct {
 	DefaultTab                  types.String `tfsdk:"default_tab"`
 	LogLevel                    types.String `tfsdk:"log_level"`
 	AllowConcurrentExecutions   types.Bool   `tfsdk:"allow_concurrent_executions"`
+	MaxConcurrentExecutions     types.Int64  `tfsdk:"max_concurrent_executions"`
 	NodeFilterEditable          types.Bool   `tfsdk:"node_filter_editable"`
 	Retry                       types.String `tfsdk:"retry"`
 	RetryDelay                  types.String `tfsdk:"retry_delay"`
@@ -88,6 +89,7 @@ type jobJSON struct {
 	LogLimitAction         *string            `json:"loglimitAction,omitempty"`
 	LogLimitStatus         *string            `json:"loglimitStatus,omitempty"`
 	MultipleExecutions     bool               `json:"multipleExecutions,omitempty"`
+	MaxMultipleExecutions  string             `json:"maxMultipleExecutions,omitempty"`
 	Sequence               *jobSequence       `json:"sequence,omitempty"`
 	Notification           interface{}        `json:"notification,omitempty"`
 	Timeout                string             `json:"timeout,omitempty"`
@@ -198,6 +200,10 @@ func (r *jobResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				Optional: true,
 				Computed: true,
 				Default:  booldefault.StaticBool(false),
+			},
+			"max_concurrent_executions": schema.Int64Attribute{
+				Optional:    true,
+				Description: "Maximum number of concurrent executions allowed. Only applies when allow_concurrent_executions is true.",
 			},
 			"node_filter_editable": schema.BoolAttribute{
 				Optional: true,
@@ -952,6 +958,10 @@ func (r *jobResource) planToJobJSON(ctx context.Context, plan *jobResourceModel)
 		job.MultipleExecutions = plan.AllowConcurrentExecutions.ValueBool()
 	}
 
+	if !plan.MaxConcurrentExecutions.IsNull() && !plan.MaxConcurrentExecutions.IsUnknown() {
+		job.MaxMultipleExecutions = fmt.Sprintf("%d", plan.MaxConcurrentExecutions.ValueInt64())
+	}
+
 	if !plan.Timeout.IsNull() && !plan.Timeout.IsUnknown() {
 		job.Timeout = plan.Timeout.ValueString()
 	}
@@ -1154,6 +1164,16 @@ func (r *jobResource) jobJSONToState(ctx context.Context, job *jobJSON, state *j
 	state.DefaultTab = types.StringValue(job.DefaultTab)
 	state.LogLevel = types.StringValue(job.LogLevel)
 	state.AllowConcurrentExecutions = types.BoolValue(job.MultipleExecutions)
+
+	// MaxMultipleExecutions - only set if present in API response
+	if job.MaxMultipleExecutions != "" {
+		var maxExec int64
+		fmt.Sscanf(job.MaxMultipleExecutions, "%d", &maxExec)
+		state.MaxConcurrentExecutions = types.Int64Value(maxExec)
+	} else {
+		state.MaxConcurrentExecutions = types.Int64Null()
+	}
+
 	state.NodeFilterEditable = types.BoolValue(job.NodeFilterEditable)
 	// NodesSelectedByDefault is not reliably returned by JSON API, preserve from state if not present
 	// Only update if explicitly returned as true
@@ -1310,6 +1330,16 @@ func (r *jobResource) jobJSONAPIToState(ctx context.Context, job *JobJSON, state
 	}
 
 	state.AllowConcurrentExecutions = types.BoolValue(job.AllowConcurrentExec)
+
+	// MaxMultipleExecutions - only set if present in API response
+	if job.MaxMultipleExecutions != "" {
+		var maxExec int64
+		fmt.Sscanf(job.MaxMultipleExecutions, "%d", &maxExec)
+		state.MaxConcurrentExecutions = types.Int64Value(maxExec)
+	} else {
+		state.MaxConcurrentExecutions = types.Int64Null()
+	}
+
 	state.NodeFilterEditable = types.BoolValue(job.NodeFilterEditable)
 
 	// NodesSelectedByDefault - only update if explicitly true from API

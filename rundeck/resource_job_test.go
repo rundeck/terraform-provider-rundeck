@@ -2051,3 +2051,88 @@ resource "rundeck_job" "test_job" {
   }
 }
 `
+
+// TestAccJob_maxConcurrentExecutions tests the max_concurrent_executions attribute
+// Reproduces GitHub Issue #226 - support for maxMultipleExecutions field
+func TestAccJob_maxConcurrentExecutions(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		CheckDestroy:             testAccJobCheckDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_maxConcurrentExecutions,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("rundeck_job.test", "name", "concurrent-limited-job"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "allow_concurrent_executions", "true"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "max_concurrent_executions", "5"),
+					testAccJobValidateMaxConcurrentExecutionsAPI("rundeck_job.test", "5"),
+				),
+			},
+			// Verify no plan drift on refresh
+			{
+				RefreshState: true,
+				PlanOnly:     true,
+			},
+		},
+	})
+}
+
+const testAccJobConfig_maxConcurrentExecutions = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-max-concurrent"
+  description = "Test project for max concurrent executions"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests-max-concurrent.yaml"
+    }
+  }
+}
+
+resource "rundeck_job" "test" {
+  project_name = rundeck_project.test.name
+  name         = "concurrent-limited-job"
+  description  = "Job with limited concurrent executions"
+  execution_enabled = true
+  allow_concurrent_executions = true
+  max_concurrent_executions = 5
+
+  command {
+    shell_command = "sleep 10"
+  }
+}
+`
+
+// testAccJobValidateMaxConcurrentExecutionsAPI validates maxMultipleExecutions in the API response
+func testAccJobValidateMaxConcurrentExecutionsAPI(resourceName string, expectedMax string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("resource not found: %s", resourceName)
+		}
+
+		jobID := rs.Primary.ID
+		if jobID == "" {
+			return fmt.Errorf("job ID is not set")
+		}
+
+		clients, err := getTestClients()
+		if err != nil {
+			return fmt.Errorf("failed to create test client: %s", err)
+		}
+
+		job, err := GetJobJSON(clients.V1, jobID)
+		if err != nil {
+			return fmt.Errorf("failed to get job from API: %s", err)
+		}
+
+		if job.MaxMultipleExecutions != expectedMax {
+			return fmt.Errorf("Expected maxMultipleExecutions=%s in API, got %s", expectedMax, job.MaxMultipleExecutions)
+		}
+
+		return nil
+	}
+}
