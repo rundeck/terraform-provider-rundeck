@@ -1,10 +1,10 @@
 module github.com/terraform-providers/terraform-provider-rundeck
 
 require (
-	github.com/hashicorp/terraform-plugin-framework v1.18.0
+	github.com/hashicorp/terraform-plugin-framework v1.17.0
 	github.com/hashicorp/terraform-plugin-framework-validators v0.19.0
 	github.com/hashicorp/terraform-plugin-go v0.30.0
-	github.com/hashicorp/terraform-plugin-sdk/v2 v2.39.0
+	github.com/hashicorp/terraform-plugin-sdk/v2 v2.38.2
 	github.com/rundeck/go-rundeck/rundeck v1.2.0
 	github.com/rundeck/go-rundeck/rundeck-v2 v1.2.0
 )
