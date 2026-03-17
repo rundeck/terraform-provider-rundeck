@@ -1,3 +1,8 @@
+## 1.1.3
+
+**Testing**
+- Testing release pipeline with dependency rollback (terraform-plugin-framework v1.17.0, terraform-plugin-sdk/v2 v2.38.2)
+
 ## 1.2.0
 
 **New Resources**
