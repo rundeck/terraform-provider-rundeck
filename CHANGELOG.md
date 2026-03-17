@@ -1,3 +1,8 @@
+## 1.1.4
+
+**Testing**
+- Testing release pipeline with goreleaser-action pinned back to v6.4.0
+
 ## 1.1.3
 
 **Testing**
