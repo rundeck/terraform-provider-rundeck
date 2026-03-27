@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -15,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/rundeck/go-rundeck/rundeck"
@@ -97,16 +99,6 @@ func (r *projectResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Description: "URL of the project in the Rundeck UI.",
 				Computed:    true,
 			},
-			"resource_model_source": schema.ListAttribute{
-				Description: "Resource model sources configuration.",
-				Required:    true,
-				ElementType: types.ObjectType{
-					AttrTypes: map[string]attr.Type{
-						"type":   types.StringType,
-						"config": types.MapType{ElemType: types.StringType},
-					},
-				},
-			},
 			"default_node_file_copier_plugin": schema.StringAttribute{
 				Description: "Default node file copier plugin.",
 				Optional:    true,
@@ -138,6 +130,27 @@ func (r *projectResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				ElementType: types.StringType,
 				Optional:    true,
 				Computed:    true,
+			},
+		},
+		Blocks: map[string]schema.Block{
+			"resource_model_source": schema.ListNestedBlock{
+				Description: "Resource model sources configuration.",
+				Validators: []validator.List{
+					listvalidator.SizeAtLeast(1),
+				},
+				NestedObject: schema.NestedBlockObject{
+					Attributes: map[string]schema.Attribute{
+						"type": schema.StringAttribute{
+							Description: "The resource model source plugin type.",
+							Required:    true,
+						},
+						"config": schema.MapAttribute{
+							Description: "Configuration parameters for the resource model source.",
+							ElementType: types.StringType,
+							Optional:    true,
+						},
+					},
+				},
 			},
 		},
 	}
@@ -349,6 +362,9 @@ func (r *projectResource) updateProjectConfig(ctx context.Context, apiCtx contex
 		configKeyPrefix := fmt.Sprintf("%vconfig.", attrKeyPrefix)
 		updateMap[typeKey] = pluginType
 
+		if rms.Config.IsNull() || rms.Config.IsUnknown() {
+			continue
+		}
 		config := make(map[string]types.String)
 		diags.Append(rms.Config.ElementsAs(ctx, &config, false)...)
 		if diags.HasError() {
