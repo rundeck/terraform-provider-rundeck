@@ -97,13 +97,20 @@ func (r *projectResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Description: "URL of the project in the Rundeck UI.",
 				Computed:    true,
 			},
-			"resource_model_source": schema.ListAttribute{
+			"resource_model_source": schema.ListNestedAttribute{
 				Description: "Resource model sources configuration.",
 				Required:    true,
-				ElementType: types.ObjectType{
-					AttrTypes: map[string]attr.Type{
-						"type":   types.StringType,
-						"config": types.MapType{ElemType: types.StringType},
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"type": schema.StringAttribute{
+							Description: "The name of the resource model plugin to use.",
+							Required:    true,
+						},
+						"config": schema.MapAttribute{
+							Description: "Map of configuration properties for the resource model plugin.",
+							Optional:    true,
+							ElementType: types.StringType,
+						},
 					},
 				},
 			},
@@ -349,17 +356,18 @@ func (r *projectResource) updateProjectConfig(ctx context.Context, apiCtx contex
 		configKeyPrefix := fmt.Sprintf("%vconfig.", attrKeyPrefix)
 		updateMap[typeKey] = pluginType
 
-		config := make(map[string]types.String)
-		diags.Append(rms.Config.ElementsAs(ctx, &config, false)...)
-		if diags.HasError() {
-			return
-		}
-		for k, v := range config {
-			// Skip null and unknown values - Terraform treats null as "omit this attribute"
-			if v.IsNull() || v.IsUnknown() {
-				continue
+		if !rms.Config.IsNull() && !rms.Config.IsUnknown() {
+			config := make(map[string]types.String)
+			diags.Append(rms.Config.ElementsAs(ctx, &config, false)...)
+			if diags.HasError() {
+				return
 			}
-			updateMap[configKeyPrefix+k] = v.ValueString()
+			for k, v := range config {
+				if v.IsNull() || v.IsUnknown() {
+					continue
+				}
+				updateMap[configKeyPrefix+k] = v.ValueString()
+			}
 		}
 	}
 
@@ -466,7 +474,7 @@ func (r *projectResource) readProject(ctx context.Context, apiCtx context.Contex
 	}
 	sort.Ints(resourceSourceIndices)
 
-	resourceModelSourceElements := []attr.Value{}
+	sourceModels := []resourceModelSourceModel{}
 	for _, index := range resourceSourceIndices {
 		source := resourceSourceMap[index].(map[string]interface{})
 
@@ -477,44 +485,29 @@ func (r *projectResource) readProject(ctx context.Context, apiCtx context.Contex
 			}
 		}
 
-		sourceModel := resourceModelSourceModel{
+		model := resourceModelSourceModel{
 			Type: types.StringValue(source["type"].(string)),
 		}
 
 		// Only set Config if there are actual config values
 		// This prevents null != {} drift when config is omitted
 		if len(configMap) == 0 {
-			sourceModel.Config = types.MapNull(types.StringType)
+			model.Config = types.MapNull(types.StringType)
 		} else {
-			sourceModel.Config = types.MapValueMust(types.StringType, configMap)
+			model.Config = types.MapValueMust(types.StringType, configMap)
 		}
 
-		objType := types.ObjectType{
-			AttrTypes: map[string]attr.Type{
-				"type":   types.StringType,
-				"config": types.MapType{ElemType: types.StringType},
-			},
-		}
-
-		objVal, diagsObj := types.ObjectValueFrom(ctx, objType.AttrTypes, sourceModel)
-		diags.Append(diagsObj...)
-		if diags.HasError() {
-			return
-		}
-
-		resourceModelSourceElements = append(resourceModelSourceElements, objVal)
+		sourceModels = append(sourceModels, model)
 	}
 
-	listType := types.ListType{
-		ElemType: types.ObjectType{
-			AttrTypes: map[string]attr.Type{
-				"type":   types.StringType,
-				"config": types.MapType{ElemType: types.StringType},
-			},
+	rmsObjectType := types.ObjectType{
+		AttrTypes: map[string]attr.Type{
+			"type":   types.StringType,
+			"config": types.MapType{ElemType: types.StringType},
 		},
 	}
 
-	listVal, diagsList := types.ListValue(listType.ElemType, resourceModelSourceElements)
+	listVal, diagsList := types.ListValueFrom(ctx, rmsObjectType, sourceModels)
 	diags.Append(diagsList...)
 	if diags.HasError() {
 		return
