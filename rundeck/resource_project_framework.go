@@ -362,6 +362,9 @@ func (r *projectResource) updateProjectConfig(ctx context.Context, apiCtx contex
 		configKeyPrefix := fmt.Sprintf("%vconfig.", attrKeyPrefix)
 		updateMap[typeKey] = pluginType
 
+		if rms.Config.IsNull() || rms.Config.IsUnknown() {
+			continue
+		}
 		config := make(map[string]types.String)
 		diags.Append(rms.Config.ElementsAs(ctx, &config, false)...)
 		if diags.HasError() {
