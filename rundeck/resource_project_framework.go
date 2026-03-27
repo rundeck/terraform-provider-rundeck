@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -15,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/rundeck/go-rundeck/rundeck"
@@ -97,23 +99,6 @@ func (r *projectResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Description: "URL of the project in the Rundeck UI.",
 				Computed:    true,
 			},
-			"resource_model_source": schema.ListNestedAttribute{
-				Description: "Resource model sources configuration.",
-				Required:    true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"type": schema.StringAttribute{
-							Description: "The name of the resource model plugin to use.",
-							Required:    true,
-						},
-						"config": schema.MapAttribute{
-							Description: "Map of configuration properties for the resource model plugin.",
-							Optional:    true,
-							ElementType: types.StringType,
-						},
-					},
-				},
-			},
 			"default_node_file_copier_plugin": schema.StringAttribute{
 				Description: "Default node file copier plugin.",
 				Optional:    true,
@@ -145,6 +130,27 @@ func (r *projectResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				ElementType: types.StringType,
 				Optional:    true,
 				Computed:    true,
+			},
+		},
+		Blocks: map[string]schema.Block{
+			"resource_model_source": schema.ListNestedBlock{
+				Description: "Resource model sources configuration.",
+				Validators: []validator.List{
+					listvalidator.SizeAtLeast(1),
+				},
+				NestedObject: schema.NestedBlockObject{
+					Attributes: map[string]schema.Attribute{
+						"type": schema.StringAttribute{
+							Description: "The name of the resource model plugin to use.",
+							Required:    true,
+						},
+						"config": schema.MapAttribute{
+							Description: "Optional map of configuration properties for the resource model plugin. May be omitted for plugins that do not require configuration (for example, when type is \"local\").",
+							Optional:    true,
+							ElementType: types.StringType,
+						},
+					},
+				},
 			},
 		},
 	}

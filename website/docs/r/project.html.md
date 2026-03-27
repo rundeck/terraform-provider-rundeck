@@ -86,8 +86,9 @@ The following arguments are supported:
 
 * `type` - (Required) The name of the resource model plugin to use.
 
-* `config` - (Required) Map of arbitrary configuration properties for the selected resource model
-  plugin.
+* `config` - (Optional) Map of arbitrary configuration properties for the selected resource model
+  plugin. May be omitted for plugins that do not require configuration (for example, when type is
+  `"local"`).
 
 ## Attributes Reference
 

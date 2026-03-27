@@ -135,6 +135,73 @@ resource "rundeck_project" "test" {
 }
 `
 
+func TestAccProject_dynamicResourceModelSource(t *testing.T) {
+	var project rundeck.Project
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		CheckDestroy:             testAccProjectCheckDestroy(&project),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccProjectConfig_dynamicSource,
+				Check: resource.ComposeTestCheckFunc(
+					testAccProjectCheckExists("rundeck_project.dynamic", &project),
+					func(s *terraform.State) error {
+						projectConfig := project.Config.(map[string]interface{})
+
+						if expected := "terraform-acc-test-dynamic"; *project.Name != expected {
+							return fmt.Errorf("wrong name; expected %v, got %v", expected, *project.Name)
+						}
+						if expected := "file"; projectConfig["resources.source.1.type"] != expected {
+							return fmt.Errorf("wrong resources.source.1.type; expected %v, got %v", expected, projectConfig["resources.source.1.type"])
+						}
+						if expected := "local"; projectConfig["resources.source.2.type"] != expected {
+							return fmt.Errorf("wrong resources.source.2.type; expected %v, got %v", expected, projectConfig["resources.source.2.type"])
+						}
+						return nil
+					},
+				),
+			},
+			{
+				RefreshState: true,
+				PlanOnly:     true,
+			},
+		},
+	})
+}
+
+const testAccProjectConfig_dynamicSource = `
+locals {
+  model_sources = [
+    {
+      type = "file"
+      config = {
+        format = "resourceyaml"
+        file   = "/tmp/terraform-acc-dynamic.yaml"
+      }
+    },
+    {
+      type   = "local"
+      config = null
+    },
+  ]
+}
+
+resource "rundeck_project" "dynamic" {
+  name        = "terraform-acc-test-dynamic"
+  description = "Test project with dynamic resource model sources"
+
+  dynamic "resource_model_source" {
+    for_each = local.model_sources
+    content {
+      type   = resource_model_source.value.type
+      config = resource_model_source.value.config
+    }
+  }
+}
+`
+
 const testAccProjectConfig_basic = `
 resource "rundeck_project" "main" {
   name = "terraform-acc-test-basic"
