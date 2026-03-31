@@ -1,3 +1,8 @@
+## 1.1.20
+
+**Internal Diagnostic Test — Not for production use**
+- Fixes the root cause of the Terraform Registry "duplicated key not allowed" error: removed the duplicate `upgrading.html.markdown` guide file that conflicted with the newer `upgrading.html.md` added in v1.2.0. Both files had the same `page_title` in the same directory, causing the Registry to reject all versions since v1.1.3.
+
 ## 1.1.19
 
 **Internal Diagnostic Test — Not for production use**
