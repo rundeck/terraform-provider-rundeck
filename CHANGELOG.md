@@ -1,22 +1,32 @@
+## 1.1.17
+
+**Internal Diagnostic Test — Not for production use**
+- Diagnostic release to isolate a Terraform Registry schema indexing issue. Tests provider schema without the `rundeck_webhook` resource registered, to determine if the webhook schema is the cause of the "duplicated key not allowed" Registry error.
+
+## 1.1.16
+
+**Internal Diagnostic Test — Not for production use**
+- Diagnostic release using the exact source code from v1.1.2 (the last known-good version) to confirm whether the Registry error is caused by code changes or a Registry-side issue.
+
 ## 1.1.15
 
-**Testing**
-- Testing release pipeline with ghaction-import-gpg pinned back to v6.3.0
+**Internal Diagnostic Test — Not for production use**
+- Diagnostic release testing the release pipeline with `ghaction-import-gpg` pinned back to v6.3.0 to resolve a SHA256SUMS signature verification failure.
 
 ## 1.1.14
 
-**Testing**
-- Testing release pipeline with terraform-plugin-framework v1.19.0, terraform-plugin-go v0.31.0, terraform-plugin-sdk/v2 v2.40.0, and grpc v1.79.3
+**Internal Diagnostic Test — Not for production use**
+- Diagnostic release testing updated dependencies: terraform-plugin-framework v1.19.0, terraform-plugin-go v0.31.0, terraform-plugin-sdk/v2 v2.40.0, and grpc v1.79.3.
 
 ## 1.1.4
 
-**Testing**
-- Testing release pipeline with goreleaser-action pinned back to v6.4.0
+**Internal Diagnostic Test — Not for production use**
+- Diagnostic release testing the release pipeline with `goreleaser-action` pinned back to v6.4.0.
 
 ## 1.1.3
 
-**Testing**
-- Testing release pipeline with dependency rollback (terraform-plugin-framework v1.17.0, terraform-plugin-sdk/v2 v2.38.2)
+**Internal Diagnostic Test — Not for production use**
+- Diagnostic release testing the release pipeline with a dependency rollback (terraform-plugin-framework v1.17.0, terraform-plugin-sdk/v2 v2.38.2).
 
 ## 1.2.0
 
