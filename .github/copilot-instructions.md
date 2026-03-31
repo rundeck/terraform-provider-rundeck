@@ -194,9 +194,18 @@ testAccJobValidateAPI(&jobID, func(jobData map[string]interface{}) error {
 - Always explain WHY something is required
 
 **Migration Guides:**
-- Place in `website/docs/guides/upgrading.html.markdown`
+- Place in `website/docs/guides/upgrading.html.md`
 - Update navigation in `website/rundeck.erb`
 - Link from affected resource docs
+
+**CRITICAL — No Duplicate Documentation Files:**
+The Terraform Registry uses the base filename (without extension) as a unique key when indexing provider documentation. Having two files with the same base name but different extensions (e.g., `upgrading.html.md` AND `upgrading.html.markdown`) in the same directory will cause **every version** of the provider to fail Registry publishing with "duplicated key not allowed".
+
+Rules:
+- When adding a new doc file, check for existing files with the same stem: `ls website/docs/guides/`, `ls website/docs/r/`, etc.
+- If renaming a file extension (e.g., `.markdown` → `.md`), **delete the old file** — do not leave both
+- This error is hard to diagnose because it looks like a schema or code problem but is purely a documentation file conflict
+- The Registry will silently reject ALL versions (past and future resyncs) until the duplicate is removed
 
 ## Review Checklist for PRs
 
@@ -232,6 +241,7 @@ When reviewing PRs, check:
 - [ ] Code examples for new features
 - [ ] CHANGELOG.md updated
 - [ ] Resource docs updated if schema changes
+- [ ] No duplicate doc files: verify no two files share the same base name in `website/docs/guides/`, `website/docs/r/`, or `website/docs/d/` (different extensions count as duplicates — the Registry keys on the stem)
 
 ### Backward Compatibility
 - [ ] Breaking changes clearly documented
@@ -309,6 +319,7 @@ Don't use numbering in the TODO.md so updates are focused to additions/removals.
 - Missing round-trip tests
 - Drift after apply → refresh → plan
 - Empty nested blocks in schema
+- Two doc files with the same stem in `website/docs/` subdirectories (e.g., `upgrading.html.md` + `upgrading.html.markdown`) — causes Registry "duplicated key not allowed" for ALL provider versions
 
 **Green Flags:**
 - Direct API validation in tests

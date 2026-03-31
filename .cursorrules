@@ -13,3 +13,7 @@ That file contains comprehensive guidelines for:
 
 When working on this codebase, reference those instructions for detailed guidance.
 
+## Critical Reminder — Terraform Registry Publishing
+
+If the Registry rejects a provider version with "duplicated key not allowed" or `ConflictError`, check for **duplicate documentation files** in `website/docs/` BEFORE investigating schema or code. Two files with the same base name but different extensions (`.md` vs `.markdown`) in the same subdirectory will cause this error for every version until removed.
+

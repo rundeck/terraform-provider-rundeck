@@ -1,5 +1,9 @@
 ## 1.2.0
 
+> **Note on versions 1.1.3 – 1.1.21:** These versions exist as GitHub releases but were never successfully published to the Terraform Registry. They were diagnostic test releases used to isolate a Registry publishing failure caused by a duplicate documentation file (`upgrading.html.markdown` and `upgrading.html.md` both existed in `website/docs/guides/`, causing the Registry to reject every version with "duplicated key not allowed"). They are not intended for use and can be safely ignored. See the [GitHub releases page](https://github.com/rundeck/terraform-provider-rundeck/releases) for details on each diagnostic release.
+
+---
+
 **New Resources**
 
 ### Webhook Resource
