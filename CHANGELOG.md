@@ -1,3 +1,8 @@
+## 1.1.19
+
+**Internal Diagnostic Test — Not for production use**
+- Diagnostic release testing the same code as v1.1.18 but with `terraform-plugin-framework` rolled back to v1.17.0, `terraform-plugin-go` to v0.29.0, and `terraform-plugin-sdk/v2` to v2.38.1, to determine if the framework v1.19.0 upgrade (which added `GenerateResourceConfig` RPC support) is causing the Terraform Registry `ConflictError`.
+
 ## 1.1.18
 
 **Internal Diagnostic Test — Not for production use**
