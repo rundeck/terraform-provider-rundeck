@@ -1,3 +1,8 @@
+## 1.1.14
+
+**Testing**
+- Testing release pipeline with terraform-plugin-framework v1.19.0, terraform-plugin-go v0.31.0, terraform-plugin-sdk/v2 v2.40.0, and grpc v1.79.3
+
 ## 1.1.4
 
 **Testing**
