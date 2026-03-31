@@ -1,3 +1,8 @@
+## 1.1.21
+
+**Internal Diagnostic Test — Not for production use**
+- Diagnostic release confirming that `terraform-plugin-framework v1.19.0`, `terraform-plugin-go v0.31.0`, and `terraform-plugin-sdk/v2 v2.40.0` work correctly with the Registry now that the duplicate guide file issue is resolved.
+
 ## 1.1.20
 
 **Internal Diagnostic Test — Not for production use**
