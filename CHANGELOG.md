@@ -1,3 +1,9 @@
+## 1.2.1
+
+**Bug Fixes**
+
+- **Fixed `rundeck_project` `resource_model_source` block syntax** - `resource_model_source` was incorrectly defined as a `ListAttribute` during the Plugin Framework migration, requiring assignment syntax (`resource_model_source = [...]`). It has been restored to `ListNestedBlock`, which correctly supports block syntax (`resource_model_source { ... }`) and `dynamic` blocks as expected. `config` within the block is now optional to support source types (e.g., `local`) that require no configuration. (Thanks [@aparker-cityworks](https://github.com/aparker-cityworks))
+
 ## 1.2.0
 
 **New Resources**
