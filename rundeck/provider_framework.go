@@ -197,7 +197,7 @@ func (p *frameworkProvider) Resources(ctx context.Context) []func() resource.Res
 		NewProjectRunnerResource,
 		NewProjectResource,
 		NewJobResource,
-		// NewWebhookResource intentionally omitted for diagnostic test (v1.1.17)
+		NewWebhookResource,
 	}
 }
 

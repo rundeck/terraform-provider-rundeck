@@ -1,3 +1,8 @@
+## 1.1.18
+
+**Internal Diagnostic Test — Not for production use**
+- Diagnostic release testing a fix for the Terraform Registry "duplicated key not allowed" error. Restructured the `rundeck_webhook` schema to move `rules` blocks from inside the `config` block to the top level of the resource, eliminating the `SingleNestedBlock` with nested `ListNestedBlock` pattern that was causing the Registry indexing failure.
+
 ## 1.1.17
 
 **Internal Diagnostic Test — Not for production use**
