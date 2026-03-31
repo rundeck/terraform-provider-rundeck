@@ -1,3 +1,8 @@
+## 1.1.15
+
+**Testing**
+- Testing release pipeline with ghaction-import-gpg pinned back to v6.3.0
+
 ## 1.1.14
 
 **Testing**
