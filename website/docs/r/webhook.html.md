@@ -131,45 +131,45 @@ resource "rundeck_webhook" "advanced_alerts" {
     batch_key              = "data.alerts"
     event_id_key           = "alert_id"
     return_processing_info = true
+  }
 
-    # Critical alerts rule
-    rules {
-      name   = "Critical Alerts"
-      job_id = rundeck_job.critical_alert_handler.id
+  # Critical alerts rule
+  rules {
+    name   = "Critical Alerts"
+    job_id = rundeck_job.critical_alert_handler.id
 
-      job_options {
-        name  = "alert_id"
-        value = "$.alert_id"
-      }
-
-      job_options {
-        name  = "severity"
-        value = "$.severity"
-      }
-
-      conditions {
-        path      = "data.severity"
-        condition = "equals"
-        value     = "critical"
-      }
-
-      conditions {
-        path      = "data.environment"
-        condition = "equals"
-        value     = "production"
-      }
+    job_options {
+      name  = "alert_id"
+      value = "$.alert_id"
     }
 
-    # Warning alerts rule (different job, different conditions)
-    rules {
-      name   = "Warning Alerts"
-      job_id = rundeck_job.critical_alert_handler.id
+    job_options {
+      name  = "severity"
+      value = "$.severity"
+    }
 
-      conditions {
-        path      = "data.severity"
-        condition = "equals"
-        value     = "warning"
-      }
+    conditions {
+      path      = "data.severity"
+      condition = "equals"
+      value     = "critical"
+    }
+
+    conditions {
+      path      = "data.environment"
+      condition = "equals"
+      value     = "production"
+    }
+  }
+
+  # Warning alerts rule (different job, different conditions)
+  rules {
+    name   = "Warning Alerts"
+    job_id = rundeck_job.critical_alert_handler.id
+
+    conditions {
+      path      = "data.severity"
+      condition = "equals"
+      value     = "warning"
     }
   }
 }
@@ -198,26 +198,26 @@ resource "rundeck_webhook" "github" {
   
   config {
     secret = var.github_webhook_secret  # GitHub webhook secret for authentication
+  }
 
-    rules {
-      name   = "Main Branch Push"
-      job_id = rundeck_job.github_deploy.id
+  rules {
+    name   = "Main Branch Push"
+    job_id = rundeck_job.github_deploy.id
 
-      job_options {
-        name  = "branch"
-        value = "$.ref"
-      }
+    job_options {
+      name  = "branch"
+      value = "$.ref"
+    }
 
-      job_options {
-        name  = "commit_sha"
-        value = "$.after"
-      }
+    job_options {
+      name  = "commit_sha"
+      value = "$.after"
+    }
 
-      conditions {
-        path      = "ref"
-        condition = "equals"
-        value     = "refs/heads/main"
-      }
+    conditions {
+      path      = "ref"
+      condition = "equals"
+      value     = "refs/heads/main"
     }
   }
 }
@@ -247,26 +247,26 @@ resource "rundeck_webhook" "datadog" {
   config {
     batch_key    = "body"
     event_id_key = "id"
+  }
 
-    rules {
-      name   = "Error Alerts"
-      job_id = rundeck_job.datadog_alert_handler.id
+  rules {
+    name   = "Error Alerts"
+    job_id = rundeck_job.datadog_alert_handler.id
 
-      job_options {
-        name  = "alert_id"
-        value = "$.id"
-      }
+    job_options {
+      name  = "alert_id"
+      value = "$.id"
+    }
 
-      job_options {
-        name  = "alert_title"
-        value = "$.title"
-      }
+    job_options {
+      name  = "alert_title"
+      value = "$.title"
+    }
 
-      conditions {
-        path      = "alert_type"
-        condition = "equals"
-        value     = "error"
-      }
+    conditions {
+      path      = "alert_type"
+      condition = "equals"
+      value     = "error"
     }
   }
 }
@@ -296,21 +296,21 @@ resource "rundeck_webhook" "pagerduty" {
   config {
     batch_key    = "messages"
     event_id_key = "id"
+  }
 
-    rules {
-      name   = "Incident Triggered"
-      job_id = rundeck_job.pagerduty_incident_handler.id
+  rules {
+    name   = "Incident Triggered"
+    job_id = rundeck_job.pagerduty_incident_handler.id
 
-      job_options {
-        name  = "incident_id"
-        value = "$.id"
-      }
+    job_options {
+      name  = "incident_id"
+      value = "$.id"
+    }
 
-      conditions {
-        path      = "event"
-        condition = "equals"
-        value     = "incident.trigger"
-      }
+    conditions {
+      path      = "event"
+      condition = "equals"
+      value     = "incident.trigger"
     }
   }
 }
@@ -329,26 +329,26 @@ resource "rundeck_webhook" "pagerduty_v3" {
   
   config {
     event_id_key = "event.id"
+  }
 
-    rules {
-      name   = "Incident Triggered V3"
-      job_id = rundeck_job.pagerduty_incident_handler.id
+  rules {
+    name   = "Incident Triggered V3"
+    job_id = rundeck_job.pagerduty_incident_handler.id
 
-      job_options {
-        name  = "event_id"
-        value = "$.event.id"
-      }
+    job_options {
+      name  = "event_id"
+      value = "$.event.id"
+    }
 
-      job_options {
-        name  = "incident_title"
-        value = "$.event.data.title"
-      }
+    job_options {
+      name  = "incident_title"
+      value = "$.event.data.title"
+    }
 
-      conditions {
-        path      = "event.event_type"
-        condition = "equals"
-        value     = "incident.triggered"
-      }
+    conditions {
+      path      = "event.event_type"
+      condition = "equals"
+      value     = "incident.triggered"
     }
   }
 }
@@ -377,26 +377,26 @@ resource "rundeck_webhook" "aws_sns" {
   
   config {
     auto_subscribe = true  # Automatically confirm SNS subscription
+  }
 
-    rules {
-      name   = "High CPU Alarm"
-      job_id = rundeck_job.cloudwatch_alarm_handler.id
+  rules {
+    name   = "High CPU Alarm"
+    job_id = rundeck_job.cloudwatch_alarm_handler.id
 
-      job_options {
-        name  = "alarm_name"
-        value = "$.Message.AlarmName"
-      }
+    job_options {
+      name  = "alarm_name"
+      value = "$.Message.AlarmName"
+    }
 
-      job_options {
-        name  = "alarm_state"
-        value = "$.Message.NewStateValue"
-      }
+    job_options {
+      name  = "alarm_state"
+      value = "$.Message.NewStateValue"
+    }
 
-      conditions {
-        path      = "Message.AlarmName"
-        condition = "equals"
-        value     = "HighCPU"
-      }
+    conditions {
+      path      = "Message.AlarmName"
+      condition = "equals"
+      value     = "HighCPU"
     }
   }
 }
@@ -427,6 +427,8 @@ The following arguments are supported:
 * `enabled` - (Required) Whether the webhook is enabled. Disabled webhooks return 404 when triggered. Cannot be changed after creation (forces new resource).
 
 * `config` - (Optional) Plugin-specific configuration block. Structure varies by plugin type. See Plugin Configuration Reference below.
+
+* `rules` - (Optional) Repeatable block defining action rules for `advanced-run-job` and Enterprise plugins. Rules map incoming webhook events to job executions. See Rules Block Reference below.
 
 ## Attributes Reference
 
@@ -476,39 +478,43 @@ config {
 
   # AWS SNS-specific (aws-sns-webhook only)
   auto_subscribe = true  # Auto-confirm SNS subscription
+}
 
-  # Rules block - repeatable
-  rules {
-    name        = "Rule Name"          # Required: Rule name
-    job_id      = "job-uuid"           # Required: Job to execute
-    job_name    = "computed-name"      # Computed: Job name from job_id
-    node_filter = "tags: production"   # Optional: Node filter override
-    user        = "override-user"      # Optional: User override
-    enabled     = true                 # Optional: Whether rule is enabled (default: true)
-    policy      = "all"                # Optional: Condition policy - "all" (AND) or "any" (OR) (default: "all")
+# Rules are defined at the top level of the resource, not inside config
+rules {
+  name        = "Rule Name"          # Required: Rule name
+  job_id      = "job-uuid"           # Required: Job to execute
+  job_name    = "computed-name"      # Computed: Job name from job_id
+  node_filter = "tags: production"   # Optional: Node filter override
+  user        = "override-user"      # Optional: User override
+  enabled     = true                 # Optional: Whether rule is enabled (default: true)
+  policy      = "all"                # Optional: Condition policy - "all" (AND) or "any" (OR) (default: "all")
 
-    # Job options - repeatable
-    job_options {
-      name  = "option-name"   # Required: Option name
-      value = "$.json.path"   # Required: JSONPath to extract value from webhook payload
-    }
+  # Job options - repeatable
+  job_options {
+    name  = "option-name"   # Required: Option name
+    value = "$.json.path"   # Required: JSONPath to extract value from webhook payload
+  }
 
-    # Conditions - repeatable
-    conditions {
-      path      = "data.field.path"  # Required: JSONPath to event field to evaluate
-      condition = "equals"            # Required: Operator - equals, contains, dateTimeAfter, dateTimeBefore, exists, isA
-      value     = "expected-value"    # Required: Value to compare against
-    }
+  # Conditions - repeatable
+  conditions {
+    path      = "data.field.path"  # Required: JSONPath to event field to evaluate
+    condition = "equals"            # Required: Operator - equals, contains, dateTimeAfter, dateTimeBefore, exists, isA
+    value     = "expected-value"    # Required: Value to compare against
   }
 }
 ```
+
+## Rules Block Reference
+
+The `rules` block is defined at the top level of the `rundeck_webhook` resource (not inside `config`). It is repeatable and supported by `advanced-run-job` and all Enterprise plugins.
 
 **Rules Block Fields:**
 - `name` - (Required) Descriptive name for the rule
 - `job_id` - (Required) UUID of the job to execute
 - `job_name` - (Computed) Job name, computed from job_id
 - `node_filter` - (Optional) Node filter override for job execution
-- `user` - (Optional) User override for job execution  
+- `user` - (Optional) User override for job execution
 - `enabled` - (Optional) Whether this rule is enabled (default: true)
 - `policy` - (Optional) Condition matching policy: "all" (AND) or "any" (OR) (default: "all")
 
@@ -634,7 +640,7 @@ resource "rundeck_webhook" "deploy" {
 
 ### Job Not Triggering
 
-- Verify `job_id` in config is correct (use job UUID from `rundeck_job.id`)
+- Verify `job_id` in `config` or `rules` is correct (use job UUID from `rundeck_job.id`)
 - Check job exists in the specified project
 - Review Rundeck logs (`/var/log/rundeck/service.log`) for execution errors
 - Ensure the webhook user has execute permission on the job

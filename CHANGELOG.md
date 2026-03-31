@@ -1,53 +1,3 @@
-## 1.1.21
-
-**Internal Diagnostic Test — Not for production use**
-- Diagnostic release confirming that `terraform-plugin-framework v1.19.0`, `terraform-plugin-go v0.31.0`, and `terraform-plugin-sdk/v2 v2.40.0` work correctly with the Registry now that the duplicate guide file issue is resolved.
-
-## 1.1.20
-
-**Internal Diagnostic Test — Not for production use**
-- Fixes the root cause of the Terraform Registry "duplicated key not allowed" error: removed the duplicate `upgrading.html.markdown` guide file that conflicted with the newer `upgrading.html.md` added in v1.2.0. Both files had the same `page_title` in the same directory, causing the Registry to reject all versions since v1.1.3.
-
-## 1.1.19
-
-**Internal Diagnostic Test — Not for production use**
-- Diagnostic release testing the same code as v1.1.18 but with `terraform-plugin-framework` rolled back to v1.17.0, `terraform-plugin-go` to v0.29.0, and `terraform-plugin-sdk/v2` to v2.38.1, to determine if the framework v1.19.0 upgrade (which added `GenerateResourceConfig` RPC support) is causing the Terraform Registry `ConflictError`.
-
-## 1.1.18
-
-**Internal Diagnostic Test — Not for production use**
-- Diagnostic release testing a fix for the Terraform Registry "duplicated key not allowed" error. Restructured the `rundeck_webhook` schema to move `rules` blocks from inside the `config` block to the top level of the resource, eliminating the `SingleNestedBlock` with nested `ListNestedBlock` pattern that was causing the Registry indexing failure.
-
-## 1.1.17
-
-**Internal Diagnostic Test — Not for production use**
-- Diagnostic release to isolate a Terraform Registry schema indexing issue. Tests provider schema without the `rundeck_webhook` resource registered, to determine if the webhook schema is the cause of the "duplicated key not allowed" Registry error.
-
-## 1.1.16
-
-**Internal Diagnostic Test — Not for production use**
-- Diagnostic release using the exact source code from v1.1.2 (the last known-good version) to confirm whether the Registry error is caused by code changes or a Registry-side issue.
-
-## 1.1.15
-
-**Internal Diagnostic Test — Not for production use**
-- Diagnostic release testing the release pipeline with `ghaction-import-gpg` pinned back to v6.3.0 to resolve a SHA256SUMS signature verification failure.
-
-## 1.1.14
-
-**Internal Diagnostic Test — Not for production use**
-- Diagnostic release testing updated dependencies: terraform-plugin-framework v1.19.0, terraform-plugin-go v0.31.0, terraform-plugin-sdk/v2 v2.40.0, and grpc v1.79.3.
-
-## 1.1.4
-
-**Internal Diagnostic Test — Not for production use**
-- Diagnostic release testing the release pipeline with `goreleaser-action` pinned back to v6.4.0.
-
-## 1.1.3
-
-**Internal Diagnostic Test — Not for production use**
-- Diagnostic release testing the release pipeline with a dependency rollback (terraform-plugin-framework v1.17.0, terraform-plugin-sdk/v2 v2.38.2).
-
 ## 1.2.0
 
 **New Resources**
@@ -60,7 +10,7 @@
   - Enterprise: `advanced-run-job`, `datadog-run-job`, `pagerduty-run-job`, `pagerduty-V3-run-job`, `github-webhook`, `aws-sns-webhook`
 
   **Key Features:**
-  - Nested rules blocks for conditional job execution based on webhook payload
+  - `rules` blocks at the top level of the resource for conditional job execution based on webhook payload
   - Job options with JSONPath extraction from webhook data
   - Multiple conditions per rule with AND/OR policy support
   - Batch processing support for handling arrays of events
