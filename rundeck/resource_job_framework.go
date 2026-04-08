@@ -418,10 +418,14 @@ func (r *jobResource) ValidateConfig(ctx context.Context, req resource.ValidateC
 				}
 
 				// If value_choices_url is set, skip value_choices validation:
-				// Rundeck enforces the constraint server-side against the URL's values.
+				// - when it is unknown, defer validation until apply
+				// - when it is a known non-empty string, Rundeck enforces the constraint
+				//   server-side against the URL's values.
 				if urlAttr, ok := attrs["value_choices_url"]; ok {
-					if urlStr, ok := urlAttr.(types.String); ok && !urlStr.IsNull() && !urlStr.IsUnknown() && urlStr.ValueString() != "" {
-						continue
+					if urlStr, ok := urlAttr.(types.String); ok && !urlStr.IsNull() {
+						if urlStr.IsUnknown() || urlStr.ValueString() != "" {
+							continue
+						}
 					}
 				}
 

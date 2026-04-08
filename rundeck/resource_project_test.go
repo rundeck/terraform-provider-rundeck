@@ -135,6 +135,49 @@ resource "rundeck_project" "test" {
 }
 `
 
+// TestAccProject_SSHKeyFilePath tests that ssh_key_file_path is correctly stored
+// and does not produce drift after apply (regression for project.ssh-keypath mapping bug).
+func TestAccProject_SSHKeyFilePath(t *testing.T) {
+	var project rundeck.Project
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		CheckDestroy:             testAccProjectCheckDestroy(&project),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccProjectConfig_SSHKeyFilePath,
+				Check: resource.ComposeTestCheckFunc(
+					testAccProjectCheckExists("rundeck_project.test", &project),
+					resource.TestCheckResourceAttr("rundeck_project.test", "ssh_key_file_path", "/var/lib/rundeck/.ssh/id_rsa"),
+					resource.TestCheckNoResourceAttr("rundeck_project.test", "ssh_key_storage_path"),
+				),
+			},
+			// Verify no plan drift on refresh — this is the core regression check
+			{
+				RefreshState: true,
+				PlanOnly:     true,
+			},
+		},
+	})
+}
+
+const testAccProjectConfig_SSHKeyFilePath = `
+resource "rundeck_project" "test" {
+  name             = "terraform-acc-test-ssh-key-file-path"
+  description      = "Test project for ssh_key_file_path drift regression"
+  ssh_key_file_path = "/var/lib/rundeck/.ssh/id_rsa"
+
+  resource_model_source {
+    type = "file"
+    config = {
+      format = "resourceyaml"
+      file   = "/tmp/terraform-acc-tests.yaml"
+    }
+  }
+}
+`
+
 const testAccProjectConfig_basic = `
 resource "rundeck_project" "main" {
   name = "terraform-acc-test-basic"

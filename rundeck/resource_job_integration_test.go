@@ -466,6 +466,81 @@ func TestAccJob_ScheduleDayOfMonthIntegration(t *testing.T) {
 	})
 }
 
+// TestAccJob_EnforcedOptionWithValuesURL tests that require_predefined_choice=true
+// is accepted and correctly stored by Rundeck when value_choices_url is set (no
+// static value_choices required).
+func TestAccJob_EnforcedOptionWithValuesURL(t *testing.T) {
+	var jobID string
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		CheckDestroy:             testAccJobCheckDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_EnforcedOptionWithValuesURL,
+				Check: resource.ComposeTestCheckFunc(
+					testAccJobGetID("rundeck_job.enforced_url_test", &jobID),
+					resource.TestCheckResourceAttr("rundeck_job.enforced_url_test", "option.0.name", "env"),
+					resource.TestCheckResourceAttr("rundeck_job.enforced_url_test", "option.0.require_predefined_choice", "true"),
+					resource.TestCheckResourceAttr("rundeck_job.enforced_url_test", "option.0.value_choices_url", "http://localhost/choices"),
+
+					testAccJobValidateAPI(&jobID, func(jobData map[string]interface{}) error {
+						options, ok := jobData["options"].([]interface{})
+						if !ok || len(options) == 0 {
+							return fmt.Errorf("Options not found in API response")
+						}
+						option := options[0].(map[string]interface{})
+						if enforced, ok := option["enforced"].(bool); !ok || !enforced {
+							return fmt.Errorf("Expected option enforced=true in API response, got %v", option["enforced"])
+						}
+						if valuesUrl, ok := option["valuesUrl"].(string); !ok || valuesUrl == "" {
+							return fmt.Errorf("Expected option valuesUrl to be set in API response")
+						}
+						return nil
+					}),
+				),
+			},
+			// Verify no plan drift on refresh
+			{
+				RefreshState: true,
+				PlanOnly:     true,
+			},
+		},
+	})
+}
+
+const testAccJobConfig_EnforcedOptionWithValuesURL = `
+resource "rundeck_project" "test" {
+  name        = "terraform-acc-test-enforced-url"
+  description = "Test project for enforced option with values URL"
+
+  resource_model_source {
+    type = "file"
+    config = {
+      format = "resourceyaml"
+      file   = "/tmp/terraform-acc-tests.yaml"
+    }
+  }
+}
+
+resource "rundeck_job" "enforced_url_test" {
+  project_name = rundeck_project.test.name
+  name         = "enforced-option-url-test"
+  description  = "Job testing require_predefined_choice with value_choices_url"
+
+  command {
+    shell_command = "echo $RD_OPTION_ENV"
+  }
+
+  option {
+    name                    = "env"
+    value_choices_url       = "http://localhost/choices"
+    require_predefined_choice = true
+  }
+}
+`
+
 const testAccJobConfig_ScheduleDayOfMonthIntegration = `
 resource "rundeck_project" "test" {
   name        = "terraform-acc-test-schedule-dom-integration"
