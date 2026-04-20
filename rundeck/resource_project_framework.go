@@ -35,7 +35,7 @@ var projectConfigAttributes = map[string]string{
 	"service.FileCopier.default.provider":   "default_node_file_copier_plugin",
 	"service.NodeExecutor.default.provider": "default_node_executor_plugin",
 	"project.ssh-authentication":            "ssh_authentication_type",
-	"project.ssh-keypath":                   "ssh_key_storage_path",
+	"project.ssh-keypath":                   "ssh_key_file_path",
 	"project.ssh-key-storage-path":          "ssh_key_storage_path",
 	"project.ssh-keypath-file":              "ssh_key_file_path",
 }
