@@ -1,3 +1,17 @@
+## 1.2.2
+
+**Bug Fixes**
+
+### Job Resource
+
+- **Allow `require_predefined_choice` with `value_choices_url` only** ([#249](https://github.com/rundeck/terraform-provider-rundeck/pull/249)) - Plan-time validation no longer requires `value_choices` when `value_choices_url` is set (including unknown values at plan time), matching Rundeck’s ability to enforce allowed values from a remote URL. (Thanks [@NikitaCOEUR](https://github.com/NikitaCOEUR))
+
+### Project Resource
+
+- **Fix `project.ssh-keypath` mapped to wrong attribute** ([#249](https://github.com/rundeck/terraform-provider-rundeck/pull/249)) - Rundeck’s `project.ssh-keypath` (filesystem SSH key path) is now read into `ssh_key_file_path` instead of `ssh_key_storage_path`, fixing post-apply inconsistency when Rundeck returns this setting (for example the default path under the Rundeck user’s home directory). (Thanks [@NikitaCOEUR](https://github.com/NikitaCOEUR))
+
+Thank you @NikitaCOEUR for these fixes
+
 ## 1.2.1
 
 **Bug Fixes**
