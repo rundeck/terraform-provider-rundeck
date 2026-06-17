@@ -1,3 +1,17 @@
+## Unreleased
+
+**Features**
+
+### Job Resource
+
+- **Add settable `uuid` attribute** - Jobs now expose an optional, stable `uuid`. When
+  supplied, it is included in the import payload so `uuidOption=preserve` actually
+  preserves it, making the job's Rundeck UUID stable across applies and clusters and
+  keeping `<jobref>` references by UUID reliable. If omitted, Rundeck generates a UUID and
+  it is recorded in state. This removes the need to import-before-apply purely to keep a
+  stable job identity. Changing a configured `uuid` forces the job to be destroyed and
+  recreated.
+
 ## 1.2.2
 
 **Bug Fixes**

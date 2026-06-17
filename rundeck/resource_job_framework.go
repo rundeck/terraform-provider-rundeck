@@ -8,10 +8,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -22,8 +24,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
+
+// uuidRegexp matches a canonical lowercase UUID (RFC 9562 output form), which is
+// what Rundeck generates and stores for job UUIDs.
+var uuidRegexp = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
 type jobResource struct {
 	client *RundeckClients
@@ -32,6 +39,7 @@ type jobResource struct {
 // jobResourceModel represents the Terraform resource model
 type jobResourceModel struct {
 	ID                          types.String `tfsdk:"id"`
+	UUID                        types.String `tfsdk:"uuid"`
 	Name                        types.String `tfsdk:"name"`
 	GroupName                   types.String `tfsdk:"group_name"`
 	ProjectName                 types.String `tfsdk:"project_name"`
@@ -78,6 +86,7 @@ type jobResourceModel struct {
 // jobJSON represents the Rundeck Job JSON format (v44+)
 type jobJSON struct {
 	ID                     string             `json:"id,omitempty"`
+	UUID                   string             `json:"uuid,omitempty"`
 	Name                   string             `json:"name"`
 	Group                  string             `json:"group,omitempty"`
 	Project                string             `json:"project"`
@@ -157,6 +166,21 @@ func (r *jobResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"uuid": schema.StringAttribute{
+				Optional:    true,
+				Computed:    true,
+				Description: "Stable UUID for the job. If supplied, it is preserved as the job's Rundeck UUID across applies and clusters (enabling reliable job references). If omitted, Rundeck generates one and it is stored in state. Changing a configured uuid forces the job to be destroyed and recreated.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+					stringplanmodifier.RequiresReplaceIfConfigured(),
+				},
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(
+						uuidRegexp,
+						"must be a canonical lowercase UUID (e.g. 11111111-2222-3333-4444-555555555555)",
+					),
 				},
 			},
 			"name": schema.StringAttribute{
@@ -646,6 +670,7 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 
 	// Set the job ID from import result
 	plan.ID = types.StringValue(importResult.Succeeded[0].ID)
+	plan.UUID = types.StringValue(importResult.Succeeded[0].ID)
 
 	// Set computed fields that may not have been set in the plan
 	if plan.PreserveOptionsOrder.IsUnknown() {
@@ -951,9 +976,21 @@ func (r *jobResource) ImportState(ctx context.Context, req resource.ImportStateR
 	}
 }
 
+// uuidFromPlan returns the caller-supplied UUID, or an empty string when none
+// was set (in which case the omitempty payload field lets Rundeck generate one).
+func uuidFromPlan(plan *jobResourceModel) string {
+	if plan.UUID.IsNull() || plan.UUID.IsUnknown() {
+		return ""
+	}
+	return plan.UUID.ValueString()
+}
+
 // planToJobJSON converts Terraform plan to Rundeck job JSON format
 func (r *jobResource) planToJobJSON(ctx context.Context, plan *jobResourceModel) (*jobJSON, error) {
 	job := &jobJSON{
+		// Rundeck's job import reads the UUID from the "uuid" field (the "id"
+		// field is ignored on import); this is what uuidOption=preserve acts on.
+		UUID:                   uuidFromPlan(plan),
 		Name:                   plan.Name.ValueString(),
 		Group:                  plan.GroupName.ValueString(),
 		Project:                plan.ProjectName.ValueString(),
@@ -1167,6 +1204,7 @@ func (r *jobResource) planToJobJSON(ctx context.Context, plan *jobResourceModel)
 // jobJSONToState converts Rundeck job JSON to Terraform state
 func (r *jobResource) jobJSONToState(ctx context.Context, job *jobJSON, state *jobResourceModel) error {
 	state.ID = types.StringValue(job.ID)
+	state.UUID = types.StringValue(job.ID)
 	state.Name = types.StringValue(job.Name)
 	state.GroupName = types.StringValue(job.Group)
 	// Project name is not returned by JobGet API, preserve from current state
@@ -1314,6 +1352,7 @@ func (r *jobResource) jobJSONToState(ctx context.Context, job *jobJSON, state *j
 func (r *jobResource) jobJSONAPIToState(ctx context.Context, job *JobJSON, state *jobResourceModel) error {
 	// Map JSON fields directly to Terraform state
 	state.ID = types.StringValue(job.ID)
+	state.UUID = types.StringValue(job.ID)
 	state.Name = types.StringValue(job.Name)
 
 	// Only set group_name if API returns a non-empty value
