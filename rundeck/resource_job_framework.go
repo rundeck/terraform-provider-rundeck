@@ -1063,8 +1063,8 @@ func (r *jobResource) planToJobJSON(ctx context.Context, plan *jobResourceModel)
 			Commands: commands,
 			Strategy: plan.CommandOrderingStrategy.ValueString(),
 		}
-		if !plan.ContinueNextNodeOnError.IsNull() {
-			job.Sequence.KeepGoing = plan.ContinueNextNodeOnError.ValueBool()
+		if !plan.ContinueOnError.IsNull() {
+			job.Sequence.KeepGoing = plan.ContinueOnError.ValueBool()
 		}
 	}
 
@@ -1259,7 +1259,7 @@ func (r *jobResource) jobJSONToState(ctx context.Context, job *jobJSON, state *j
 		if job.Sequence.Strategy != "" {
 			state.CommandOrderingStrategy = types.StringValue(job.Sequence.Strategy)
 		}
-		state.ContinueNextNodeOnError = types.BoolValue(job.Sequence.KeepGoing)
+		state.ContinueOnError = types.BoolValue(job.Sequence.KeepGoing)
 	}
 
 	// Convert schedule from JSON to state
@@ -1413,8 +1413,9 @@ func (r *jobResource) jobJSONAPIToState(ctx context.Context, job *JobJSON, state
 
 	// Handle sequence
 	if job.Sequence != nil {
+		// continue_on_error comes from sequence.keepgoing (workflow-level setting)
 		if keepGoing, ok := job.Sequence["keepgoing"].(bool); ok {
-			state.ContinueNextNodeOnError = types.BoolValue(keepGoing)
+			state.ContinueOnError = types.BoolValue(keepGoing)
 		}
 		if strategy, ok := job.Sequence["strategy"].(string); ok {
 			state.CommandOrderingStrategy = types.StringValue(strategy)
