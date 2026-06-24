@@ -14,6 +14,9 @@
 
 - **Separated workflow and node `keepgoing` flags** ([#268](https://github.com/rundeck/terraform-provider-rundeck/pull/268)) - `continue_on_error` and `continue_next_node_on_error` were both wired to the node (dispatch) `keepgoing`, leaving `continue_on_error` inert and making it impossible to represent a job whose workflow `keepgoing` differs from its dispatch `keepgoing`. `continue_on_error` now maps to the workflow (sequence) `keepgoing` and `continue_next_node_on_error` to the node (dispatch) `keepgoing`, matching the documented behavior. **Migration:** if you previously relied on `continue_next_node_on_error` to control workflow behavior, set `continue_on_error` instead; the first apply after upgrading may show a one-time correction as each flag settles into its own attribute. (Thanks [@karldebisschop](https://github.com/karldebisschop))
 
+### Provider
+
+- **Honor `api_version` for webhook and other v2-backed resources** ([#252](https://github.com/rundeck/terraform-provider-rundeck/issues/252)) - The underlying v2 API client ignored the configured `api_version` and always sent requests to `/api/56`, causing `rundeck_webhook` to fail with "Unsupported API Version" on Rundeck servers running an older API version (e.g. 5.9.0 / API 52), even though the webhook endpoint was supported there. The provider now uses the configured `api_version` in the request path for v2-backed resources. (Thanks [@codydiehl](https://github.com/codydiehl) for reporting)
 
 ## 1.2.2
 
