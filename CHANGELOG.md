@@ -1,10 +1,10 @@
-## Unreleased
+## 1.3.0
 
 **Enhancements**
 
 ### System Runner Resource
 
-- **Added per-project dispatch configuration support** - `rundeck_system_runner` now supports `assigned_projects_config`, a new nested attribute that allows configuring per-project runner dispatch settings (`runner_as_node_enabled`, `remote_node_dispatch`, `runner_node_filter`) directly in Terraform. This eliminates the need for manual UI/API configuration after Terraform apply, enabling full Infrastructure-as-Code for system-level runners across multiple projects. When a project appears in both `assigned_projects` and `assigned_projects_config`, the latter takes precedence, allowing gradual migration. This feature was designed to support large-scale DR automation scenarios where hundreds of runners need to be managed as code.
+- **Added per-project dispatch configuration support** - `rundeck_system_runner` now supports `assigned_projects_config`, a new nested attribute that allows configuring per-project runner dispatch settings (`runner_as_node_enabled`, `remote_node_dispatch`, `runner_node_filter`) directly in Terraform. This eliminates the need for manual UI/API configuration after Terraform apply, enabling full Infrastructure-as-Code for system-level runners across multiple projects. When a project appears in both `assigned_projects` and `assigned_projects_config`, the latter takes precedence, allowing gradual migration. This feature was designed to support large-scale DR automation scenarios where hundreds of runners need to be managed as code. (Thanks [@ibozas](https://github.com/ibozas))
 
 ## 1.2.2
 

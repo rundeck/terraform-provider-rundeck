@@ -53,7 +53,7 @@ type systemRunnerResource struct {
 // projectRunnerConfig represents the configuration for a project assignment
 // including access level and node dispatch settings
 type projectRunnerConfig struct {
-	AccessLevel          types.String `tfsdk:"access_level"`
+	AccessLevel         types.String `tfsdk:"access_level"`
 	RunnerAsNodeEnabled types.Bool   `tfsdk:"runner_as_node_enabled"`
 	RemoteNodeDispatch  types.Bool   `tfsdk:"remote_node_dispatch"`
 	RunnerNodeFilter    types.String `tfsdk:"runner_node_filter"`
@@ -108,9 +108,10 @@ func (r *systemRunnerResource) Schema(_ context.Context, _ resource.SchemaReques
 				Optional:    true,
 			},
 			"project_runner_as_node": schema.MapAttribute{
-				Description: "Map of projects where runner acts as node.",
-				ElementType: types.BoolType,
-				Optional:    true,
+				Description:        "Map of projects where runner acts as node.",
+				ElementType:        types.BoolType,
+				Optional:           true,
+				DeprecationMessage: "Use assigned_projects_config instead, which supports full per-project dispatch configuration (runner_as_node_enabled, remote_node_dispatch, runner_node_filter).",
 			},
 			"assigned_projects_config": schema.MapNestedAttribute{
 				Description: "Map of project configurations with full dispatch settings. When a project appears in both assigned_projects and assigned_projects_config, assigned_projects_config takes precedence.",
@@ -120,6 +121,9 @@ func (r *systemRunnerResource) Schema(_ context.Context, _ resource.SchemaReques
 						"access_level": schema.StringAttribute{
 							Description: "Access level for the project. Valid values: 'read', 'execute', 'admin'.",
 							Required:    true,
+							Validators: []validator.String{
+								stringvalidator.OneOf("read", "execute", "admin"),
+							},
 						},
 						"runner_as_node_enabled": schema.BoolAttribute{
 							Description: "Enable the runner to act as a node for this project.",

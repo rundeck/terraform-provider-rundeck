@@ -203,6 +203,11 @@ func TestAccRundeckSystemRunner_withAssignedProjectsConfig(t *testing.T) {
 					resource.TestCheckResourceAttr("rundeck_system_runner.test", "assigned_projects_config.test-project.runner_node_filter", "tags: DEFAULT"),
 				),
 			},
+			// Verify no plan drift on refresh (computed bool defaults + state-preserved dispatch settings)
+			{
+				RefreshState: true,
+				PlanOnly:     true,
+			},
 		},
 	})
 }

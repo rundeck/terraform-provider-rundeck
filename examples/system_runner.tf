@@ -9,7 +9,7 @@ resource "rundeck_system_runner" "basic" {
   # Legacy approach - simple project assignment without dispatch config
   assigned_projects = {
     "project-1" = "admin"
-    "project-2" = "user"
+    "project-2" = "execute"
   }
 }
 
@@ -56,7 +56,7 @@ resource "rundeck_system_runner" "mixed" {
   # Projects without special dispatch needs
   assigned_projects = {
     "simple-project-1" = "admin"
-    "simple-project-2" = "user"
+    "simple-project-2" = "execute"
   }
 
   # Projects with specific dispatch configuration
