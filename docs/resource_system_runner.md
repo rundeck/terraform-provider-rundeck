@@ -16,7 +16,7 @@ resource "rundeck_system_runner" "basic" {
   
   assigned_projects = {
     "project1" = "admin"
-    "project2" = "user"
+    "project2" = "execute"
   }
 }
 ```
@@ -89,12 +89,12 @@ The following arguments are supported:
 
 - `tag_names` - (Optional) Comma-separated tags for the runner. Rundeck normalizes tags to lowercase and sorts them alphabetically. The provider handles this automatically to prevent plan drift.
 
-- `assigned_projects` - (Optional) Map of assigned projects with their access levels (e.g., `"project-name" = "admin"`). This is the legacy approach for simple project assignments without dispatch configuration.
+- `assigned_projects` - (Optional) Map of assigned projects with their access levels. Valid access levels: `read`, `execute`, `admin`. This is the legacy approach for simple project assignments without dispatch configuration.
 
 - `project_runner_as_node` - (Optional) Map of projects where the runner acts as a node (boolean values). **Deprecated:** Use `assigned_projects_config` instead for new configurations.
 
 - `assigned_projects_config` - (Optional) Map of project configurations with full dispatch settings. Each project configuration supports:
-  - `access_level` - (Required) Access level for the project (e.g., "admin", "user").
+  - `access_level` - (Required) Access level for the project. Valid values: `read`, `execute`, `admin`.
   - `runner_as_node_enabled` - (Optional, Default: `false`) Enable the runner to act as a node for this project.
   - `remote_node_dispatch` - (Optional, Default: `false`) Enable remote node dispatch for the runner in this project.
   - `runner_node_filter` - (Optional) Node filter string for the runner in this project (e.g., "tags: RUNNER").

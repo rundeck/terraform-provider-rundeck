@@ -38,7 +38,7 @@ resource "rundeck_system_runner" "with_dispatch" {
     }
 
     "project-3" = {
-      access_level             = "user"
+      access_level             = "execute"
       runner_as_node_enabled   = false
       remote_node_dispatch     = false
     }

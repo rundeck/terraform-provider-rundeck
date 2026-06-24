@@ -118,7 +118,7 @@ func (r *systemRunnerResource) Schema(_ context.Context, _ resource.SchemaReques
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"access_level": schema.StringAttribute{
-							Description: "Access level for the project (e.g., 'admin', 'user').",
+							Description: "Access level for the project. Valid values: 'read', 'execute', 'admin'.",
 							Required:    true,
 						},
 						"runner_as_node_enabled": schema.BoolAttribute{

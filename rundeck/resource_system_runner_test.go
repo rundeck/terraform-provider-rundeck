@@ -319,7 +319,7 @@ resource "rundeck_system_runner" "test" {
 
   # This should be overridden by assigned_projects_config
   assigned_projects = {
-    "test-project" = "user"
+    "test-project" = "execute"
   }
 
   # This should take precedence
