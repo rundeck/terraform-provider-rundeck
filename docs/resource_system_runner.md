@@ -159,6 +159,6 @@ terraform import rundeck_system_runner.example runner-id-here
 
 ## Requirements
 
-- Rundeck version: 5.0.0+ / RBA 6.1.0+
+- Rundeck version: 5.17.0+
 - API version: 56+ (Enterprise feature)
 - Set `api_version = "56"` or higher in your provider configuration

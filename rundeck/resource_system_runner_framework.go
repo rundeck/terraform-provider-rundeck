@@ -356,11 +356,11 @@ func (r *systemRunnerResource) Create(ctx context.Context, req resource.CreateRe
 			if !config.RunnerAsNodeEnabled.IsNull() || !config.RemoteNodeDispatch.IsNull() || !config.RunnerNodeFilter.IsNull() {
 				nodeDispatchRequest := openapi.NewSaveProjectRunnerNodeDispatchSettingsRequest(runnerId)
 
-				if !config.RunnerAsNodeEnabled.IsNull() {
+				if !config.RunnerAsNodeEnabled.IsNull() && !config.RunnerAsNodeEnabled.IsUnknown() {
 					nodeDispatchRequest.SetRunnerAsNodeEnabled(config.RunnerAsNodeEnabled.ValueBool())
 				}
 
-				if !config.RemoteNodeDispatch.IsNull() {
+				if !config.RemoteNodeDispatch.IsNull() && !config.RemoteNodeDispatch.IsUnknown() {
 					nodeDispatchRequest.SetRemoteNodeDispatch(config.RemoteNodeDispatch.ValueBool())
 				}
 
@@ -557,8 +557,9 @@ func (r *systemRunnerResource) Update(ctx context.Context, req resource.UpdateRe
 		}
 	}
 
-	// Apply merged projects if any
-	if len(mergedProjects) > 0 {
+	// Apply merged projects if assigned_projects or assigned_projects_config are set
+	// This allows users to clear all assignments by setting both to empty maps
+	if !plan.AssignedProjects.IsNull() || !plan.AssignedProjectsConfig.IsNull() {
 		saveRequest.SetAssignedProjects(mergedProjects)
 	}
 
@@ -591,11 +592,11 @@ func (r *systemRunnerResource) Update(ctx context.Context, req resource.UpdateRe
 			if !config.RunnerAsNodeEnabled.IsNull() || !config.RemoteNodeDispatch.IsNull() || !config.RunnerNodeFilter.IsNull() {
 				nodeDispatchRequest := openapi.NewSaveProjectRunnerNodeDispatchSettingsRequest(runnerId)
 
-				if !config.RunnerAsNodeEnabled.IsNull() {
+				if !config.RunnerAsNodeEnabled.IsNull() && !config.RunnerAsNodeEnabled.IsUnknown() {
 					nodeDispatchRequest.SetRunnerAsNodeEnabled(config.RunnerAsNodeEnabled.ValueBool())
 				}
 
-				if !config.RemoteNodeDispatch.IsNull() {
+				if !config.RemoteNodeDispatch.IsNull() && !config.RemoteNodeDispatch.IsUnknown() {
 					nodeDispatchRequest.SetRemoteNodeDispatch(config.RemoteNodeDispatch.ValueBool())
 				}
 
