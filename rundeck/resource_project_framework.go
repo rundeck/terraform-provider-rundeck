@@ -433,6 +433,32 @@ func (r *projectResource) readProject(ctx context.Context, apiCtx context.Contex
 		}
 	}
 
+	// Capture null config elements the caller configured. Terraform keeps null
+	// map elements in the planned value, but the Rundeck API never stores or
+	// returns them, so they must be preserved here to avoid an "inconsistent
+	// result after apply" error and refresh drift (#248). Keyed by source number
+	// (list position + 1), matching how sources are written as resources.source.N.
+	priorNullConfigKeys := map[int][]string{}
+	if !state.ResourceModelSource.IsNull() && !state.ResourceModelSource.IsUnknown() {
+		var priorSources []resourceModelSourceModel
+		if d := state.ResourceModelSource.ElementsAs(ctx, &priorSources, false); !d.HasError() {
+			for i, ps := range priorSources {
+				if ps.Config.IsNull() || ps.Config.IsUnknown() {
+					continue
+				}
+				var nullKeys []string
+				for k, v := range ps.Config.Elements() {
+					if v.IsNull() {
+						nullKeys = append(nullKeys, k)
+					}
+				}
+				if len(nullKeys) > 0 {
+					priorNullConfigKeys[i+1] = nullKeys
+				}
+			}
+		}
+	}
+
 	// Parse resource model sources
 	resourceSourceMap := map[int]interface{}{}
 	configMaps := map[int]interface{}{}
@@ -490,6 +516,14 @@ func (r *projectResource) readProject(ctx context.Context, apiCtx context.Contex
 		if configInterface, ok := source["config"]; ok {
 			for k, v := range configInterface.(map[string]interface{}) {
 				configMap[k] = types.StringValue(v.(string))
+			}
+		}
+
+		// Preserve user-configured null elements that the API does not round-trip,
+		// so the config map matches the planned value (#248).
+		for _, k := range priorNullConfigKeys[index] {
+			if _, exists := configMap[k]; !exists {
+				configMap[k] = types.StringNull()
 			}
 		}
 

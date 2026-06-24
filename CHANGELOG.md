@@ -26,6 +26,10 @@
 
 - **Marked runner `token` and `download_token` as sensitive** ([#260](https://github.com/rundeck/terraform-provider-rundeck/issues/260)) - The `token` and `download_token` attributes on `rundeck_system_runner` and `rundeck_project_runner` are now marked sensitive, so their values are redacted in `terraform plan`/`apply` output and CI logs instead of being shown in plaintext. (Thanks [@shane-davis](https://github.com/shane-davis) for reporting)
 
+### Project Resource
+
+- **Fixed null values in `resource_model_source` config causing apply failures** ([#248](https://github.com/rundeck/terraform-provider-rundeck/issues/248)) - A `null` element in a `resource_model_source` `config` map (for example from a `dynamic` block or a variable that defaults to `null`) caused a "Provider produced inconsistent result after apply" error because the null key was dropped from state. User-configured null elements are now preserved in state (while still being omitted from the Rundeck API payload), so configurations using conditional/null values apply cleanly without drift. This completes the earlier null-handling fix from [#227](https://github.com/rundeck/terraform-provider-rundeck/issues/227). (Thanks [@aparker-cityworks](https://github.com/aparker-cityworks) for reporting)
+
 ## 1.2.2
 
 **Bug Fixes**
