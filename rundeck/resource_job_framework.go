@@ -137,8 +137,8 @@ type jobNodeFilters struct {
 
 type jobRunnerSelector struct {
 	Filter     string `json:"filter,omitempty"`
-	FilterMode string `json:"filterMode,omitempty"`
-	FilterType string `json:"filterType,omitempty"`
+	FilterMode string `json:"runnerFilterMode,omitempty"`
+	FilterType string `json:"runnerFilterType,omitempty"`
 }
 
 func NewJobResource() resource.Resource {
