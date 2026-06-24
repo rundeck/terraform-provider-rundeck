@@ -4,7 +4,19 @@
 
 ### System Runner Resource
 
-- **Added per-project dispatch configuration support** - `rundeck_system_runner` now supports `assigned_projects_config`, a new nested attribute that allows configuring per-project runner dispatch settings (`runner_as_node_enabled`, `remote_node_dispatch`, `runner_node_filter`) directly in Terraform. This eliminates the need for manual UI/API configuration after Terraform apply, enabling full Infrastructure-as-Code for system-level runners across multiple projects. When a project appears in both `assigned_projects` and `assigned_projects_config`, the latter takes precedence, allowing gradual migration. This feature was designed to support large-scale DR automation scenarios where hundreds of runners need to be managed as code. (Thanks [@ibozas](https://github.com/ibozas))
+- **Added per-project dispatch configuration support** ([#265](https://github.com/rundeck/terraform-provider-rundeck/pull/265)) - `rundeck_system_runner` now supports `assigned_projects_config`, a new nested attribute that allows configuring per-project runner dispatch settings (`runner_as_node_enabled`, `remote_node_dispatch`, `runner_node_filter`) directly in Terraform. This eliminates the need for manual UI/API configuration after Terraform apply, enabling full Infrastructure-as-Code for system-level runners across multiple projects. When a project appears in both `assigned_projects` and `assigned_projects_config`, the latter takes precedence, allowing gradual migration. This feature was designed to support large-scale DR automation scenarios where hundreds of runners need to be managed as code. (Thanks [@ibozas](https://github.com/ibozas))
+
+**Bug Fixes**
+
+### Job Resource
+
+- **Fixed runner selector filter settings being ignored** ([#266](https://github.com/rundeck/terraform-provider-rundeck/pull/266)) - The provider serialized the runner selector fields as `filterMode`/`filterType`, but Rundeck expects `runnerFilterMode`/`runnerFilterType`, so the settings were silently dropped. `runner_selector_filter_mode` and `runner_selector_filter_type` now take effect and no longer drift on refresh. Fixes [#244](https://github.com/rundeck/terraform-provider-rundeck/issues/244). (Thanks [@ozon2](https://github.com/ozon2))
+
+- **Separated workflow and node `keepgoing` flags** ([#268](https://github.com/rundeck/terraform-provider-rundeck/pull/268)) - `continue_on_error` and `continue_next_node_on_error` were both wired to the node (dispatch) `keepgoing`, leaving `continue_on_error` inert and making it impossible to represent a job whose workflow `keepgoing` differs from its dispatch `keepgoing`. `continue_on_error` now maps to the workflow (sequence) `keepgoing` and `continue_next_node_on_error` to the node (dispatch) `keepgoing`, matching the documented behavior. **Migration:** if you previously relied on `continue_next_node_on_error` to control workflow behavior, set `continue_on_error` instead; the first apply after upgrading may show a one-time correction as each flag settles into its own attribute. (Thanks [@karldebisschop](https://github.com/karldebisschop))
+
+**Maintenance**
+
+- Updated CI and build tooling and Go SDK dependencies: `terraform-plugin-sdk/v2` ([#255](https://github.com/rundeck/terraform-provider-rundeck/pull/255)), `actions/checkout` ([#263](https://github.com/rundeck/terraform-provider-rundeck/pull/263)), `crazy-max/ghaction-import-gpg` ([#246](https://github.com/rundeck/terraform-provider-rundeck/pull/246)), and `goreleaser/goreleaser-action` ([#257](https://github.com/rundeck/terraform-provider-rundeck/pull/257)).
 
 ## 1.2.2
 
