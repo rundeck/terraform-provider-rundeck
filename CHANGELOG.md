@@ -14,9 +14,6 @@
 
 - **Separated workflow and node `keepgoing` flags** ([#268](https://github.com/rundeck/terraform-provider-rundeck/pull/268)) - `continue_on_error` and `continue_next_node_on_error` were both wired to the node (dispatch) `keepgoing`, leaving `continue_on_error` inert and making it impossible to represent a job whose workflow `keepgoing` differs from its dispatch `keepgoing`. `continue_on_error` now maps to the workflow (sequence) `keepgoing` and `continue_next_node_on_error` to the node (dispatch) `keepgoing`, matching the documented behavior. **Migration:** if you previously relied on `continue_next_node_on_error` to control workflow behavior, set `continue_on_error` instead; the first apply after upgrading may show a one-time correction as each flag settles into its own attribute. (Thanks [@karldebisschop](https://github.com/karldebisschop))
 
-**Maintenance**
-
-- Updated CI and build tooling and Go SDK dependencies: `terraform-plugin-sdk/v2` ([#255](https://github.com/rundeck/terraform-provider-rundeck/pull/255)), `actions/checkout` ([#263](https://github.com/rundeck/terraform-provider-rundeck/pull/263)), `crazy-max/ghaction-import-gpg` ([#246](https://github.com/rundeck/terraform-provider-rundeck/pull/246)), and `goreleaser/goreleaser-action` ([#257](https://github.com/rundeck/terraform-provider-rundeck/pull/257)).
 
 ## 1.2.2
 
