@@ -1,7 +1,5 @@
 # Calls the centralized workflow from rundeck/rundeck.
 # To add this to another repo, copy this file — no changes needed.
-# To update the pinned SHA, get the latest SHA from rundeck/rundeck main:
-#   gh api repos/rundeck/rundeck/commits/main --jq '.sha'
 name: Prepare community PR
 
 on:
@@ -11,7 +9,7 @@ on:
 jobs:
   prepare:
     if: github.event.label.name == 'prepare-community-pr'
-    uses: rundeck/rundeck/.github/workflows/prepare-community-pr.yml@fa7098fe5b7be9fcc80db49a07f6d3ba6b9933b1
+    uses: rundeck/rundeck/.github/workflows/prepare-community-pr.yml@main
     permissions:
       contents: write
       pull-requests: write
