@@ -126,10 +126,12 @@ func (r *projectRunnerResource) Schema(_ context.Context, _ resource.SchemaReque
 			"token": schema.StringAttribute{
 				Description: "Authentication token for the runner.",
 				Computed:    true,
+				Sensitive:   true,
 			},
 			"download_token": schema.StringAttribute{
 				Description: "Download token for the runner package.",
 				Computed:    true,
+				Sensitive:   true,
 			},
 		},
 	}

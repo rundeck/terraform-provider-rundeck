@@ -20,6 +20,10 @@
 
 - **Honor `api_version` for webhook and other v2-backed resources** ([#252](https://github.com/rundeck/terraform-provider-rundeck/issues/252)) - The underlying v2 API client ignored the configured `api_version` and always sent requests to `/api/56`, causing `rundeck_webhook` to fail with "Unsupported API Version" on Rundeck servers running an older API version (e.g. 5.9.0 / API 52), even though the webhook endpoint was supported there. The provider now uses the configured `api_version` in the request path for v2-backed resources. (Thanks [@codydiehl](https://github.com/codydiehl) for reporting)
 
+### Runner Resources
+
+- **Marked runner `token` and `download_token` as sensitive** ([#260](https://github.com/rundeck/terraform-provider-rundeck/issues/260)) - The `token` and `download_token` attributes on `rundeck_system_runner` and `rundeck_project_runner` are now marked sensitive, so their values are redacted in `terraform plan`/`apply` output and CI logs instead of being shown in plaintext. (Thanks [@shane-davis](https://github.com/shane-davis) for reporting)
+
 ## 1.2.2
 
 **Bug Fixes**
