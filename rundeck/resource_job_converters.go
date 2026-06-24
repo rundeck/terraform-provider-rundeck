@@ -12,6 +12,27 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
+// jobRefNodeStepExplicit returns the explicitly configured node-step value for a
+// job reference, preferring run_for_each_node over its node_step alias. The
+// second return value reports whether either alias was explicitly set (known and
+// non-null). Both map to the Rundeck jobref "nodeStep" flag (#256).
+func jobRefNodeStepExplicit(jobAttrs map[string]attr.Value) (bool, bool) {
+	if rfn, ok := jobAttrs["run_for_each_node"].(types.Bool); ok && !rfn.IsNull() && !rfn.IsUnknown() {
+		return rfn.ValueBool(), true
+	}
+	if ns, ok := jobAttrs["node_step"].(types.Bool); ok && !ns.IsNull() && !ns.IsUnknown() {
+		return ns.ValueBool(), true
+	}
+	return false, false
+}
+
+// jobRefNodeStep returns the node-step value for a job reference, defaulting to
+// false when neither run_for_each_node nor node_step is set.
+func jobRefNodeStep(jobAttrs map[string]attr.Value) bool {
+	v, _ := jobRefNodeStepExplicit(jobAttrs)
+	return v
+}
+
 // convertCommandsToJSON converts Framework command list to JSON array
 func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]interface{}, diag.Diagnostics) {
 	var diags diag.Diagnostics
@@ -106,16 +127,14 @@ func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]inte
 				if project, ok := jobAttrs["project_name"].(types.String); ok && !project.IsNull() {
 					jobMap["project"] = project.ValueString()
 				}
-				if rfn, ok := jobAttrs["run_for_each_node"].(types.Bool); ok && !rfn.IsNull() {
-					jobMap["runForEachNode"] = rfn.ValueBool()
-				}
-				if ns, ok := jobAttrs["node_step"].(types.Bool); ok && !ns.IsNull() {
-					// API expects string "true" or "false" for nodeStep
-					if ns.ValueBool() {
-						jobMap["nodeStep"] = "true"
-					} else {
-						jobMap["nodeStep"] = "false"
-					}
+				// run_for_each_node (documented) and node_step are aliases for the
+				// API's jobref "nodeStep" flag. run_for_each_node takes precedence.
+				// Always send nodeStep so the setting is not silently dropped (#256).
+				nodeStepVal := jobRefNodeStep(jobAttrs)
+				if nodeStepVal {
+					jobMap["nodeStep"] = "true"
+				} else {
+					jobMap["nodeStep"] = "false"
 				}
 				if args, ok := jobAttrs["args"].(types.String); ok && !args.IsNull() {
 					jobMap["args"] = args.ValueString()
@@ -296,12 +315,9 @@ func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]inte
 						if project, ok := jobAttrs["project_name"].(types.String); ok && !project.IsNull() {
 							jobMap["project"] = project.ValueString()
 						}
-						if rfn, ok := jobAttrs["run_for_each_node"].(types.Bool); ok && !rfn.IsNull() {
-							jobMap["runForEachNode"] = rfn.ValueBool()
-						}
-
-						// Determine if parent command is a node step or workflow step
-						// Error handlers must match the parent command type
+						// Determine if parent command is a node step or workflow step.
+						// Error handlers must match the parent command type, so this is
+						// the fallback when neither alias is set explicitly.
 						isParentNodeStep := false
 						if _, hasNodeStepPlugin := attrs["node_step_plugin"]; hasNodeStepPlugin {
 							isParentNodeStep = true
@@ -312,21 +328,17 @@ func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]inte
 							isParentNodeStep = false
 						}
 
-						if ns, ok := jobAttrs["node_step"].(types.Bool); ok && !ns.IsNull() {
-							// API expects string "true" or "false" for nodeStep
-							if ns.ValueBool() {
-								jobMap["nodeStep"] = "true"
-							} else {
-								jobMap["nodeStep"] = "false"
-							}
+						// run_for_each_node (documented) and node_step are aliases for the
+						// API's nodeStep flag. Prefer an explicit value, otherwise infer
+						// from the parent command type (#256).
+						nodeStepVal := isParentNodeStep
+						if v, explicit := jobRefNodeStepExplicit(jobAttrs); explicit {
+							nodeStepVal = v
+						}
+						if nodeStepVal {
+							jobMap["nodeStep"] = "true"
 						} else {
-							// If node_step not specified, infer from parent command type
-							// Rundeck requires error handler job references to match parent command type
-							if isParentNodeStep {
-								jobMap["nodeStep"] = "true"
-							} else {
-								jobMap["nodeStep"] = "false"
-							}
+							jobMap["nodeStep"] = "false"
 						}
 						if args, ok := jobAttrs["args"].(types.String); ok && !args.IsNull() {
 							jobMap["args"] = args.ValueString()
@@ -1882,9 +1894,6 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 				}
 
 				// Boolean fields
-				if rfn, ok := jobref["runForEachNode"].(bool); ok {
-					jobAttrs["run_for_each_node"] = types.BoolValue(rfn)
-				}
 				if io, ok := jobref["importOptions"].(bool); ok {
 					jobAttrs["import_options"] = types.BoolValue(io)
 				}
@@ -1898,10 +1907,16 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 					jobAttrs["ignore_notifications"] = types.BoolValue(ign)
 				}
 
-				// nodeStep field (API uses string "true"/"false")
+				// run_for_each_node and node_step are aliases for the API's nodeStep
+				// flag; populate both so either configured attribute round-trips (#256).
+				nodeStepBool := false
 				if ns, ok := jobref["nodeStep"].(string); ok && ns != "" {
-					jobAttrs["node_step"] = types.BoolValue(ns == "true")
+					nodeStepBool = ns == "true"
+				} else if ns, ok := jobref["nodeStep"].(bool); ok {
+					nodeStepBool = ns
 				}
+				jobAttrs["run_for_each_node"] = types.BoolValue(nodeStepBool)
+				jobAttrs["node_step"] = types.BoolValue(nodeStepBool)
 
 				// Handle node_filters if present
 				if nodefilters, ok := jobref["nodefilters"].(map[string]interface{}); ok {
@@ -2240,9 +2255,6 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 			}
 
 			// Boolean fields
-			if rfn, ok := jobref["runForEachNode"].(bool); ok {
-				jobAttrs["run_for_each_node"] = types.BoolValue(rfn)
-			}
 			if io, ok := jobref["importOptions"].(bool); ok {
 				jobAttrs["import_options"] = types.BoolValue(io)
 			}
@@ -2256,12 +2268,16 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 				jobAttrs["ignore_notifications"] = types.BoolValue(ign)
 			}
 
-			// nodeStep field (API can use string "true"/"false" or boolean)
+			// run_for_each_node and node_step are aliases for the API's nodeStep
+			// flag; populate both so either configured attribute round-trips (#256).
+			nodeStepBool := false
 			if ns, ok := jobref["nodeStep"].(string); ok && ns != "" {
-				jobAttrs["node_step"] = types.BoolValue(ns == "true")
+				nodeStepBool = ns == "true"
 			} else if ns, ok := jobref["nodeStep"].(bool); ok {
-				jobAttrs["node_step"] = types.BoolValue(ns)
+				nodeStepBool = ns
 			}
+			jobAttrs["run_for_each_node"] = types.BoolValue(nodeStepBool)
+			jobAttrs["node_step"] = types.BoolValue(nodeStepBool)
 
 			// Handle node_filters if present
 			if nodefilters, ok := jobref["nodefilters"].(map[string]interface{}); ok {

@@ -529,7 +529,11 @@ A command's `job` block has the following structure:
 **Job Execution Options:**
 
 * `run_for_each_node`: (Optional) Boolean controlling whether the job is run only once (`false`,
-  the default) or whether it is run once for each node (`true`).
+  the default) or whether it is run once for each node (`true`). This maps to the referenced job
+  being a node step.
+
+* `node_step`: (Optional) Alias of `run_for_each_node`; both control whether the referenced job
+  runs once per node. If both are set they must agree, and `run_for_each_node` takes precedence.
 
 * `args`: (Optional) A string giving the arguments to pass to the target job, using
   [Rundeck's job arguments syntax](http://rundeck.org/docs/manual/jobs.html#job-reference-step).
