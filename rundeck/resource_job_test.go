@@ -14,7 +14,7 @@ import (
 func TestAccJob_basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{
@@ -31,7 +31,7 @@ func TestAccJob_basic(t *testing.T) {
 func TestAccJob_withLogLimit(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccJobConfig_withLogLimit,
@@ -52,7 +52,7 @@ func TestAccJob_withLogLimit(t *testing.T) {
 func TestAccJob_cmd_nodefilter(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccJobConfig_cmd_nodefilter,
@@ -78,7 +78,7 @@ func TestAccJob_cmd_nodefilter(t *testing.T) {
 func TestAccJob_node_filter_exclude(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{
@@ -102,7 +102,7 @@ func TestAccJob_node_filter_exclude(t *testing.T) {
 func TestAccJob_cmd_referred_job(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{
@@ -118,7 +118,7 @@ func TestAccJob_cmd_referred_job(t *testing.T) {
 func TestAccJob_cmd_referred_job_uuid(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{
@@ -140,7 +140,7 @@ func TestAccJob_cmd_referred_job_uuid(t *testing.T) {
 func TestOchestrator_high_low(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{
@@ -157,7 +157,7 @@ func TestOchestrator_high_low(t *testing.T) {
 func TestOchestrator_max_percent(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{
@@ -174,7 +174,7 @@ func TestOchestrator_max_percent(t *testing.T) {
 func TestOchestrator_rankTiered(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{
@@ -191,7 +191,7 @@ func TestOchestrator_rankTiered(t *testing.T) {
 func TestAccJob_Idempotency(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{
@@ -233,7 +233,7 @@ func testAccJobCheckDestroy() resource.TestCheckFunc {
 func TestAccJobNotification_wrongType(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccJobNotification_wrong_type,
@@ -248,7 +248,7 @@ func TestAccJobNotification_wrongType(t *testing.T) {
 func TestAccJobNotification_multiple(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccJobNotification_multiple,
@@ -262,7 +262,7 @@ func TestAccJobNotification_multiple(t *testing.T) {
 func TestAccJobNotification_outOfOrderValidation(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccJobNotification_outOfOrderValidation,
@@ -275,7 +275,7 @@ func TestAccJobNotification_outOfOrderValidation(t *testing.T) {
 func TestAccJobOptions_empty_choice(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccJobOptions_empty_choice,
@@ -288,7 +288,7 @@ func TestAccJobOptions_empty_choice(t *testing.T) {
 func TestAccJobOptions_secure_choice(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccJobOptions_secure_options,
@@ -309,7 +309,7 @@ func TestAccJobOptions_secure_choice(t *testing.T) {
 func TestAccJobOptions_option_type(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccJobOptions_option_type,
@@ -335,7 +335,7 @@ func TestAccJobOptions_option_type(t *testing.T) {
 func TestAccJobOptions_value_choices_from_variable(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccJobOptions_value_choices_from_variable,
@@ -360,7 +360,7 @@ func TestAccJobOptions_value_choices_from_variable(t *testing.T) {
 func TestAccJob_plugins(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccJobConfig_plugins,
@@ -383,7 +383,7 @@ func TestAccJob_plugins(t *testing.T) {
 func TestAccJobWebhookNotification(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccJobConfig_webhookNotification,
@@ -517,7 +517,7 @@ func TestAccJob_scriptInterpreter(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{
@@ -1354,7 +1354,7 @@ resource "rundeck_project" "test" {
 func TestAccJob_executionLifecyclePlugin(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccJobConfig_executionLifecyclePlugin,
@@ -1381,7 +1381,7 @@ func TestAccJob_executionLifecyclePlugin_multiple(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccJobConfig_executionLifecyclePlugin_multiple,
@@ -1403,7 +1403,7 @@ func TestAccJob_executionLifecyclePlugin_multiple(t *testing.T) {
 func TestAccJob_executionLifecyclePlugin_noConfig(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccJobConfig_executionLifecyclePlugin_noConfig,
@@ -1505,7 +1505,7 @@ func TestAccJob_projectSchedule(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{
@@ -1544,7 +1544,7 @@ func TestAccJob_projectSchedule_multiple(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{
@@ -1583,7 +1583,7 @@ func TestAccJob_projectSchedule_noOptions(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{
@@ -1837,7 +1837,7 @@ resource "rundeck_job" "test" {
 func TestAccJob_scheduleDayOfMonth(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{
@@ -1921,7 +1921,7 @@ resource "rundeck_job" "test" {
 func TestAccJobNotification_alphabeticalOrder(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{
@@ -1990,7 +1990,7 @@ resource "rundeck_job" "test_notifications" {
 func TestAccJob_errorHandler_job_uuid(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{
@@ -2057,7 +2057,7 @@ resource "rundeck_job" "test_job" {
 func TestAccJob_maxConcurrentExecutions(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{

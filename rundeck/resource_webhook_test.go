@@ -14,7 +14,7 @@ func TestAccRundeckWebhook_basic(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccWebhookCheckDestroy("terraform-acc-test-webhook", &webhookID),
 		Steps: []resource.TestStep{
 			{
@@ -40,7 +40,7 @@ func TestAccRundeckWebhook_withJob(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccWebhookCheckDestroy("terraform-acc-test-webhook-job", &webhookID),
 		Steps: []resource.TestStep{
 			{
@@ -63,7 +63,7 @@ func TestAccRundeckWebhook_update(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccWebhookCheckDestroy("terraform-acc-test-webhook-update", &webhookID),
 		Steps: []resource.TestStep{
 			{
@@ -93,7 +93,7 @@ func TestAccRundeckWebhook_import(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccWebhookCheckDestroy("terraform-acc-test-webhook-import", &webhookID),
 		Steps: []resource.TestStep{
 			{
@@ -341,7 +341,7 @@ func TestAccRundeckWebhook_advancedRunJob(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccWebhookCheckDestroy("terraform-acc-test-webhook-advanced", &webhookID),
 		Steps: []resource.TestStep{
 			{
@@ -367,7 +367,7 @@ func TestAccRundeckWebhook_datadogRunJob(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccWebhookCheckDestroy("terraform-acc-test-webhook-datadog", &webhookID),
 		Steps: []resource.TestStep{
 			{
@@ -392,7 +392,7 @@ func TestAccRundeckWebhook_pagerdutyRunJob(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccWebhookCheckDestroy("terraform-acc-test-webhook-pagerduty", &webhookID),
 		Steps: []resource.TestStep{
 			{
@@ -417,7 +417,7 @@ func TestAccRundeckWebhook_pagerdutyV3RunJob(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccWebhookCheckDestroy("terraform-acc-test-webhook-pagerduty-v3", &webhookID),
 		Steps: []resource.TestStep{
 			{
@@ -441,7 +441,7 @@ func TestAccRundeckWebhook_githubWebhook(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccWebhookCheckDestroy("terraform-acc-test-webhook-github", &webhookID),
 		Steps: []resource.TestStep{
 			{
@@ -465,7 +465,7 @@ func TestAccRundeckWebhook_awsSnsWebhook(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccWebhookCheckDestroy("terraform-acc-test-webhook-aws-sns", &webhookID),
 		Steps: []resource.TestStep{
 			{
@@ -485,7 +485,7 @@ func TestAccRundeckWebhook_webhookRunJob(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccWebhookCheckDestroy("terraform-acc-test-webhook-run-job-full", &webhookID),
 		Steps: []resource.TestStep{
 			{
@@ -918,7 +918,7 @@ func TestAccRundeckWebhook_multipleRoles(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccWebhookCheckDestroy(projectName, &webhookID),
 		Steps: []resource.TestStep{
 			{

@@ -20,7 +20,7 @@ func TestAccRundeckProjectRunner_basic(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccProjectRunnerCheckDestroy(&runner),
 		Steps: []resource.TestStep{
 			{
@@ -53,7 +53,7 @@ func TestAccRundeckProjectRunner_withNodeDispatch(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccProjectRunnerCheckDestroy(&runner),
 		Steps: []resource.TestStep{
 			{
@@ -78,7 +78,7 @@ func TestAccRundeckProjectRunner_update(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccProjectRunnerCheckDestroy(&runner),
 		Steps: []resource.TestStep{
 			{

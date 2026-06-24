@@ -16,7 +16,7 @@ func TestAccJob_ComplexIntegration(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{
@@ -170,7 +170,7 @@ func TestAccJob_NotificationIntegration(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{
@@ -420,7 +420,7 @@ func TestAccJob_ScheduleDayOfMonthIntegration(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{
@@ -474,7 +474,7 @@ func TestAccJob_EnforcedOptionWithValuesURL(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccJobCheckDestroy(),
 		Steps: []resource.TestStep{
 			{

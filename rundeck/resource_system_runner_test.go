@@ -19,7 +19,7 @@ func TestAccRundeckSystemRunner_basic(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccSystemRunnerCheckDestroy(&runner),
 		Steps: []resource.TestStep{
 			{
@@ -49,7 +49,7 @@ func TestAccRundeckSystemRunner_update(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccSystemRunnerCheckDestroy(&runner),
 		Steps: []resource.TestStep{
 			{
@@ -178,7 +178,7 @@ func TestAccRundeckSystemRunner_withAssignedProjectsConfig(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccSystemRunnerCheckDestroy(&runner),
 		Steps: []resource.TestStep{
 			{
@@ -221,7 +221,7 @@ func TestAccRundeckSystemRunner_backwardCompatAssignedProjects(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccSystemRunnerCheckDestroy(&runner),
 		Steps: []resource.TestStep{
 			{
@@ -245,7 +245,7 @@ func TestAccRundeckSystemRunner_precedenceAssignedProjectsConfig(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccSystemRunnerCheckDestroy(&runner),
 		Steps: []resource.TestStep{
 			{

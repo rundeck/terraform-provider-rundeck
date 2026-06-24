@@ -16,7 +16,7 @@ func TestAccProject_basic(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccProjectCheckDestroy(&project),
 		Steps: []resource.TestStep{
 			{
@@ -100,7 +100,7 @@ func TestAccProject_localSourceNoConfig(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccProjectCheckDestroy(&project),
 		Steps: []resource.TestStep{
 			{
@@ -142,7 +142,7 @@ func TestAccProject_SSHKeyFilePath(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccProjectCheckDestroy(&project),
 		Steps: []resource.TestStep{
 			{
