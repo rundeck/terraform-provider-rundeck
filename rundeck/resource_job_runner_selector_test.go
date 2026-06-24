@@ -1,6 +1,7 @@
 package rundeck
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -57,5 +58,34 @@ func TestJobRunnerSelector_JSONRoundTrip(t *testing.T) {
 	}
 	if selector.FilterType != "TAG_FILTER_AND" {
 		t.Errorf("expected FilterType %q, got %q", "TAG_FILTER_AND", selector.FilterType)
+	}
+}
+
+// TestJobJSONAPIToState_runnerSelectorRead is a regression test for #253: the
+// real read path must populate runner_selector_* from the API's runnerSelector
+// block so runner routing round-trips and out-of-band changes surface as drift.
+func TestJobJSONAPIToState_runnerSelectorRead(t *testing.T) {
+	r := &jobResource{}
+	job := &JobJSON{
+		RunnerSelector: map[string]interface{}{
+			"filter":           "tags: runner",
+			"runnerFilterMode": "LOCAL",
+			"runnerFilterType": "LOCAL_RUNNER",
+		},
+	}
+
+	state := &jobResourceModel{}
+	if err := r.jobJSONAPIToState(context.Background(), job, state); err != nil {
+		t.Fatalf("jobJSONAPIToState: %v", err)
+	}
+
+	if got := state.RunnerSelectorFilter.ValueString(); got != "tags: runner" {
+		t.Errorf("runner_selector_filter = %q, want %q", got, "tags: runner")
+	}
+	if got := state.RunnerSelectorFilterMode.ValueString(); got != "LOCAL" {
+		t.Errorf("runner_selector_filter_mode = %q, want %q", got, "LOCAL")
+	}
+	if got := state.RunnerSelectorFilterType.ValueString(); got != "LOCAL_RUNNER" {
+		t.Errorf("runner_selector_filter_type = %q, want %q", got, "LOCAL_RUNNER")
 	}
 }
