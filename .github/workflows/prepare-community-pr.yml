@@ -8,6 +8,7 @@ on:
 
 jobs:
   prepare:
+    if: github.event.label.name == 'prepare-community-pr'
     uses: rundeck/rundeck/.github/workflows/prepare-community-pr.yml@main
     permissions:
       contents: write
