@@ -102,14 +102,11 @@ func jobCommandNestedBlock() schema.ListNestedBlock {
 								Description: "Project containing the job. Used with name-based references.",
 							},
 							"run_for_each_node": schema.BoolAttribute{
-								Optional:    true,
-								Computed:    true,
-								Description: "Whether the referenced job runs once per node (node step). Alias of node_step; both map to the API's nodeStep flag, and run_for_each_node takes precedence if both are set.",
+								Optional: true,
 							},
 							"node_step": schema.BoolAttribute{
 								Optional:    true,
-								Computed:    true,
-								Description: "Run the referenced job as a node step (once per node). Alias of run_for_each_node.",
+								Description: "Run the referenced job as a node step (once per node)",
 							},
 							"args": schema.StringAttribute{
 								Optional: true,
@@ -266,14 +263,11 @@ func jobCommandNestedBlock() schema.ListNestedBlock {
 											Description: "Project containing the job. Used with name-based references.",
 										},
 										"run_for_each_node": schema.BoolAttribute{
-											Optional:    true,
-											Computed:    true,
-											Description: "Whether the referenced job runs once per node (node step). Alias of node_step; both map to the API's nodeStep flag, and run_for_each_node takes precedence if both are set.",
+											Optional: true,
 										},
 										"node_step": schema.BoolAttribute{
 											Optional:    true,
-											Computed:    true,
-											Description: "Run the referenced job as a node step (once per node). Alias of run_for_each_node.",
+											Description: "Run the referenced job as a node step (once per node)",
 										},
 										"args": schema.StringAttribute{
 											Optional: true,

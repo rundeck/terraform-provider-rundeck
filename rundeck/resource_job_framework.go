@@ -328,60 +328,12 @@ func (r *jobResource) Configure(_ context.Context, req resource.ConfigureRequest
 	r.client = clients
 }
 
-// validateJobRefNodeStep reports an error when a job reference sets both
-// run_for_each_node and node_step (aliases for the API's nodeStep flag) to
-// different values.
-func validateJobRefNodeStep(ctx context.Context, jobAttr attr.Value, p path.Path, diags *diag.Diagnostics) {
-	jobList, ok := jobAttr.(types.List)
-	if !ok || jobList.IsNull() || jobList.IsUnknown() {
-		return
-	}
-	var jobs []types.Object
-	diags.Append(jobList.ElementsAs(ctx, &jobs, false)...)
-	for _, job := range jobs {
-		a := job.Attributes()
-		rfn, rok := a["run_for_each_node"].(types.Bool)
-		ns, nok := a["node_step"].(types.Bool)
-		if rok && nok &&
-			!rfn.IsNull() && !rfn.IsUnknown() && !ns.IsNull() && !ns.IsUnknown() &&
-			rfn.ValueBool() != ns.ValueBool() {
-			diags.AddAttributeError(p,
-				"Conflicting node step settings",
-				"run_for_each_node and node_step are aliases for the same setting but are set to different values. Set only one, or set both to the same value.")
-		}
-	}
-}
-
 func (r *jobResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
 	var config jobResourceModel
 	diags := req.Config.Get(ctx, &config)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
-	}
-
-	// Validate job references: run_for_each_node and node_step are aliases for the
-	// same API flag (nodeStep), so reject conflicting values (#256).
-	if !config.Command.IsNull() && !config.Command.IsUnknown() {
-		var commands []types.Object
-		resp.Diagnostics.Append(config.Command.ElementsAs(ctx, &commands, false)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		for i, cmd := range commands {
-			cmdAttrs := cmd.Attributes()
-			validateJobRefNodeStep(ctx, cmdAttrs["job"],
-				path.Root("command").AtListIndex(i).AtName("job"), &resp.Diagnostics)
-			if ehList, ok := cmdAttrs["error_handler"].(types.List); ok && !ehList.IsNull() && !ehList.IsUnknown() {
-				var ehs []types.Object
-				resp.Diagnostics.Append(ehList.ElementsAs(ctx, &ehs, false)...)
-				for j, eh := range ehs {
-					validateJobRefNodeStep(ctx, eh.Attributes()["job"],
-						path.Root("command").AtListIndex(i).AtName("error_handler").AtListIndex(j).AtName("job"),
-						&resp.Diagnostics)
-				}
-			}
-		}
 	}
 
 	// Validate notifications: check for duplicates and alphabetical ordering
