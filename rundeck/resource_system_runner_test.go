@@ -164,7 +164,7 @@ resource "rundeck_system_runner" "test" {
   replica_type     = "ephemeral"
 
   assigned_projects = {
-    "test-project" = ".*"
+    "test-project" = "admin"
   }
 }
 `
