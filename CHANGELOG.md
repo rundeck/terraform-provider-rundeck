@@ -1,11 +1,3 @@
-## Unreleased
-
-**Bug Fixes**
-
-### Job Resource
-
-- **Separate workflow and node `keepgoing` flags** - `continue_on_error` and `continue_next_node_on_error` were both wired to the dispatch (node-level) `keepgoing`, leaving `continue_on_error` inert and making it impossible to represent a job whose workflow `keepgoing` differs from its dispatch `keepgoing`. `continue_on_error` now maps to the workflow `<sequence keepgoing>` and `continue_next_node_on_error` to the node `<dispatch keepgoing>`, and each is read back into its own attribute. Jobs that previously set `continue_next_node_on_error` to control workflow keepgoing should set `continue_on_error` instead.
-
 ## 1.2.2
 
 **Bug Fixes**
