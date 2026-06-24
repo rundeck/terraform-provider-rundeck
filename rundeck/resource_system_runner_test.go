@@ -156,6 +156,17 @@ resource "rundeck_system_runner" "test" {
 `
 
 const testAccRundeckSystemRunnerConfig_updated = `
+resource "rundeck_project" "test" {
+  name        = "test-project"
+  description = "Terraform acceptance test project for system runner"
+
+  resource_model_source {
+    type = "local"
+    config = {
+    }
+  }
+}
+
 resource "rundeck_system_runner" "test" {
   name             = "updated-system-runner"
   description      = "Updated test system runner"
@@ -164,7 +175,7 @@ resource "rundeck_system_runner" "test" {
   replica_type     = "ephemeral"
 
   assigned_projects = {
-    "test-project" = "admin"
+    (rundeck_project.test.name) = "admin"
   }
 }
 `
@@ -263,6 +274,17 @@ func TestAccRundeckSystemRunner_precedenceAssignedProjectsConfig(t *testing.T) {
 }
 
 const testAccRundeckSystemRunnerConfig_withAssignedProjectsConfig = `
+resource "rundeck_project" "test" {
+  name        = "test-project"
+  description = "Terraform acceptance test project for system runner"
+
+  resource_model_source {
+    type = "local"
+    config = {
+    }
+  }
+}
+
 resource "rundeck_system_runner" "test" {
   name             = "test-runner-with-config"
   description      = "Test runner with project config"
@@ -271,7 +293,7 @@ resource "rundeck_system_runner" "test" {
   replica_type     = "ephemeral"
 
   assigned_projects_config = {
-    "test-project" = {
+    (rundeck_project.test.name) = {
       access_level             = "admin"
       runner_as_node_enabled   = true
       remote_node_dispatch     = true
@@ -282,6 +304,17 @@ resource "rundeck_system_runner" "test" {
 `
 
 const testAccRundeckSystemRunnerConfig_withAssignedProjectsConfigUpdated = `
+resource "rundeck_project" "test" {
+  name        = "test-project"
+  description = "Terraform acceptance test project for system runner"
+
+  resource_model_source {
+    type = "local"
+    config = {
+    }
+  }
+}
+
 resource "rundeck_system_runner" "test" {
   name             = "test-runner-with-config"
   description      = "Test runner with project config"
@@ -290,7 +323,7 @@ resource "rundeck_system_runner" "test" {
   replica_type     = "ephemeral"
 
   assigned_projects_config = {
-    "test-project" = {
+    (rundeck_project.test.name) = {
       access_level             = "admin"
       runner_as_node_enabled   = true
       remote_node_dispatch     = false
@@ -301,6 +334,17 @@ resource "rundeck_system_runner" "test" {
 `
 
 const testAccRundeckSystemRunnerConfig_legacyAssignedProjects = `
+resource "rundeck_project" "test" {
+  name        = "test-project"
+  description = "Terraform acceptance test project for system runner"
+
+  resource_model_source {
+    type = "local"
+    config = {
+    }
+  }
+}
+
 resource "rundeck_system_runner" "test" {
   name             = "test-legacy-runner"
   description      = "Test legacy assigned_projects"
@@ -309,12 +353,23 @@ resource "rundeck_system_runner" "test" {
   replica_type     = "manual"
 
   assigned_projects = {
-    "test-project" = "admin"
+    (rundeck_project.test.name) = "admin"
   }
 }
 `
 
 const testAccRundeckSystemRunnerConfig_precedence = `
+resource "rundeck_project" "test" {
+  name        = "test-project"
+  description = "Terraform acceptance test project for system runner"
+
+  resource_model_source {
+    type = "local"
+    config = {
+    }
+  }
+}
+
 resource "rundeck_system_runner" "test" {
   name             = "test-precedence-runner"
   description      = "Test precedence of assigned_projects_config"
@@ -324,12 +379,12 @@ resource "rundeck_system_runner" "test" {
 
   # This should be overridden by assigned_projects_config
   assigned_projects = {
-    "test-project" = "execute"
+    (rundeck_project.test.name) = "execute"
   }
 
   # This should take precedence
   assigned_projects_config = {
-    "test-project" = {
+    (rundeck_project.test.name) = {
       access_level             = "admin"
       runner_as_node_enabled   = true
       remote_node_dispatch     = false

@@ -561,9 +561,12 @@ func (r *systemRunnerResource) Update(ctx context.Context, req resource.UpdateRe
 		}
 	}
 
-	// Apply merged projects if assigned_projects or assigned_projects_config are set
-	// This allows users to clear all assignments by setting both to empty maps
-	if !plan.AssignedProjects.IsNull() || !plan.AssignedProjectsConfig.IsNull() {
+	// Apply merged projects only when at least one source is known. A known (even empty)
+	// map still allows explicit clearing, but an unknown value must not silently wipe all
+	// of the runner's project assignments.
+	assignedProjectsKnown := !plan.AssignedProjects.IsNull() && !plan.AssignedProjects.IsUnknown()
+	assignedProjectsConfigKnown := !plan.AssignedProjectsConfig.IsNull() && !plan.AssignedProjectsConfig.IsUnknown()
+	if assignedProjectsKnown || assignedProjectsConfigKnown {
 		saveRequest.SetAssignedProjects(mergedProjects)
 	}
 
