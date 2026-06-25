@@ -80,6 +80,7 @@ type JobJSON struct {
 	Schedules              []map[string]interface{} `json:"schedules,omitempty"`
 	Orchestrator           map[string]interface{}   `json:"orchestrator,omitempty"`
 	Plugins                map[string]interface{}   `json:"plugins,omitempty"`
+	RunnerSelector         map[string]interface{}   `json:"runnerSelector,omitempty"`
 	LogLimit               *string                  `json:"loglimit,omitempty"`
 	LogLimitAction         *string                  `json:"loglimitAction,omitempty"`
 	LogLimitStatus         *string                  `json:"loglimitStatus,omitempty"`

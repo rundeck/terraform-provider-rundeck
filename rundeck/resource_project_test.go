@@ -16,7 +16,7 @@ func TestAccProject_basic(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccProjectCheckDestroy(&project),
 		Steps: []resource.TestStep{
 			{
@@ -100,7 +100,7 @@ func TestAccProject_localSourceNoConfig(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccProjectCheckDestroy(&project),
 		Steps: []resource.TestStep{
 			{
@@ -142,7 +142,7 @@ func TestAccProject_SSHKeyFilePath(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccProjectCheckDestroy(&project),
 		Steps: []resource.TestStep{
 			{
@@ -173,6 +173,55 @@ resource "rundeck_project" "test" {
     config = {
       format = "resourceyaml"
       file   = "/tmp/terraform-acc-tests.yaml"
+    }
+  }
+}
+`
+
+// TestAccProject_NullConfigValues is a regression test for #248: a null element
+// in a resource_model_source config map must be treated as omitted without
+// producing an "inconsistent result after apply" error or refresh drift.
+func TestAccProject_NullConfigValues(t *testing.T) {
+	var project rundeck.Project
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
+		CheckDestroy:             testAccProjectCheckDestroy(&project),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccProjectConfig_NullConfigValues,
+				Check: resource.ComposeTestCheckFunc(
+					testAccProjectCheckExists("rundeck_project.test", &project),
+					resource.TestCheckResourceAttr("rundeck_project.test", "resource_model_source.0.config.format", "resourceyaml"),
+				),
+			},
+			// Core regression: a null config element must not cause drift on refresh.
+			{
+				RefreshState: true,
+				PlanOnly:     true,
+			},
+		},
+	})
+}
+
+const testAccProjectConfig_NullConfigValues = `
+variable "optional_file" {
+  type    = string
+  default = null
+}
+
+resource "rundeck_project" "test" {
+  name        = "terraform-acc-test-null-config"
+  description = "Test project for null config element handling"
+
+  resource_model_source {
+    type = "file"
+    config = {
+      format = "resourceyaml"
+      file   = "/tmp/terraform-acc-tests.yaml"
+      # Null element must be treated as omitted (regression for #248)
+      generateFileAutomatically = var.optional_file
     }
   }
 }

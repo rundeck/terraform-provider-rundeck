@@ -1,3 +1,33 @@
+## 1.3.0
+
+**Enhancements**
+
+### System Runner Resource
+
+- **Added per-project dispatch configuration support** ([#265](https://github.com/rundeck/terraform-provider-rundeck/pull/265)) - `rundeck_system_runner` now supports `assigned_projects_config`, a new nested attribute that allows configuring per-project runner dispatch settings (`runner_as_node_enabled`, `remote_node_dispatch`, `runner_node_filter`) directly in Terraform. This eliminates the need for manual UI/API configuration after Terraform apply, enabling full Infrastructure-as-Code for system-level runners across multiple projects. When a project appears in both `assigned_projects` and `assigned_projects_config`, the latter takes precedence, allowing gradual migration. This feature was designed to support large-scale DR automation scenarios where hundreds of runners need to be managed as code. (Thanks [@ibozas](https://github.com/ibozas))
+
+**Bug Fixes**
+
+### Job Resource
+
+- **Fixed runner selector filter settings being ignored** ([#266](https://github.com/rundeck/terraform-provider-rundeck/pull/266)) - The provider serialized the runner selector fields as `filterMode`/`filterType`, but Rundeck expects `runnerFilterMode`/`runnerFilterType`, so the settings were silently dropped. `runner_selector_filter_mode` and `runner_selector_filter_type` now take effect and no longer drift on refresh. Fixes [#244](https://github.com/rundeck/terraform-provider-rundeck/issues/244). (Thanks [@ozon2](https://github.com/ozon2))
+
+- **Separated workflow and node `keepgoing` flags** ([#268](https://github.com/rundeck/terraform-provider-rundeck/pull/268)) - `continue_on_error` and `continue_next_node_on_error` were both wired to the node (dispatch) `keepgoing`, leaving `continue_on_error` inert and making it impossible to represent a job whose workflow `keepgoing` differs from its dispatch `keepgoing`. `continue_on_error` now maps to the workflow (sequence) `keepgoing` and `continue_next_node_on_error` to the node (dispatch) `keepgoing`, matching the documented behavior. **Migration:** if you previously relied on `continue_next_node_on_error` to control workflow behavior, set `continue_on_error` instead; the first apply after upgrading may show a one-time correction as each flag settles into its own attribute. (Thanks [@karldebisschop](https://github.com/karldebisschop))
+
+- **Read runner selector back from the API** ([#253](https://github.com/rundeck/terraform-provider-rundeck/issues/253)) - The runner selector settings (`runner_selector_filter`, `runner_selector_filter_mode`, `runner_selector_filter_type`) are now read back from the job on refresh, so runner routing round-trips correctly and changes made outside Terraform surface as drift instead of being silently ignored. Combined with the field-name fix in #266, jobs no longer require a manual UI "Save" for runner selection to take effect. (Thanks [@mkhizar-mk](https://github.com/mkhizar-mk) for reporting)
+
+### Provider
+
+- **Honor `api_version` for webhook and other v2-backed resources** ([#252](https://github.com/rundeck/terraform-provider-rundeck/issues/252)) - The underlying v2 API client ignored the configured `api_version` and always sent requests to `/api/56`, causing `rundeck_webhook` to fail with "Unsupported API Version" on Rundeck servers running an older API version (e.g. 5.9.0 / API 52), even though the webhook endpoint was supported there. The provider now uses the configured `api_version` in the request path for v2-backed resources. (Thanks [@codydiehl](https://github.com/codydiehl) for reporting)
+
+### Runner Resources
+
+- **Marked runner `token` and `download_token` as sensitive** ([#260](https://github.com/rundeck/terraform-provider-rundeck/issues/260)) - The `token` and `download_token` attributes on `rundeck_system_runner` and `rundeck_project_runner` are now marked sensitive, so their values are redacted in `terraform plan`/`apply` output and CI logs instead of being shown in plaintext. (Thanks [@shane-davis](https://github.com/shane-davis) for reporting)
+
+### Project Resource
+
+- **Fixed null values in `resource_model_source` config causing apply failures** ([#248](https://github.com/rundeck/terraform-provider-rundeck/issues/248)) - A `null` element in a `resource_model_source` `config` map (for example from a `dynamic` block or a variable that defaults to `null`) caused a "Provider produced inconsistent result after apply" error because the null key was dropped from state. User-configured null elements are now preserved in state (while still being omitted from the Rundeck API payload), so configurations using conditional/null values apply cleanly without drift. This completes the earlier null-handling fix from [#227](https://github.com/rundeck/terraform-provider-rundeck/issues/227). (Thanks [@aparker-cityworks](https://github.com/aparker-cityworks) for reporting)
+
 ## 1.2.2
 
 **Bug Fixes**

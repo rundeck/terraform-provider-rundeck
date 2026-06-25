@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
-	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 
 	"github.com/rundeck/go-rundeck/rundeck"
 	openapi "github.com/rundeck/go-rundeck/rundeck-v2"
@@ -75,11 +75,13 @@ by:
 // token at http://192.168.50.2:4440/user/profile once you've logged in, and RUNDECK_URL will
 // be http://192.168.50.2:4440/ .
 
-func testAccProtoV5ProviderFactories() map[string]func() (tfprotov5.ProviderServer, error) {
-	return map[string]func() (tfprotov5.ProviderServer, error){
-		"rundeck": func() (tfprotov5.ProviderServer, error) {
-			// Use Framework provider directly (SDKv2 removed)
-			return providerserver.NewProtocol5(NewFrameworkProvider("test")())(), nil
+func testAccProtoV6ProviderFactories() map[string]func() (tfprotov6.ProviderServer, error) {
+	return map[string]func() (tfprotov6.ProviderServer, error){
+		"rundeck": func() (tfprotov6.ProviderServer, error) {
+			// Use Framework provider directly (SDKv2 removed).
+			// Protocol v6 matches how main.go serves the provider and is required
+			// for nested attributes (e.g. rundeck_system_runner.assigned_projects_config).
+			return providerserver.NewProtocol6(NewFrameworkProvider("test")())(), nil
 		},
 	}
 }

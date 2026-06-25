@@ -1422,6 +1422,21 @@ func (r *jobResource) jobJSONAPIToState(ctx context.Context, job *JobJSON, state
 		}
 	}
 
+	// Handle runner selector. Read it back from the API (using Rundeck's
+	// runnerFilterMode/runnerFilterType keys) so runner routing round-trips and
+	// out-of-band changes surface as drift instead of being silently ignored (#253).
+	if job.RunnerSelector != nil {
+		if filter, ok := job.RunnerSelector["filter"].(string); ok && filter != "" {
+			state.RunnerSelectorFilter = types.StringValue(filter)
+		}
+		if mode, ok := job.RunnerSelector["runnerFilterMode"].(string); ok && mode != "" {
+			state.RunnerSelectorFilterMode = types.StringValue(mode)
+		}
+		if filterType, ok := job.RunnerSelector["runnerFilterType"].(string); ok && filterType != "" {
+			state.RunnerSelectorFilterType = types.StringValue(filterType)
+		}
+	}
+
 	// Parse execution lifecycle plugins
 	if job.Plugins != nil {
 		if execLifecycle, ok := job.Plugins["ExecutionLifecycle"].(map[string]interface{}); ok && len(execLifecycle) > 0 {

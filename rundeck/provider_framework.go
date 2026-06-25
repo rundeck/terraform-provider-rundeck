@@ -159,13 +159,10 @@ func (p *frameworkProvider) Configure(ctx context.Context, req provider.Configur
 	clientV1.UserAgent = buildUserAgent(p.version)
 	clientV1.Authorizer = &auth.TokenAuthorizer{Token: token}
 
-	// Create the V2 client with custom User-Agent
-	cfg := openapi.NewConfiguration()
-	cfg.Host = apiURL.Host
-	cfg.Scheme = apiURL.Scheme
-	cfg.HTTPClient = newHTTPClientWithUserAgent(p.version)
-
-	clientV2 := openapi.NewAPIClient(cfg)
+	// Create the V2 client with custom User-Agent.
+	// buildV2Configuration ensures the configured API version is used in the
+	// request path (/api/<version>) instead of the SDK's baked-in default (#252).
+	clientV2 := openapi.NewAPIClient(buildV2Configuration(apiURL, apiVersion, p.version))
 
 	// Create a context with the API token
 	ctxWithAuth := context.WithValue(context.Background(), openapi.ContextAPIKeys, map[string]openapi.APIKey{
@@ -185,6 +182,26 @@ func (p *frameworkProvider) Configure(ctx context.Context, req provider.Configur
 
 	resp.DataSourceData = clients
 	resp.ResourceData = clients
+}
+
+// buildV2Configuration builds the OpenAPI (V2) client configuration. The
+// generated SDK's default server URL hardcodes the API version (/api/56), so
+// without overriding the "version" server variable every V2 resource (webhooks,
+// runners) would ignore the provider's configured api_version and target
+// /api/56. See https://github.com/rundeck/terraform-provider-rundeck/issues/252.
+func buildV2Configuration(apiURL *url.URL, apiVersion string, userAgentVersion string) *openapi.Configuration {
+	cfg := openapi.NewConfiguration()
+	cfg.Host = apiURL.Host
+	cfg.Scheme = apiURL.Scheme
+	cfg.HTTPClient = newHTTPClientWithUserAgent(userAgentVersion)
+
+	if len(cfg.Servers) > 0 {
+		versionVar := cfg.Servers[0].Variables["version"]
+		versionVar.DefaultValue = apiVersion
+		cfg.Servers[0].Variables["version"] = versionVar
+	}
+
+	return cfg
 }
 
 func (p *frameworkProvider) Resources(ctx context.Context) []func() resource.Resource {

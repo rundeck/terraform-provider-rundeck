@@ -25,6 +25,8 @@ This provider is **community-supported**. While Rundeck/PagerDuty staff review a
 - [Go](https://golang.org/doc/install) >= 1.24
 - [Rundeck](https://www.rundeck.com/) >= 5.0.0 (API v46+)
 
+> Note: Some features will require newer or Enterprise versions of Rundeck.
+
 ## Building The Provider
 
 1. Clone the repository

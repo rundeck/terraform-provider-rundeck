@@ -19,7 +19,7 @@ func TestAccRundeckSystemRunner_basic(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccSystemRunnerCheckDestroy(&runner),
 		Steps: []resource.TestStep{
 			{
@@ -49,7 +49,7 @@ func TestAccRundeckSystemRunner_update(t *testing.T) {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
-		ProtoV5ProviderFactories: testAccProtoV5ProviderFactories(),
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
 		CheckDestroy:             testAccSystemRunnerCheckDestroy(&runner),
 		Steps: []resource.TestStep{
 			{
@@ -156,15 +156,240 @@ resource "rundeck_system_runner" "test" {
 `
 
 const testAccRundeckSystemRunnerConfig_updated = `
+resource "rundeck_project" "test" {
+  name        = "test-project"
+  description = "Terraform acceptance test project for system runner"
+
+  resource_model_source {
+    type = "local"
+    config = {
+    }
+  }
+}
+
 resource "rundeck_system_runner" "test" {
   name             = "updated-system-runner"
   description      = "Updated test system runner"
   tag_names        = "terraform,updated"
   installation_type = "docker"
   replica_type     = "ephemeral"
-  
+
   assigned_projects = {
-    "test-project" = ".*"
+    (rundeck_project.test.name) = "admin"
+  }
+}
+`
+
+func TestAccRundeckSystemRunner_withAssignedProjectsConfig(t *testing.T) {
+	if os.Getenv("RUNDECK_ENTERPRISE_TESTS") != "1" {
+		t.Skip("ENTERPRISE ONLY: System runners (requires Rundeck 5.17.0+, API v56+) - set RUNDECK_ENTERPRISE_TESTS=1")
+	}
+
+	var runner openapi.RunnerInfo
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
+		CheckDestroy:             testAccSystemRunnerCheckDestroy(&runner),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccRundeckSystemRunnerConfig_withAssignedProjectsConfig,
+				Check: resource.ComposeTestCheckFunc(
+					testAccSystemRunnerCheckExists("rundeck_system_runner.test", &runner),
+					resource.TestCheckResourceAttr("rundeck_system_runner.test", "name", "test-runner-with-config"),
+					resource.TestCheckResourceAttr("rundeck_system_runner.test", "description", "Test runner with project config"),
+					resource.TestCheckResourceAttr("rundeck_system_runner.test", "assigned_projects_config.test-project.access_level", "admin"),
+					resource.TestCheckResourceAttr("rundeck_system_runner.test", "assigned_projects_config.test-project.runner_as_node_enabled", "true"),
+					resource.TestCheckResourceAttr("rundeck_system_runner.test", "assigned_projects_config.test-project.remote_node_dispatch", "true"),
+					resource.TestCheckResourceAttr("rundeck_system_runner.test", "assigned_projects_config.test-project.runner_node_filter", "tags: RUNNER"),
+				),
+			},
+			{
+				Config: testAccRundeckSystemRunnerConfig_withAssignedProjectsConfigUpdated,
+				Check: resource.ComposeTestCheckFunc(
+					testAccSystemRunnerCheckExists("rundeck_system_runner.test", &runner),
+					resource.TestCheckResourceAttr("rundeck_system_runner.test", "assigned_projects_config.test-project.access_level", "admin"),
+					resource.TestCheckResourceAttr("rundeck_system_runner.test", "assigned_projects_config.test-project.runner_as_node_enabled", "true"),
+					resource.TestCheckResourceAttr("rundeck_system_runner.test", "assigned_projects_config.test-project.remote_node_dispatch", "false"),
+					resource.TestCheckResourceAttr("rundeck_system_runner.test", "assigned_projects_config.test-project.runner_node_filter", "tags: DEFAULT"),
+				),
+			},
+			// Verify no plan drift on refresh (computed bool defaults + state-preserved dispatch settings)
+			{
+				RefreshState: true,
+				PlanOnly:     true,
+			},
+		},
+	})
+}
+
+func TestAccRundeckSystemRunner_backwardCompatAssignedProjects(t *testing.T) {
+	if os.Getenv("RUNDECK_ENTERPRISE_TESTS") != "1" {
+		t.Skip("ENTERPRISE ONLY: System runners (requires Rundeck 5.17.0+, API v56+) - set RUNDECK_ENTERPRISE_TESTS=1")
+	}
+
+	var runner openapi.RunnerInfo
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
+		CheckDestroy:             testAccSystemRunnerCheckDestroy(&runner),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccRundeckSystemRunnerConfig_legacyAssignedProjects,
+				Check: resource.ComposeTestCheckFunc(
+					testAccSystemRunnerCheckExists("rundeck_system_runner.test", &runner),
+					resource.TestCheckResourceAttr("rundeck_system_runner.test", "name", "test-legacy-runner"),
+					resource.TestCheckResourceAttr("rundeck_system_runner.test", "assigned_projects.test-project", "admin"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccRundeckSystemRunner_precedenceAssignedProjectsConfig(t *testing.T) {
+	if os.Getenv("RUNDECK_ENTERPRISE_TESTS") != "1" {
+		t.Skip("ENTERPRISE ONLY: System runners (requires Rundeck 5.17.0+, API v56+) - set RUNDECK_ENTERPRISE_TESTS=1")
+	}
+
+	var runner openapi.RunnerInfo
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
+		CheckDestroy:             testAccSystemRunnerCheckDestroy(&runner),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccRundeckSystemRunnerConfig_precedence,
+				Check: resource.ComposeTestCheckFunc(
+					testAccSystemRunnerCheckExists("rundeck_system_runner.test", &runner),
+					resource.TestCheckResourceAttr("rundeck_system_runner.test", "name", "test-precedence-runner"),
+					// assigned_projects_config should take precedence
+					resource.TestCheckResourceAttr("rundeck_system_runner.test", "assigned_projects_config.test-project.access_level", "admin"),
+					resource.TestCheckResourceAttr("rundeck_system_runner.test", "assigned_projects_config.test-project.runner_as_node_enabled", "true"),
+				),
+			},
+		},
+	})
+}
+
+const testAccRundeckSystemRunnerConfig_withAssignedProjectsConfig = `
+resource "rundeck_project" "test" {
+  name        = "test-project"
+  description = "Terraform acceptance test project for system runner"
+
+  resource_model_source {
+    type = "local"
+    config = {
+    }
+  }
+}
+
+resource "rundeck_system_runner" "test" {
+  name             = "test-runner-with-config"
+  description      = "Test runner with project config"
+  tag_names        = "terraform,test"
+  installation_type = "kubernetes"
+  replica_type     = "ephemeral"
+
+  assigned_projects_config = {
+    (rundeck_project.test.name) = {
+      access_level             = "admin"
+      runner_as_node_enabled   = true
+      remote_node_dispatch     = true
+      runner_node_filter       = "tags: RUNNER"
+    }
+  }
+}
+`
+
+const testAccRundeckSystemRunnerConfig_withAssignedProjectsConfigUpdated = `
+resource "rundeck_project" "test" {
+  name        = "test-project"
+  description = "Terraform acceptance test project for system runner"
+
+  resource_model_source {
+    type = "local"
+    config = {
+    }
+  }
+}
+
+resource "rundeck_system_runner" "test" {
+  name             = "test-runner-with-config"
+  description      = "Test runner with project config"
+  tag_names        = "terraform,test"
+  installation_type = "kubernetes"
+  replica_type     = "ephemeral"
+
+  assigned_projects_config = {
+    (rundeck_project.test.name) = {
+      access_level             = "admin"
+      runner_as_node_enabled   = true
+      remote_node_dispatch     = false
+      runner_node_filter       = "tags: DEFAULT"
+    }
+  }
+}
+`
+
+const testAccRundeckSystemRunnerConfig_legacyAssignedProjects = `
+resource "rundeck_project" "test" {
+  name        = "test-project"
+  description = "Terraform acceptance test project for system runner"
+
+  resource_model_source {
+    type = "local"
+    config = {
+    }
+  }
+}
+
+resource "rundeck_system_runner" "test" {
+  name             = "test-legacy-runner"
+  description      = "Test legacy assigned_projects"
+  tag_names        = "terraform,test"
+  installation_type = "linux"
+  replica_type     = "manual"
+
+  assigned_projects = {
+    (rundeck_project.test.name) = "admin"
+  }
+}
+`
+
+const testAccRundeckSystemRunnerConfig_precedence = `
+resource "rundeck_project" "test" {
+  name        = "test-project"
+  description = "Terraform acceptance test project for system runner"
+
+  resource_model_source {
+    type = "local"
+    config = {
+    }
+  }
+}
+
+resource "rundeck_system_runner" "test" {
+  name             = "test-precedence-runner"
+  description      = "Test precedence of assigned_projects_config"
+  tag_names        = "terraform,test"
+  installation_type = "linux"
+  replica_type     = "manual"
+
+  # This should be overridden by assigned_projects_config
+  assigned_projects = {
+    (rundeck_project.test.name) = "execute"
+  }
+
+  # This should take precedence
+  assigned_projects_config = {
+    (rundeck_project.test.name) = {
+      access_level             = "admin"
+      runner_as_node_enabled   = true
+      remote_node_dispatch     = false
+      runner_node_filter       = "tags: RUNNER"
+    }
   }
 }
 `
