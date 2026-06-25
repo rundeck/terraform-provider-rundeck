@@ -167,7 +167,7 @@ The Rundeck API does not currently expose a GET endpoint for per-project dispatc
 
 - These settings are stored in Terraform state during `create`/`update` operations.
 - The provider cannot detect out-of-band changes made via the Rundeck UI or API.
-- If dispatch settings are modified outside of Terraform, use `terraform import` to refresh the state.
+- If dispatch settings are modified outside of Terraform, update your Terraform configuration manually and run terraform apply.
 
 ### Use Case: Disaster Recovery Automation
 
