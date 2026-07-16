@@ -3,6 +3,9 @@ package rundeck
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -87,26 +90,51 @@ func jobCommandNestedBlock() schema.ListNestedBlock {
 						Attributes: map[string]schema.Attribute{
 							"uuid": schema.StringAttribute{
 								Optional:    true,
+								Computed:    true,
 								Description: "UUID of the job to reference (immutable, preferred). Can reference another rundeck_job's id attribute.",
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.UseStateForUnknown(),
+								},
 							},
 							"name": schema.StringAttribute{
 								Optional:    true,
+								Computed:    true,
 								Description: "Name of the job to reference. Required if uuid is not specified.",
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.UseStateForUnknown(),
+								},
 							},
 							"group_name": schema.StringAttribute{
 								Optional:    true,
+								Computed:    true,
 								Description: "Group path of the job. Used with name-based references.",
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.UseStateForUnknown(),
+								},
 							},
 							"project_name": schema.StringAttribute{
 								Optional:    true,
-								Description: "Project containing the job. Used with name-based references.",
+								Computed:    true,
+								Description: "Project containing the job. Used with name-based references. Also populated from the API for uuid-based references, since Rundeck always resolves a job reference to a specific project.",
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.UseStateForUnknown(),
+								},
 							},
 							"run_for_each_node": schema.BoolAttribute{
-								Optional: true,
+								Optional:    true,
+								Computed:    true,
+								Description: "Whether the referenced job runs once per node (node step). Alias of node_step; both map to the API's nodeStep flag, and run_for_each_node takes precedence if both are set.",
+								PlanModifiers: []planmodifier.Bool{
+									boolplanmodifier.UseStateForUnknown(),
+								},
 							},
 							"node_step": schema.BoolAttribute{
 								Optional:    true,
-								Description: "Run the referenced job as a node step (once per node)",
+								Computed:    true,
+								Description: "Run the referenced job as a node step (once per node). Alias of run_for_each_node.",
+								PlanModifiers: []planmodifier.Bool{
+									boolplanmodifier.UseStateForUnknown(),
+								},
 							},
 							"args": schema.StringAttribute{
 								Optional: true,
@@ -225,8 +253,14 @@ func jobCommandNestedBlock() schema.ListNestedBlock {
 								Optional: true,
 							},
 							"keep_going_on_success": schema.BoolAttribute{
-								Optional:    true,
-								Description: "Continue workflow even if error handler succeeds",
+								Optional: true,
+								Computed: true,
+								Description: "Continue workflow even if error handler succeeds. Rundeck's API omits this " +
+									"field entirely when false, so it is Computed to avoid drift/inconsistent-apply " +
+									"errors on that default.",
+								PlanModifiers: []planmodifier.Bool{
+									boolplanmodifier.UseStateForUnknown(),
+								},
 							},
 						},
 						Blocks: map[string]schema.Block{
@@ -248,26 +282,51 @@ func jobCommandNestedBlock() schema.ListNestedBlock {
 									Attributes: map[string]schema.Attribute{
 										"uuid": schema.StringAttribute{
 											Optional:    true,
+											Computed:    true,
 											Description: "UUID of the job to reference (immutable, preferred). Can reference another rundeck_job's id attribute.",
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(),
+											},
 										},
 										"name": schema.StringAttribute{
 											Optional:    true,
+											Computed:    true,
 											Description: "Name of the job to reference. Required if uuid is not specified.",
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(),
+											},
 										},
 										"group_name": schema.StringAttribute{
 											Optional:    true,
+											Computed:    true,
 											Description: "Group path of the job. Used with name-based references.",
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(),
+											},
 										},
 										"project_name": schema.StringAttribute{
 											Optional:    true,
-											Description: "Project containing the job. Used with name-based references.",
+											Computed:    true,
+											Description: "Project containing the job. Used with name-based references. Also populated from the API for uuid-based references, since Rundeck always resolves a job reference to a specific project.",
+											PlanModifiers: []planmodifier.String{
+												stringplanmodifier.UseStateForUnknown(),
+											},
 										},
 										"run_for_each_node": schema.BoolAttribute{
-											Optional: true,
+											Optional:    true,
+											Computed:    true,
+											Description: "Whether the referenced job runs once per node (node step). Alias of node_step; both map to the API's nodeStep flag, and run_for_each_node takes precedence if both are set.",
+											PlanModifiers: []planmodifier.Bool{
+												boolplanmodifier.UseStateForUnknown(),
+											},
 										},
 										"node_step": schema.BoolAttribute{
 											Optional:    true,
-											Description: "Run the referenced job as a node step (once per node)",
+											Computed:    true,
+											Description: "Run the referenced job as a node step (once per node). Alias of run_for_each_node.",
+											PlanModifiers: []planmodifier.Bool{
+												boolplanmodifier.UseStateForUnknown(),
+											},
 										},
 										"args": schema.StringAttribute{
 											Optional: true,
@@ -603,6 +662,97 @@ func jobExecutionLifecyclePluginNestedBlock() schema.ListNestedBlock {
 	}
 }
 
+// nodeFilterDispatchObjectType mirrors the "dispatch" nested block on a job
+// reference's node_filters.
+var nodeFilterDispatchObjectType = types.ObjectType{
+	AttrTypes: map[string]attr.Type{
+		"thread_count":   types.Int64Type,
+		"keep_going":     types.BoolType,
+		"rank_attribute": types.StringType,
+		"rank_order":     types.StringType,
+	},
+}
+
+// nodeFilterObjectType mirrors the "node_filters" nested block on a job reference.
+var nodeFilterObjectType = types.ObjectType{
+	AttrTypes: map[string]attr.Type{
+		"filter":             types.StringType,
+		"exclude_filter":     types.StringType,
+		"exclude_precedence": types.BoolType,
+		"dispatch":           types.ListType{ElemType: nodeFilterDispatchObjectType},
+	},
+}
+
+// jobRefObjectType mirrors the "job" nested block (a reference to another job),
+// used both directly under a command and under its error_handler.
+var jobRefObjectType = types.ObjectType{
+	AttrTypes: map[string]attr.Type{
+		"uuid":                 types.StringType,
+		"name":                 types.StringType,
+		"group_name":           types.StringType,
+		"project_name":         types.StringType,
+		"run_for_each_node":    types.BoolType,
+		"node_step":            types.BoolType,
+		"args":                 types.StringType,
+		"import_options":       types.BoolType,
+		"child_nodes":          types.BoolType,
+		"fail_on_disable":      types.BoolType,
+		"ignore_notifications": types.BoolType,
+		"node_filters":         types.ListType{ElemType: nodeFilterObjectType},
+	},
+}
+
+// scriptInterpreterObjectType mirrors the "script_interpreter" nested block.
+var scriptInterpreterObjectType = types.ObjectType{
+	AttrTypes: map[string]attr.Type{
+		"invocation_string": types.StringType,
+		"args_quoted":       types.BoolType,
+	},
+}
+
+// stepPluginObjectType mirrors the "step_plugin"/"node_step_plugin" nested blocks.
+var stepPluginObjectType = types.ObjectType{
+	AttrTypes: map[string]attr.Type{
+		"type":   types.StringType,
+		"config": types.MapType{ElemType: types.StringType},
+	},
+}
+
+// logFilterPluginObjectType mirrors the "log_filter_plugin" nested block under
+// a command's "plugins" block.
+var logFilterPluginObjectType = types.ObjectType{
+	AttrTypes: map[string]attr.Type{
+		"type":   types.StringType,
+		"config": types.MapType{ElemType: types.StringType},
+	},
+}
+
+// commandPluginsObjectType mirrors a command's "plugins" nested block.
+var commandPluginsObjectType = types.ObjectType{
+	AttrTypes: map[string]attr.Type{
+		"log_filter_plugin": types.ListType{ElemType: logFilterPluginObjectType},
+	},
+}
+
+// errorHandlerObjectType mirrors the "error_handler" nested block on a command.
+var errorHandlerObjectType = types.ObjectType{
+	AttrTypes: map[string]attr.Type{
+		"description":                 types.StringType,
+		"shell_command":               types.StringType,
+		"inline_script":               types.StringType,
+		"script_url":                  types.StringType,
+		"script_file":                 types.StringType,
+		"script_file_args":            types.StringType,
+		"expand_token_in_script_file": types.BoolType,
+		"file_extension":              types.StringType,
+		"keep_going_on_success":       types.BoolType,
+		"script_interpreter":          types.ListType{ElemType: scriptInterpreterObjectType},
+		"job":                         types.ListType{ElemType: jobRefObjectType},
+		"step_plugin":                 types.ListType{ElemType: stepPluginObjectType},
+		"node_step_plugin":            types.ListType{ElemType: stepPluginObjectType},
+	},
+}
+
 // Command model type
 var commandObjectType = types.ObjectType{
 	AttrTypes: map[string]attr.Type{
@@ -615,11 +765,11 @@ var commandObjectType = types.ObjectType{
 		"expand_token_in_script_file": types.BoolType,
 		"file_extension":              types.StringType,
 		"keep_going_on_success":       types.BoolType,
-		"plugins":                     types.ListType{ElemType: types.ObjectType{}},
-		"script_interpreter":          types.ListType{ElemType: types.ObjectType{}},
-		"job":                         types.ListType{ElemType: types.ObjectType{}},
-		"step_plugin":                 types.ListType{ElemType: types.ObjectType{}},
-		"node_step_plugin":            types.ListType{ElemType: types.ObjectType{}},
-		"error_handler":               types.ListType{ElemType: types.ObjectType{}},
+		"plugins":                     types.ListType{ElemType: commandPluginsObjectType},
+		"script_interpreter":          types.ListType{ElemType: scriptInterpreterObjectType},
+		"job":                         types.ListType{ElemType: jobRefObjectType},
+		"step_plugin":                 types.ListType{ElemType: stepPluginObjectType},
+		"node_step_plugin":            types.ListType{ElemType: stepPluginObjectType},
+		"error_handler":               types.ListType{ElemType: errorHandlerObjectType},
 	},
 }

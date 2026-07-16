@@ -1,3 +1,13 @@
+## Unreleased
+
+**Bug Fixes**
+
+### Job Resource
+
+- **Fixed `run_for_each_node` being ignored on job references** ([#256](https://github.com/rundeck/terraform-provider-rundeck/issues/256)) - On a job reference (`command { job { ... } }`), `run_for_each_node` was serialized to a field Rundeck ignores, so the referenced job was always treated as a workflow step rather than a node step (the setting only worked on error handlers). `run_for_each_node` now correctly drives the API's `nodeStep` flag and round-trips on read, restoring pre-1.0 behavior. The `node_step` attribute continues to work as an alias, with `run_for_each_node` taking precedence if both are set.
+
+  This also fixes the underlying cause of a "Provider produced inconsistent result after apply" / unknown-value error that sank an earlier attempt at this fix: the command object type used to read job commands back from the API declared nested blocks (`job`, `error_handler`, `step_plugin`, `node_step_plugin`, `plugins`, `script_interpreter`) with empty, un-typed placeholders instead of their real shape, so read-back silently failed its own internal type check and was discarded whenever a command had a job reference or error handler — the read simply never took effect. This has likely caused unrelated drift/staleness for any job using those nested blocks, even before this attribute existed. Fixing it also required marking a job reference's `uuid`/`name`/`group_name`/`project_name` and an error handler's `keep_going_on_success` as `Computed`, since making the read-back actually work exposed that Rundeck resolves and returns these fields even when not explicitly configured (e.g. a UUID-only reference). (Thanks [@codydiehl](https://github.com/codydiehl) for reporting)
+
 ## 1.3.0
 
 **Enhancements**
