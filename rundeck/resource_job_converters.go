@@ -1967,82 +1967,30 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 						}
 
 						dispObj, dispDiags := types.ObjectValue(
-							map[string]attr.Type{
-								"thread_count":   types.Int64Type,
-								"keep_going":     types.BoolType,
-								"rank_attribute": types.StringType,
-								"rank_order":     types.StringType,
-							},
+							nodeFilterDispatchObjectType.AttrTypes,
 							dispAttrs,
 						)
 						diags.Append(dispDiags...)
 						if !dispObj.IsNull() {
 							nfAttrs["dispatch"] = types.ListValueMust(
-								types.ObjectType{AttrTypes: map[string]attr.Type{
-									"thread_count":   types.Int64Type,
-									"keep_going":     types.BoolType,
-									"rank_attribute": types.StringType,
-									"rank_order":     types.StringType,
-								}},
+								nodeFilterDispatchObjectType,
 								[]attr.Value{dispObj},
 							)
 						}
 					} else {
 						// No dispatch config
-						nfAttrs["dispatch"] = types.ListNull(
-							types.ObjectType{AttrTypes: map[string]attr.Type{
-								"thread_count":   types.Int64Type,
-								"keep_going":     types.BoolType,
-								"rank_attribute": types.StringType,
-								"rank_order":     types.StringType,
-							}},
-						)
+						nfAttrs["dispatch"] = types.ListNull(nodeFilterDispatchObjectType)
 					}
 
-					nfObj, nfDiags := types.ObjectValue(
-						map[string]attr.Type{
-							"filter":             types.StringType,
-							"exclude_filter":     types.StringType,
-							"exclude_precedence": types.BoolType,
-							"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-								"thread_count":   types.Int64Type,
-								"keep_going":     types.BoolType,
-								"rank_attribute": types.StringType,
-								"rank_order":     types.StringType,
-							}}},
-						},
-						nfAttrs,
-					)
+					nfObj, nfDiags := types.ObjectValue(nodeFilterObjectType.AttrTypes, nfAttrs)
 					diags.Append(nfDiags...)
 					jobAttrs["node_filters"] = types.ListValueMust(
-						types.ObjectType{AttrTypes: map[string]attr.Type{
-							"filter":             types.StringType,
-							"exclude_filter":     types.StringType,
-							"exclude_precedence": types.BoolType,
-							"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-								"thread_count":   types.Int64Type,
-								"keep_going":     types.BoolType,
-								"rank_attribute": types.StringType,
-								"rank_order":     types.StringType,
-							}}},
-						}},
+						nodeFilterObjectType,
 						[]attr.Value{nfObj},
 					)
 				} else {
 					// No node_filters
-					jobAttrs["node_filters"] = types.ListNull(
-						types.ObjectType{AttrTypes: map[string]attr.Type{
-							"filter":             types.StringType,
-							"exclude_filter":     types.StringType,
-							"exclude_precedence": types.BoolType,
-							"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-								"thread_count":   types.Int64Type,
-								"keep_going":     types.BoolType,
-								"rank_attribute": types.StringType,
-								"rank_order":     types.StringType,
-							}}},
-						}},
-					)
+					jobAttrs["node_filters"] = types.ListNull(nodeFilterObjectType)
 				}
 
 				// Only add job block if there are actual job reference fields
@@ -2305,82 +2253,30 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 					}
 
 					dispObj, dispDiags := types.ObjectValue(
-						map[string]attr.Type{
-							"thread_count":   types.Int64Type,
-							"keep_going":     types.BoolType,
-							"rank_attribute": types.StringType,
-							"rank_order":     types.StringType,
-						},
+						nodeFilterDispatchObjectType.AttrTypes,
 						dispAttrs,
 					)
 					diags.Append(dispDiags...)
 
 					nfAttrs["dispatch"] = types.ListValueMust(
-						types.ObjectType{AttrTypes: map[string]attr.Type{
-							"thread_count":   types.Int64Type,
-							"keep_going":     types.BoolType,
-							"rank_attribute": types.StringType,
-							"rank_order":     types.StringType,
-						}},
+						nodeFilterDispatchObjectType,
 						[]attr.Value{dispObj},
 					)
 				} else {
 					// No dispatch config
-					nfAttrs["dispatch"] = types.ListNull(
-						types.ObjectType{AttrTypes: map[string]attr.Type{
-							"thread_count":   types.Int64Type,
-							"keep_going":     types.BoolType,
-							"rank_attribute": types.StringType,
-							"rank_order":     types.StringType,
-						}},
-					)
+					nfAttrs["dispatch"] = types.ListNull(nodeFilterDispatchObjectType)
 				}
 
-				nfObj, nfDiags := types.ObjectValue(
-					map[string]attr.Type{
-						"filter":             types.StringType,
-						"exclude_filter":     types.StringType,
-						"exclude_precedence": types.BoolType,
-						"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-							"thread_count":   types.Int64Type,
-							"keep_going":     types.BoolType,
-							"rank_attribute": types.StringType,
-							"rank_order":     types.StringType,
-						}}},
-					},
-					nfAttrs,
-				)
+				nfObj, nfDiags := types.ObjectValue(nodeFilterObjectType.AttrTypes, nfAttrs)
 				diags.Append(nfDiags...)
 
 				jobAttrs["node_filters"] = types.ListValueMust(
-					types.ObjectType{AttrTypes: map[string]attr.Type{
-						"filter":             types.StringType,
-						"exclude_filter":     types.StringType,
-						"exclude_precedence": types.BoolType,
-						"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-							"thread_count":   types.Int64Type,
-							"keep_going":     types.BoolType,
-							"rank_attribute": types.StringType,
-							"rank_order":     types.StringType,
-						}}},
-					}},
+					nodeFilterObjectType,
 					[]attr.Value{nfObj},
 				)
 			} else {
 				// No node_filters
-				jobAttrs["node_filters"] = types.ListNull(
-					types.ObjectType{AttrTypes: map[string]attr.Type{
-						"filter":             types.StringType,
-						"exclude_filter":     types.StringType,
-						"exclude_precedence": types.BoolType,
-						"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-							"thread_count":   types.Int64Type,
-							"keep_going":     types.BoolType,
-							"rank_attribute": types.StringType,
-							"rank_order":     types.StringType,
-						}}},
-					}},
-				)
+				jobAttrs["node_filters"] = types.ListNull(nodeFilterObjectType)
 			}
 
 			jobObj, jobDiags := types.ObjectValue(
