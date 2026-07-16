@@ -337,7 +337,11 @@ func validateJobRefNodeStep(ctx context.Context, jobAttr attr.Value, p path.Path
 		return
 	}
 	var jobs []types.Object
-	diags.Append(jobList.ElementsAs(ctx, &jobs, false)...)
+	elemDiags := jobList.ElementsAs(ctx, &jobs, false)
+	diags.Append(elemDiags...)
+	if elemDiags.HasError() {
+		return
+	}
 	for _, job := range jobs {
 		a := job.Attributes()
 		rfn, rok := a["run_for_each_node"].(types.Bool)
