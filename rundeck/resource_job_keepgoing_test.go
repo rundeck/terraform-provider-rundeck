@@ -20,7 +20,6 @@ import (
 func testSingleShellCommandList(t *testing.T) types.List {
 	t.Helper()
 
-	emptyObjList := types.ListNull(types.ObjectType{})
 	cmd, diags := types.ObjectValue(commandObjectType.AttrTypes, map[string]attr.Value{
 		"description":                 types.StringValue("echo"),
 		"shell_command":               types.StringValue("echo hi"),
@@ -31,12 +30,12 @@ func testSingleShellCommandList(t *testing.T) types.List {
 		"expand_token_in_script_file": types.BoolNull(),
 		"file_extension":              types.StringNull(),
 		"keep_going_on_success":       types.BoolNull(),
-		"plugins":                     emptyObjList,
-		"script_interpreter":          emptyObjList,
-		"job":                         emptyObjList,
-		"step_plugin":                 emptyObjList,
-		"node_step_plugin":            emptyObjList,
-		"error_handler":               emptyObjList,
+		"plugins":                     types.ListNull(commandPluginsObjectType),
+		"script_interpreter":          types.ListNull(scriptInterpreterObjectType),
+		"job":                         types.ListNull(jobRefObjectType),
+		"step_plugin":                 types.ListNull(stepPluginObjectType),
+		"node_step_plugin":            types.ListNull(stepPluginObjectType),
+		"error_handler":               types.ListNull(errorHandlerObjectType),
 	})
 	if diags.HasError() {
 		t.Fatalf("building command object: %v", diags)
