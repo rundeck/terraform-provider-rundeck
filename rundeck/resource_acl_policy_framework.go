@@ -36,6 +36,7 @@ type aclPolicyResourceModel struct {
 	ID     types.String `tfsdk:"id"`
 	Name   types.String `tfsdk:"name"`
 	Policy types.String `tfsdk:"policy"`
+	Project types.String `tfsdk:"project"`
 }
 
 // Metadata returns the resource type name.
@@ -65,6 +66,13 @@ func (r *aclPolicyResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 			"policy": schema.StringAttribute{
 				Description: "YAML formatted ACL Policy string.",
 				Required:    true,
+			},
+			"project": schema.StringAttribute{
+				Description: "Project name for project-level ACL. If not specified, creates a system-level ACL.",
+				Optional:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 		},
 	}
@@ -102,12 +110,25 @@ func (r *aclPolicyResource) Create(ctx context.Context, req resource.CreateReque
 	client := r.clients.V1
 	name := plan.Name.ValueString()
 	policy := plan.Policy.ValueString()
+	project := plan.Project.ValueStringPointer()
 
 	request := &rundeck.SystemACLPolicyCreateRequest{
 		Contents: &policy,
 	}
 
-	response, err := client.SystemACLPolicyCreate(ctx, name, request)
+	var response *rundeck.SetObject
+	var err error
+	if project != nil {
+		// Project-level ACL
+		projectResponse, projectErr := client.ProjectACLPolicyCreate(ctx, *project, name, request)
+		response = &projectResponse
+		err = projectErr
+	} else {
+		// System-level ACL
+		systemResponse, systemErr := client.SystemACLPolicyCreate(ctx, name, request)
+		response = &systemResponse
+		err = systemErr
+	}
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating ACL policy",
@@ -144,8 +165,21 @@ func (r *aclPolicyResource) Read(ctx context.Context, req resource.ReadRequest, 
 	// Get ACL policy from Rundeck
 	client := r.clients.V1
 	name := state.ID.ValueString()
+	project := state.Project.ValueStringPointer()
 
-	response, err := client.SystemACLPolicyGet(ctx, name)
+	var response *rundeck.ACLPolicyResponse
+	var err error
+	if project != nil {
+		// Project-level ACL
+		projectResponse, projectErr := client.ProjectACLPolicyGet(ctx, *project, name)
+		response = &projectResponse
+		err = projectErr
+	} else {
+		// System-level ACL
+		systemResponse, systemErr := client.SystemACLPolicyGet(ctx, name)
+		response = &systemResponse
+		err = systemErr
+	}
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading ACL policy",
@@ -183,12 +217,20 @@ func (r *aclPolicyResource) Update(ctx context.Context, req resource.UpdateReque
 	client := r.clients.V1
 	name := plan.Name.ValueString()
 	policy := plan.Policy.ValueString()
+	project := plan.Project.ValueStringPointer()
 
 	request := &rundeck.SystemACLPolicyUpdateRequest{
 		Contents: &policy,
 	}
 
-	_, err := client.SystemACLPolicyUpdate(ctx, name, request)
+	var err error
+	if project != nil {
+		// Project-level ACL
+		_, err = client.ProjectACLPolicyUpdate(ctx, *project, name, request)
+	} else {
+		// System-level ACL
+		_, err = client.SystemACLPolicyUpdate(ctx, name, request)
+	}
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error updating ACL policy",
@@ -217,8 +259,16 @@ func (r *aclPolicyResource) Delete(ctx context.Context, req resource.DeleteReque
 	// Delete ACL policy
 	client := r.clients.V1
 	name := state.ID.ValueString()
+	project := state.Project.ValueStringPointer()
 
-	_, err := client.SystemACLPolicyDelete(ctx, name)
+	var err error
+	if project != nil {
+		// Project-level ACL
+		_, err = client.ProjectACLPolicyDelete(ctx, *project, name)
+	} else {
+		// System-level ACL
+		_, err = client.SystemACLPolicyDelete(ctx, name)
+	}
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting ACL policy",
