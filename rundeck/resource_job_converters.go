@@ -188,6 +188,9 @@ func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]inte
 								if ro, ok := dispAttrs["rank_order"].(types.String); ok && !ro.IsNull() {
 									dispMap["rankOrder"] = ro.ValueString()
 								}
+								if ni, ok := dispAttrs["node_intersect"].(types.Bool); ok && !ni.IsNull() {
+									dispMap["nodeIntersect"] = ni.ValueBool()
+								}
 
 								if len(dispMap) > 0 {
 									nfMap["dispatch"] = dispMap
@@ -391,6 +394,9 @@ func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]inte
 										}
 										if ro, ok := dispAttrs["rank_order"].(types.String); ok && !ro.IsNull() {
 											dispMap["rankOrder"] = ro.ValueString()
+										}
+										if ni, ok := dispAttrs["node_intersect"].(types.Bool); ok && !ni.IsNull() {
+											dispMap["nodeIntersect"] = ni.ValueBool()
 										}
 
 										if len(dispMap) > 0 {
@@ -1947,6 +1953,7 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 							"keep_going":     types.BoolNull(),
 							"rank_attribute": types.StringNull(),
 							"rank_order":     types.StringNull(),
+							"node_intersect": types.BoolNull(),
 						}
 
 						// threadcount can be int or float64 from JSON
@@ -1964,6 +1971,9 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 						}
 						if ro, ok := dispatch["rankOrder"].(string); ok && ro != "" {
 							dispAttrs["rank_order"] = types.StringValue(ro)
+						}
+						if ni, ok := dispatch["nodeIntersect"].(bool); ok {
+							dispAttrs["node_intersect"] = types.BoolValue(ni)
 						}
 
 						dispObj, dispDiags := types.ObjectValue(
@@ -2024,6 +2034,7 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 									"keep_going":     types.BoolType,
 									"rank_attribute": types.StringType,
 									"rank_order":     types.StringType,
+									"node_intersect": types.BoolType,
 								}}},
 							}}},
 						},
@@ -2053,6 +2064,7 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 										"keep_going":     types.BoolType,
 										"rank_attribute": types.StringType,
 										"rank_order":     types.StringType,
+										"node_intersect": types.BoolType,
 									}}},
 								}}},
 							}},
@@ -2233,6 +2245,7 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 						"keep_going":     types.BoolNull(),
 						"rank_attribute": types.StringNull(),
 						"rank_order":     types.StringNull(),
+						"node_intersect": types.BoolNull(),
 					}
 
 					// threadcount can be int or float64 from JSON
@@ -2250,6 +2263,9 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 					}
 					if ro, ok := dispatch["rankOrder"].(string); ok && ro != "" {
 						dispAttrs["rank_order"] = types.StringValue(ro)
+					}
+					if ni, ok := dispatch["nodeIntersect"].(bool); ok {
+						dispAttrs["node_intersect"] = types.BoolValue(ni)
 					}
 
 					dispObj, dispDiags := types.ObjectValue(
@@ -2301,6 +2317,7 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 							"keep_going":     types.BoolType,
 							"rank_attribute": types.StringType,
 							"rank_order":     types.StringType,
+							"node_intersect": types.BoolType,
 						}}},
 					}}},
 				},
@@ -2330,6 +2347,7 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 							"keep_going":     types.BoolType,
 							"rank_attribute": types.StringType,
 							"rank_order":     types.StringType,
+							"node_intersect": types.BoolType,
 						}}},
 					}}},
 				}},
@@ -2458,6 +2476,7 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 							"keep_going":     types.BoolType,
 							"rank_attribute": types.StringType,
 							"rank_order":     types.StringType,
+							"node_intersect": types.BoolType,
 						}}},
 					}}},
 				}},
@@ -2516,6 +2535,7 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 								"keep_going":     types.BoolType,
 								"rank_attribute": types.StringType,
 								"rank_order":     types.StringType,
+								"node_intersect": types.BoolType,
 							}}},
 						}}},
 					}}},
