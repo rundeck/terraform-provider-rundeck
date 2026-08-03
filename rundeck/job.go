@@ -56,34 +56,35 @@ import (
 // - Used with custom HTTP client that explicitly requests application/json
 // - Matches Rundeck API v46+ JSON response format
 type JobJSON struct {
-	ID                     string                   `json:"id"`
-	Name                   string                   `json:"name"`
-	Group                  string                   `json:"group,omitempty"`
-	Project                string                   `json:"project"`
-	Description            string                   `json:"description"`
-	ExecutionEnabled       bool                     `json:"executionEnabled"`
-	ScheduleEnabled        bool                     `json:"scheduleEnabled"`
-	LogLevel               string                   `json:"loglevel,omitempty"`
-	AllowConcurrentExec    bool                     `json:"multipleExecutions,omitempty"`
-	MaxMultipleExecutions  string                   `json:"maxMultipleExecutions,omitempty"`
-	NodeFilterEditable     bool                     `json:"nodeFilterEditable"`
-	NodesSelectedByDefault bool                     `json:"nodesSelectedByDefault"`
-	DefaultTab             string                   `json:"defaultTab,omitempty"`
-	Timeout                string                   `json:"timeout,omitempty"`
-	Retry                  map[string]string        `json:"retry,omitempty"`
-	Options                []map[string]interface{} `json:"options,omitempty"`
-	Sequence               map[string]interface{}   `json:"sequence,omitempty"`
-	Notification           map[string]interface{}   `json:"notification,omitempty"`
-	NodeFilters            map[string]interface{}   `json:"nodefilters,omitempty"` // Contains "filter" and "dispatch" nested objects
-	Dispatch               map[string]interface{}   `json:"dispatch,omitempty"`
-	Schedule               map[string]interface{}   `json:"schedule,omitempty"`
-	Schedules              []map[string]interface{} `json:"schedules,omitempty"`
-	Orchestrator           map[string]interface{}   `json:"orchestrator,omitempty"`
-	Plugins                map[string]interface{}   `json:"plugins,omitempty"`
-	RunnerSelector         map[string]interface{}   `json:"runnerSelector,omitempty"`
-	LogLimit               *string                  `json:"loglimit,omitempty"`
-	LogLimitAction         *string                  `json:"loglimitAction,omitempty"`
-	LogLimitStatus         *string                  `json:"loglimitStatus,omitempty"`
+	ID                         string                   `json:"id"`
+	Name                       string                   `json:"name"`
+	Group                      string                   `json:"group,omitempty"`
+	Project                    string                   `json:"project"`
+	Description                string                   `json:"description"`
+	ExecutionEnabled           bool                     `json:"executionEnabled"`
+	ScheduleEnabled            bool                     `json:"scheduleEnabled"`
+	LogLevel                   string                   `json:"loglevel,omitempty"`
+	AllowConcurrentExec        bool                     `json:"multipleExecutions,omitempty"`
+	MaxMultipleExecutions      string                   `json:"maxMultipleExecutions,omitempty"`
+	NodeFilterEditable         bool                     `json:"nodeFilterEditable"`
+	NodesSelectedByDefault     bool                     `json:"nodesSelectedByDefault"`
+	DefaultTab                 string                   `json:"defaultTab,omitempty"`
+	Timeout                    string                   `json:"timeout,omitempty"`
+	NotifyAvgDurationThreshold string                   `json:"notifyAvgDurationThreshold,omitempty"`
+	Retry                      map[string]string        `json:"retry,omitempty"`
+	Options                    []map[string]interface{} `json:"options,omitempty"`
+	Sequence                   map[string]interface{}   `json:"sequence,omitempty"`
+	Notification               map[string]interface{}   `json:"notification,omitempty"`
+	NodeFilters                map[string]interface{}   `json:"nodefilters,omitempty"` // Contains "filter" and "dispatch" nested objects
+	Dispatch                   map[string]interface{}   `json:"dispatch,omitempty"`
+	Schedule                   map[string]interface{}   `json:"schedule,omitempty"`
+	Schedules                  []map[string]interface{} `json:"schedules,omitempty"`
+	Orchestrator               map[string]interface{}   `json:"orchestrator,omitempty"`
+	Plugins                    map[string]interface{}   `json:"plugins,omitempty"`
+	RunnerSelector             map[string]interface{}   `json:"runnerSelector,omitempty"`
+	LogLimit                   *string                  `json:"loglimit,omitempty"`
+	LogLimitAction             *string                  `json:"loglimitAction,omitempty"`
+	LogLimitStatus             *string                  `json:"loglimitStatus,omitempty"`
 }
 
 // GetJobJSON returns the job details from the Rundeck API.

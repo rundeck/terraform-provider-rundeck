@@ -477,6 +477,9 @@ func convertOptionsToJSON(ctx context.Context, optionsList types.List) ([]interf
 		if v, ok := attrs["multi_value_delimiter"].(types.String); ok && !v.IsNull() {
 			optMap["delimiter"] = v.ValueString()
 		}
+		if v, ok := attrs["values_list_delimiter"].(types.String); ok && !v.IsNull() {
+			optMap["valuesListDelimiter"] = v.ValueString()
+		}
 		if v, ok := attrs["storage_path"].(types.String); ok && !v.IsNull() {
 			optMap["storagePath"] = v.ValueString()
 		}
@@ -1561,6 +1564,11 @@ func convertOptionsFromJSON(ctx context.Context, optionsArray []interface{}) (ty
 			optAttrs["multi_value_delimiter"] = types.StringValue(delimiter)
 		}
 
+		optAttrs["values_list_delimiter"] = types.StringNull()
+		if valuesListDelimiter, ok := optMap["valuesListDelimiter"].(string); ok {
+			optAttrs["values_list_delimiter"] = types.StringValue(valuesListDelimiter)
+		}
+
 		// API field is "secure" not "obscureInput"
 		if secure, ok := optMap["secure"].(bool); ok {
 			optAttrs["obscure_input"] = types.BoolValue(secure)
@@ -1658,6 +1666,7 @@ func convertOptionsFromJSON(ctx context.Context, optionsArray []interface{}) (ty
 				"required":                  types.BoolType,
 				"allow_multiple_values":     types.BoolType,
 				"multi_value_delimiter":     types.StringType,
+				"values_list_delimiter":     types.StringType,
 				"require_predefined_choice": types.BoolType,
 				"validation_regex":          types.StringType,
 				"obscure_input":             types.BoolType,
@@ -1691,6 +1700,7 @@ func convertOptionsFromJSON(ctx context.Context, optionsArray []interface{}) (ty
 				"required":                  types.BoolType,
 				"allow_multiple_values":     types.BoolType,
 				"multi_value_delimiter":     types.StringType,
+				"values_list_delimiter":     types.StringType,
 				"require_predefined_choice": types.BoolType,
 				"validation_regex":          types.StringType,
 				"obscure_input":             types.BoolType,

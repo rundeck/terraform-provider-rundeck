@@ -59,6 +59,7 @@ type jobResourceModel struct {
 	RunnerSelectorFilterMode    types.String `tfsdk:"runner_selector_filter_mode"`
 	RunnerSelectorFilterType    types.String `tfsdk:"runner_selector_filter_type"`
 	Timeout                     types.String `tfsdk:"timeout"`
+	NotifyAvgDurationThreshold  types.String `tfsdk:"notify_avg_duration_threshold"`
 	Schedule                    types.String `tfsdk:"schedule"`
 	ScheduleEnabled             types.Bool   `tfsdk:"schedule_enabled"`
 	NodesSelectedByDefault      types.Bool   `tfsdk:"nodes_selected_by_default"`
@@ -77,35 +78,36 @@ type jobResourceModel struct {
 
 // jobJSON represents the Rundeck Job JSON format (v44+)
 type jobJSON struct {
-	ID                     string             `json:"id,omitempty"`
-	Name                   string             `json:"name"`
-	Group                  string             `json:"group,omitempty"`
-	Project                string             `json:"project"`
-	Description            string             `json:"description"`
-	ExecutionEnabled       bool               `json:"executionEnabled"`
-	DefaultTab             string             `json:"defaultTab,omitempty"`
-	LogLevel               string             `json:"loglevel,omitempty"`
-	Loglimit               *string            `json:"loglimit,omitempty"`
-	LogLimitAction         *string            `json:"loglimitAction,omitempty"`
-	LogLimitStatus         *string            `json:"loglimitStatus,omitempty"`
-	MultipleExecutions     bool               `json:"multipleExecutions,omitempty"`
-	MaxMultipleExecutions  string             `json:"maxMultipleExecutions,omitempty"`
-	Sequence               *jobSequence       `json:"sequence,omitempty"`
-	Notification           interface{}        `json:"notification,omitempty"`
-	Timeout                string             `json:"timeout,omitempty"`
-	Retry                  *jobRetry          `json:"retry,omitempty"`
-	NodeFilterEditable     bool               `json:"nodeFilterEditable"`
-	NodeFilters            *jobNodeFilters    `json:"nodefilters,omitempty"`
-	Options                []interface{}      `json:"options,omitempty"`
-	Plugins                interface{}        `json:"plugins,omitempty"`
-	NodesSelectedByDefault bool               `json:"nodesSelectedByDefault"`
-	Schedule               interface{}        `json:"schedule,omitempty"`
-	Schedules              []interface{}      `json:"schedules,omitempty"`
-	ScheduleEnabled        bool               `json:"scheduleEnabled"`
-	TimeZone               string             `json:"timeZone,omitempty"`
-	Orchestrator           interface{}        `json:"orchestrator,omitempty"`
-	PluginConfig           interface{}        `json:"pluginConfig,omitempty"`
-	RunnerSelector         *jobRunnerSelector `json:"runnerSelector,omitempty"`
+	ID                         string             `json:"id,omitempty"`
+	Name                       string             `json:"name"`
+	Group                      string             `json:"group,omitempty"`
+	Project                    string             `json:"project"`
+	Description                string             `json:"description"`
+	ExecutionEnabled           bool               `json:"executionEnabled"`
+	DefaultTab                 string             `json:"defaultTab,omitempty"`
+	LogLevel                   string             `json:"loglevel,omitempty"`
+	Loglimit                   *string            `json:"loglimit,omitempty"`
+	LogLimitAction             *string            `json:"loglimitAction,omitempty"`
+	LogLimitStatus             *string            `json:"loglimitStatus,omitempty"`
+	MultipleExecutions         bool               `json:"multipleExecutions,omitempty"`
+	MaxMultipleExecutions      string             `json:"maxMultipleExecutions,omitempty"`
+	Sequence                   *jobSequence       `json:"sequence,omitempty"`
+	Notification               interface{}        `json:"notification,omitempty"`
+	Timeout                    string             `json:"timeout,omitempty"`
+	NotifyAvgDurationThreshold string             `json:"notifyAvgDurationThreshold,omitempty"`
+	Retry                      *jobRetry          `json:"retry,omitempty"`
+	NodeFilterEditable         bool               `json:"nodeFilterEditable"`
+	NodeFilters                *jobNodeFilters    `json:"nodefilters,omitempty"`
+	Options                    []interface{}      `json:"options,omitempty"`
+	Plugins                    interface{}        `json:"plugins,omitempty"`
+	NodesSelectedByDefault     bool               `json:"nodesSelectedByDefault"`
+	Schedule                   interface{}        `json:"schedule,omitempty"`
+	Schedules                  []interface{}      `json:"schedules,omitempty"`
+	ScheduleEnabled            bool               `json:"scheduleEnabled"`
+	TimeZone                   string             `json:"timeZone,omitempty"`
+	Orchestrator               interface{}        `json:"orchestrator,omitempty"`
+	PluginConfig               interface{}        `json:"pluginConfig,omitempty"`
+	RunnerSelector             *jobRunnerSelector `json:"runnerSelector,omitempty"`
 }
 
 type jobDispatch struct {
@@ -280,6 +282,10 @@ func (r *jobResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 			},
 			"timeout": schema.StringAttribute{
 				Optional: true,
+			},
+			"notify_avg_duration_threshold": schema.StringAttribute{
+				Optional:    true,
+				Description: "How long an execution may run before the on_avg_duration notification fires. Accepts a duration (\"2h\", \"30m\"), a percentage of the job's average duration (\"150%\"), or an increment over it (\"+5m\"). Without it Rundeck treats the threshold as zero and the notification never fires.",
 			},
 			"schedule": schema.StringAttribute{
 				Optional: true,
@@ -1026,6 +1032,9 @@ func (r *jobResource) planToJobJSON(ctx context.Context, plan *jobResourceModel)
 		job.MaxMultipleExecutions = fmt.Sprintf("%d", plan.MaxConcurrentExecutions.ValueInt64())
 	}
 
+	if !plan.NotifyAvgDurationThreshold.IsNull() && !plan.NotifyAvgDurationThreshold.IsUnknown() {
+		job.NotifyAvgDurationThreshold = plan.NotifyAvgDurationThreshold.ValueString()
+	}
 	if !plan.Timeout.IsNull() && !plan.Timeout.IsUnknown() {
 		job.Timeout = plan.Timeout.ValueString()
 	}
@@ -1250,6 +1259,9 @@ func (r *jobResource) jobJSONToState(ctx context.Context, job *jobJSON, state *j
 	if job.Timeout != "" {
 		state.Timeout = types.StringValue(job.Timeout)
 	}
+	if job.NotifyAvgDurationThreshold != "" {
+		state.NotifyAvgDurationThreshold = types.StringValue(job.NotifyAvgDurationThreshold)
+	}
 	if job.TimeZone != "" {
 		state.TimeZone = types.StringValue(job.TimeZone)
 	}
@@ -1413,6 +1425,9 @@ func (r *jobResource) jobJSONAPIToState(ctx context.Context, job *JobJSON, state
 
 	if job.Timeout != "" {
 		state.Timeout = types.StringValue(job.Timeout)
+	}
+	if job.NotifyAvgDurationThreshold != "" {
+		state.NotifyAvgDurationThreshold = types.StringValue(job.NotifyAvgDurationThreshold)
 	}
 
 	// Handle retry

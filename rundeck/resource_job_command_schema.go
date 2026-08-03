@@ -436,6 +436,15 @@ func jobOptionNestedBlock() schema.ListNestedBlock {
 					Optional:    true,
 					ElementType: types.StringType,
 				},
+				// Computed as well as Optional: Rundeck always returns this field
+				// once an option has values, defaulting it to a comma. Leaving it
+				// Optional-only would make an unset delimiter read back as ","
+				// and fail the apply with an inconsistent result.
+				"values_list_delimiter": schema.StringAttribute{
+					Optional:    true,
+					Computed:    true,
+					Description: "Separator used to join the value_choices into the option's values list (Rundeck defaults to a comma). Set it when a choice itself contains the default separator. Distinct from multi_value_delimiter, which separates the values a user selects.",
+				},
 				"value_choices_url": schema.StringAttribute{
 					Optional: true,
 				},
