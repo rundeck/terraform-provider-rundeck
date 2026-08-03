@@ -4,11 +4,18 @@
 
 ### Job Resource
 
+- **Fixed updates being resolved by name instead of UUID, which silently created duplicate jobs** - On update the provider sent the job's UUID under `id`, but Rundeck writes a job's UUID out under both `uuid` and `id` (`ScheduledExecution.toMap`) while only reading it back from `uuid` (`fromMap`). The identifier therefore never reached the import, and Rundeck fell back to resolving the job by name + group + project — a fallback that only matches when *exactly one* job carries that name (`1 == schedlist.size()` in `loadImportedJobs`).
+
+  Two consequences, both silent. **Renaming a job created a second one**: the new name matched nothing, so Rundeck created a job and left the original orphaned and invisible to Terraform. And **two jobs sharing a name could never be updated**: every apply added another duplicate, which guaranteed the name would never resolve again. The fallback could also update the *wrong* job when an unrelated one happened to share the name.
+
+  The update payload now carries `uuid`, so Rundeck takes its UUID-first resolution path and the job is targeted unambiguously. **Behaviour change:** renaming a job now renames it in place instead of creating a new one. Duplicates left behind by the previous behaviour are not cleaned up automatically — they are invisible to Terraform and have to be removed from Rundeck by hand.
+
 - **Fixed a plugin-based `error_handler` being silently discarded** - The schema accepts `step_plugin` and `node_step_plugin` under `error_handler`, and `errorHandlerObjectType` declares both, but neither conversion handled them: the write side emitted only `description`, the script/command fields and `jobref`, and the read side never looked for `type`/`configuration`. A handler such as `flow-control` therefore serialized to an object carrying no action at all. Rundeck accepted the job and dropped the handler, so the read-back returned no block and the apply failed with `error_handler: block count changed from 1 to 0`.
 
   The plan being perfectly valid, this only ever surfaced at apply time — and the job was left in Rundeck without its handler, so a workflow meant to stop on a condition simply ran on. Both directions now carry `type`, `configuration` and `nodeStep`, the latter distinguishing a workflow step from a node step (Rundeck answers it as a bool or as the string `"true"`, both accepted).
 
   Note that Rundeck itself refuses a workflow-step handler on a node-oriented workflow (*"Error Handlers for Node Steps must also be Node Steps"*), so a job guarded this way needs `strategy = "sequential"`.
+
 
 ## 1.3.1
 
