@@ -77,7 +77,12 @@ type jobResourceModel struct {
 
 // jobJSON represents the Rundeck Job JSON format (v44+)
 type jobJSON struct {
-	ID                     string             `json:"id,omitempty"`
+	ID string `json:"id,omitempty"`
+	// UUID is what identifies an existing job on import. Rundeck writes the
+	// job's UUID out under both "uuid" and "id" (ScheduledExecution.toMap) but
+	// only reads it back from "uuid" (fromMap), so "id" alone never reaches the
+	// import and the job has to be resolved by name instead.
+	UUID                   string             `json:"uuid,omitempty"`
 	Name                   string             `json:"name"`
 	Group                  string             `json:"group,omitempty"`
 	Project                string             `json:"project"`
@@ -788,8 +793,13 @@ func (r *jobResource) Update(ctx context.Context, req resource.UpdateRequest, re
 		return
 	}
 
-	// Preserve the job ID for update
+	// Target the existing job by its UUID. Rundeck resolves the job to update
+	// from "uuid" first and only falls back to name + group + project, and that
+	// fallback needs the name to match exactly one job — so without the UUID a
+	// rename creates a second job and leaves the original orphaned, and two
+	// jobs sharing a name can never be updated at all.
 	jobData.ID = plan.ID.ValueString()
+	jobData.UUID = plan.ID.ValueString()
 
 	// Marshal to JSON
 	jobJSON, err := json.Marshal([]interface{}{jobData})
