@@ -1,3 +1,11 @@
+## Unreleased
+
+**Enhancements**
+
+### Job Resource
+
+- **Added `node_intersect` to a job reference's `node_filters` `dispatch` block** - Rundeck's "Match Node Filter Intersection" setting (`jobref.nodefilters.dispatch.nodeIntersect`) had no equivalent in the provider, so a referenced job configured this way always ran on its own node set instead of the intersection with the calling job's. The setting is now settable and round-trips on read. Note that Rundeck honors `nodeIntersect` even when the reference sets no `filter` — it is the only `dispatch` field read independently of one — so a `dispatch` block carrying nothing but `node_intersect` is a valid configuration.
+
 ## 1.3.1
 
 **Bug Fixes**
