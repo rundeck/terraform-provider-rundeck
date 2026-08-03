@@ -4,11 +4,13 @@
 
 ### Job Resource
 
-- **Fixed updates being resolved by name instead of UUID, which silently created duplicate jobs** - On update the provider sent the job's UUID under `id`, but Rundeck writes a job's UUID out under both `uuid` and `id` (`ScheduledExecution.toMap`) while only reading it back from `uuid` (`fromMap`). The identifier therefore never reached the import, and Rundeck fell back to resolving the job by name + group + project — a fallback that only matches when *exactly one* job carries that name (`1 == schedlist.size()` in `loadImportedJobs`).
+- **Fixed updates being resolved by name instead of UUID, which created duplicate jobs** - On update the provider sent the job's UUID under `id`, but Rundeck writes a job's UUID out under both `uuid` and `id` (`ScheduledExecution.toMap`) while only reading it back from `uuid` (`fromMap`). The identifier therefore never reached the import, and Rundeck fell back to resolving the job by name + group + project — a fallback that only matches when *exactly one* job carries that name (`1 == schedlist.size()` in `loadImportedJobs`).
 
-  Two consequences, both silent. **Renaming a job created a second one**: the new name matched nothing, so Rundeck created a job and left the original orphaned and invisible to Terraform. And **two jobs sharing a name could never be updated**: every apply added another duplicate, which guaranteed the name would never resolve again. The fallback could also update the *wrong* job when an unrelated one happened to share the name.
+  Two consequences. **Renaming a job created a second one** — `name` is not `RequiresReplace`, so a rename goes through Update, the new name matched nothing, and Rundeck created a job while the original stayed behind under its old name. And **two jobs sharing a name could never be updated**: every apply added another duplicate, which guaranteed the name would never resolve again. The fallback could also update the *wrong* job when an unrelated one happened to share the name.
 
-  The update payload now carries `uuid`, so Rundeck takes its UUID-first resolution path and the job is targeted unambiguously. **Behaviour change:** renaming a job now renames it in place instead of creating a new one. Duplicates left behind by the previous behaviour are not cleaned up automatically — they are invisible to Terraform and have to be removed from Rundeck by hand.
+  In both cases the apply then fails with `Provider produced inconsistent result after apply`, since the id returned is the job that was just created rather than the one in state. The error is visible; what is silent is the damage left in Rundeck — the duplicate stays, and the original is no longer referenced by Terraform.
+
+  The update payload now carries `uuid`, so Rundeck takes its UUID-first resolution path and the job is targeted unambiguously. **Behaviour change:** renaming a job now renames it in place and succeeds, where it previously failed after creating a duplicate. Duplicates left behind by the previous behaviour are not cleaned up automatically — Terraform no longer references them, so they have to be removed from Rundeck by hand. `group_name` and `project_name` are unaffected: both carry `RequiresReplace`, so changing either already destroys and recreates the job.
 
 ## 1.3.1
 
