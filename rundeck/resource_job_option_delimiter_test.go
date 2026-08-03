@@ -116,6 +116,28 @@ func TestConvertOptionsToJSON_valuesListDelimiterOmittedWhenUnset(t *testing.T) 
 	}
 }
 
+// values_list_delimiter is Optional+Computed, so an option that does not
+// configure it arrives unknown rather than null at plan time. Serializing that
+// would send an empty delimiter and overwrite the one Rundeck maintains.
+func TestConvertOptionsToJSON_valuesListDelimiterOmittedWhenUnknown(t *testing.T) {
+	opt, diags := types.ObjectValue(testOptionObjectType.AttrTypes,
+		testOptionAttrs(types.StringUnknown()))
+	if diags.HasError() {
+		t.Fatalf("building option object: %v", diags)
+	}
+
+	result, diags := convertOptionsToJSON(context.Background(),
+		types.ListValueMust(testOptionObjectType, []attr.Value{opt}))
+	if diags.HasError() {
+		t.Fatalf("convertOptionsToJSON: %v", diags)
+	}
+
+	optMap := result[0].(map[string]interface{})
+	if v, exists := optMap["valuesListDelimiter"]; exists {
+		t.Errorf("valuesListDelimiter = %q, want it omitted when unknown", v)
+	}
+}
+
 func TestConvertOptionsFromJSON_valuesListDelimiter(t *testing.T) {
 	options := []interface{}{
 		map[string]interface{}{
