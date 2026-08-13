@@ -411,6 +411,57 @@ func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]inte
 					}
 				}
 
+				// Handle step_plugin / node_step_plugin on the error handler.
+				//
+				// Same shape as on a command: "type" and "configuration" live at the
+				// handler level, and "nodeStep" tells Rundeck whether the step runs
+				// once for the workflow or once per node.
+				//
+				// Without this, a plugin-based handler serialized to an object holding
+				// no action at all. Rundeck accepted the job and silently dropped the
+				// handler, so the read-back returned no error_handler block and the
+				// apply failed with "block count changed from 1 to 0". The plan being
+				// valid, the problem only ever surfaced at apply time.
+				if v, ok := handlerAttrs["step_plugin"].(types.List); ok && !v.IsNull() && !v.IsUnknown() {
+					var plugins []types.Object
+					diags.Append(v.ElementsAs(ctx, &plugins, false)...)
+					if len(plugins) > 0 {
+						pluginAttrs := plugins[0].Attributes()
+
+						if ptype, ok := pluginAttrs["type"].(types.String); ok && !ptype.IsNull() {
+							handlerMap["type"] = ptype.ValueString()
+						}
+						if config, ok := pluginAttrs["config"].(types.Map); ok && !config.IsNull() {
+							var configMap map[string]string
+							diags.Append(config.ElementsAs(ctx, &configMap, false)...)
+							handlerMap["configuration"] = configMap
+						}
+
+						// Workflow steps run once, not per node.
+						handlerMap["nodeStep"] = false
+					}
+				}
+
+				if v, ok := handlerAttrs["node_step_plugin"].(types.List); ok && !v.IsNull() && !v.IsUnknown() {
+					var plugins []types.Object
+					diags.Append(v.ElementsAs(ctx, &plugins, false)...)
+					if len(plugins) > 0 {
+						pluginAttrs := plugins[0].Attributes()
+
+						if ptype, ok := pluginAttrs["type"].(types.String); ok && !ptype.IsNull() {
+							handlerMap["type"] = ptype.ValueString()
+						}
+						if config, ok := pluginAttrs["config"].(types.Map); ok && !config.IsNull() {
+							var configMap map[string]string
+							diags.Append(config.ElementsAs(ctx, &configMap, false)...)
+							handlerMap["configuration"] = configMap
+						}
+
+						// Node steps run on each node.
+						handlerMap["nodeStep"] = true
+					}
+				}
+
 				cmdMap["errorhandler"] = handlerMap
 			}
 		}
@@ -1863,6 +1914,47 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 				keepGoingOnSuccess = v
 			}
 			handlerAttrs["keep_going_on_success"] = types.BoolValue(keepGoingOnSuccess)
+
+			// A plugin-based handler carries "type" and "configuration" just like a
+			// plugin command, "nodeStep" telling a workflow step from a node step.
+			// Reading it back is what closes the round-trip: the write side may now
+			// send it, but without this the state would still come back empty.
+			if htype, ok := handler["type"].(string); ok && htype != "" {
+				pluginAttrs := map[string]attr.Value{
+					"type":   types.StringValue(htype),
+					"config": types.MapNull(types.StringType),
+				}
+				if configuration, ok := handler["configuration"].(map[string]interface{}); ok && len(configuration) > 0 {
+					configMap := make(map[string]attr.Value)
+					for k, v := range configuration {
+						if strVal, ok := v.(string); ok {
+							configMap[k] = types.StringValue(strVal)
+						}
+					}
+					if len(configMap) > 0 {
+						pluginAttrs["config"] = types.MapValueMust(types.StringType, configMap)
+					}
+				}
+
+				pluginObj, pluginDiags := types.ObjectValue(stepPluginObjectType.AttrTypes, pluginAttrs)
+				diags.Append(pluginDiags...)
+
+				// Rundeck returns nodeStep as a bool or as the string "true"/"false"
+				// depending on how the job was created; accept both.
+				isNodeStep := false
+				switch ns := handler["nodeStep"].(type) {
+				case bool:
+					isNodeStep = ns
+				case string:
+					isNodeStep = ns == "true"
+				}
+
+				if isNodeStep {
+					handlerAttrs["node_step_plugin"] = types.ListValueMust(stepPluginObjectType, []attr.Value{pluginObj})
+				} else {
+					handlerAttrs["step_plugin"] = types.ListValueMust(stepPluginObjectType, []attr.Value{pluginObj})
+				}
+			}
 
 			// Handle job reference in error_handler
 			if jobref, ok := handler["jobref"].(map[string]interface{}); ok {

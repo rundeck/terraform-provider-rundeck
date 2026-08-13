@@ -1,3 +1,15 @@
+## Unreleased
+
+**Bug Fixes**
+
+### Job Resource
+
+- **Fixed a plugin-based `error_handler` being silently discarded** - The schema accepts `step_plugin` and `node_step_plugin` under `error_handler`, and `errorHandlerObjectType` declares both, but neither conversion handled them: the write side emitted only `description`, the script/command fields and `jobref`, and the read side never looked for `type`/`configuration`. A handler such as `flow-control` therefore serialized to an object carrying no action at all. Rundeck accepted the job and dropped the handler, so the read-back returned no block and the apply failed with `error_handler: block count changed from 1 to 0`.
+
+  The plan being perfectly valid, this only ever surfaced at apply time — and the job was left in Rundeck without its handler, so a workflow meant to stop on a condition simply ran on. Both directions now carry `type`, `configuration` and `nodeStep`, the latter distinguishing a workflow step from a node step (Rundeck answers it as a bool or as the string `"true"`, both accepted).
+
+  Note that Rundeck itself refuses a workflow-step handler on a node-oriented workflow (*"Error Handlers for Node Steps must also be Node Steps"*), so a job guarded this way needs `strategy = "sequential"`.
+
 ## 1.3.1
 
 **Bug Fixes**
