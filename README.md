@@ -112,6 +112,25 @@ $ make testacc
 
 Without `RUNDECK_PROJECT_SCHEDULES_CONFIGURED=1`, the project schedule tests will be skipped even when `RUNDECK_ENTERPRISE_TESTS=1` is set.
 
+**SCM Integration Tests (Additional Setup Required):**
+
+`TestAccRundeckScmExport_basic` exercises `rundeck_scm_export` against a real git remote. Unlike the Enterprise tests above, this isn't Enterprise-gated (git/svn SCM plugins ship with core Rundeck, API v15+) - what it needs instead is a git server your Rundeck *server* can reach over the network (not just wherever you run `go test`), plus write credentials. Any git host works - a self-hosted Gitea/GitLab/Gitea-alike instance, GitHub, or a plain bare repo served over SSH.
+
+To run it:
+
+1. Create an empty repository on a git host reachable from your Rundeck server.
+2. Generate an SSH keypair dedicated to this test (e.g. `ssh-keygen -t ed25519 -f /tmp/rundeck-scm-test-key -N ""`).
+3. Add the public key to that repository as a deploy key (or an account key) with write/push access.
+4. Set both environment variables, then run the test:
+
+```sh
+$ export RUNDECK_SCM_TEST_GIT_URL="git@your-git-host:your-org/your-repo.git"
+$ export RUNDECK_SCM_TEST_SSH_KEY_PATH="/tmp/rundeck-scm-test-key"
+$ go test ./rundeck/... -run TestAccRundeckScmExport_basic -v
+```
+
+The private key's contents are never passed through Go code or Terraform variables - `RUNDECK_SCM_TEST_SSH_KEY_PATH` only supplies a local file path, and the generated test config reads it directly via Terraform's `file()` function at apply time, uploading it into Rundeck's key storage via `rundeck_private_key`.
+
 **In CI/CD pipelines:**
 
 By default, Enterprise tests are skipped unless `RUNDECK_ENTERPRISE_TESTS=1` is set. To enable them in GitHub Actions or other CI:
