@@ -358,6 +358,112 @@ resource "rundeck_system_runner" "test" {
 }
 `
 
+func TestAccRundeckSystemRunner_detachProject(t *testing.T) {
+	if os.Getenv("RUNDECK_ENTERPRISE_TESTS") != "1" {
+		t.Skip("ENTERPRISE ONLY: System runners (requires Rundeck 5.17.0+, API v56+) - set RUNDECK_ENTERPRISE_TESTS=1")
+	}
+
+	var runner openapi.RunnerInfo
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
+		CheckDestroy:             testAccSystemRunnerCheckDestroy(&runner),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccRundeckSystemRunnerConfig_withAssignedProjectsConfig,
+				Check: resource.ComposeTestCheckFunc(
+					testAccSystemRunnerCheckExists("rundeck_system_runner.test", &runner),
+					resource.TestCheckResourceAttr("rundeck_system_runner.test", "assigned_projects_config.test-project.access_level", "admin"),
+				),
+			},
+			{
+				// Remove the project from assigned_projects_config entirely and confirm
+				// the runner is actually detached server-side (RemoveProjectAssociation),
+				// not just dropped from Terraform state.
+				Config: testAccRundeckSystemRunnerConfig_detachedProject,
+				Check: resource.ComposeTestCheckFunc(
+					testAccSystemRunnerCheckExists("rundeck_system_runner.test", &runner),
+					resource.TestCheckNoResourceAttr("rundeck_system_runner.test", "assigned_projects_config.test-project.access_level"),
+					testAccSystemRunnerCheckProjectDetached("test-project"),
+				),
+			},
+		},
+	})
+}
+
+// testAccSystemRunnerCheckProjectDetached verifies the given project no longer
+// appears in any of the runner's per-project dispatch-setting maps server-side.
+func testAccSystemRunnerCheckProjectDetached(project string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources["rundeck_system_runner.test"]
+		if !ok {
+			return fmt.Errorf("resource not found: rundeck_system_runner.test")
+		}
+
+		clients, err := getTestClients()
+		if err != nil {
+			return fmt.Errorf("failed to create test client: %s", err)
+		}
+
+		runnerInfo, _, err := clients.V2.RunnerAPI.RunnerInfo(clients.ctx, rs.Primary.ID).Execute()
+		if err != nil {
+			return fmt.Errorf("failed to get runner info: %s", err)
+		}
+
+		if runnerInfo.ProjectAssociations == nil {
+			return nil
+		}
+
+		assoc := runnerInfo.ProjectAssociations
+		if assoc.ProjectNodeFilters != nil {
+			if _, ok := (*assoc.ProjectNodeFilters)[project]; ok {
+				return fmt.Errorf("project %s still present in ProjectNodeFilters after detach", project)
+			}
+		}
+		if assoc.ProjectRunnerAsNodeEnabled != nil {
+			if _, ok := (*assoc.ProjectRunnerAsNodeEnabled)[project]; ok {
+				return fmt.Errorf("project %s still present in ProjectRunnerAsNodeEnabled after detach", project)
+			}
+		}
+		if assoc.ProjectRemoteNodeDispatch != nil {
+			if _, ok := (*assoc.ProjectRemoteNodeDispatch)[project]; ok {
+				return fmt.Errorf("project %s still present in ProjectRemoteNodeDispatch after detach", project)
+			}
+		}
+		if assoc.ProjectRunnerNodeFilter != nil {
+			if _, ok := (*assoc.ProjectRunnerNodeFilter)[project]; ok {
+				return fmt.Errorf("project %s still present in ProjectRunnerNodeFilter after detach", project)
+			}
+		}
+
+		return nil
+	}
+}
+
+const testAccRundeckSystemRunnerConfig_detachedProject = `
+resource "rundeck_project" "test" {
+  name        = "test-project"
+  description = "Terraform acceptance test project for system runner"
+
+  resource_model_source {
+    type = "local"
+    config = {
+    }
+  }
+}
+
+resource "rundeck_system_runner" "test" {
+  name             = "test-runner-with-config"
+  description      = "Test runner with project config"
+  tag_names        = "terraform,test"
+  installation_type = "kubernetes"
+  replica_type     = "ephemeral"
+
+  assigned_projects_config = {}
+}
+`
+
 const testAccRundeckSystemRunnerConfig_precedence = `
 resource "rundeck_project" "test" {
   name        = "test-project"

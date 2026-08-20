@@ -270,11 +270,16 @@ func (r *systemRunnerResource) Create(ctx context.Context, req resource.CreateRe
 	runnerRequest.SetReplicaType(strings.ToLower(replicaType))
 
 	// Create the system runner
-	response, _, err := client.RunnerAPI.CreateRunner(apiCtx).CreateProjectRunnerRequest(*runnerRequest).Execute()
+	response, httpResp, err := client.RunnerAPI.CreateRunner(apiCtx).CreateProjectRunnerRequest(*runnerRequest).Execute()
 	if err != nil {
+		errorMsg := err.Error()
+		if httpResp != nil {
+			bodyBytes, _ := io.ReadAll(httpResp.Body)
+			errorMsg = fmt.Sprintf("%s - Response: %s", err.Error(), string(bodyBytes))
+		}
 		resp.Diagnostics.AddError(
 			"Error creating system runner",
-			fmt.Sprintf("Could not create system runner: %s", err.Error()),
+			fmt.Sprintf("Could not create system runner: %s", errorMsg),
 		)
 		return
 	}
@@ -570,6 +575,46 @@ func (r *systemRunnerResource) Update(ctx context.Context, req resource.UpdateRe
 	assignedProjectsConfigKnown := !plan.AssignedProjectsConfig.IsNull() && !plan.AssignedProjectsConfig.IsUnknown()
 	if assignedProjectsKnown || assignedProjectsConfigKnown {
 		saveRequest.SetAssignedProjects(mergedProjects)
+
+		// SaveRunner's AssignedProjects is a single map[string]string, and there is no
+		// confirmed guarantee it also clears the other three per-project dispatch-setting
+		// maps (RunnerProjectAssociations) server-side for a project that's being dropped.
+		// Explicitly detach any project that was previously assigned but is no longer in
+		// the merged set, via RemoveProjectAssociation, before saving the smaller map.
+		priorProjects := make(map[string]struct{})
+		if !state.AssignedProjects.IsNull() && !state.AssignedProjects.IsUnknown() {
+			prior := make(map[string]types.String)
+			resp.Diagnostics.Append(state.AssignedProjects.ElementsAs(ctx, &prior, false)...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+			for k := range prior {
+				priorProjects[k] = struct{}{}
+			}
+		}
+		if !state.AssignedProjectsConfig.IsNull() && !state.AssignedProjectsConfig.IsUnknown() {
+			priorConfigs := make(map[string]projectRunnerConfig)
+			resp.Diagnostics.Append(state.AssignedProjectsConfig.ElementsAs(ctx, &priorConfigs, false)...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+			for k := range priorConfigs {
+				priorProjects[k] = struct{}{}
+			}
+		}
+
+		for projectName := range priorProjects {
+			if _, stillAssigned := mergedProjects[projectName]; stillAssigned {
+				continue
+			}
+			_, _, err := client.RunnerAPI.RemoveProjectAssociation(apiCtx, projectName, runnerId).Execute()
+			if err != nil {
+				resp.Diagnostics.AddWarning(
+					"Warning detaching project",
+					fmt.Sprintf("Failed to cleanly detach runner %s from project %s: %s", runnerId, projectName, err.Error()),
+				)
+			}
+		}
 	}
 
 	// Execute the save request
