@@ -112,6 +112,24 @@ $ make testacc
 
 Without `RUNDECK_PROJECT_SCHEDULES_CONFIGURED=1`, the project schedule tests will be skipped even when `RUNDECK_ENTERPRISE_TESTS=1` is set.
 
+**Local Role Membership Tests (Additional Setup Required):**
+
+`TestAccRundeckLocalRole_members` exercises `rundeck_local_role`'s member add/remove workflow, which requires a real, pre-existing local username on the target instance - Terraform can't provision one itself, since this provider doesn't implement `rundeck_local_user` (the vendored SDK has no request-body support at all for the create/edit user endpoints, a gap in Rundeck's own published OpenAPI spec).
+
+To run it:
+
+1. Ensure your Rundeck Enterprise instance authenticates via the **local user store** realm (not LDAP/SSO/PAM) - `rundeck_local_role` only works against that realm.
+2. Create (or identify) a local user account on that instance.
+3. Set both environment variables:
+
+```sh
+$ export RUNDECK_ENTERPRISE_TESTS=1
+$ export RUNDECK_LOCAL_ROLE_TEST_USERNAME="an-existing-local-username"
+$ make testacc
+```
+
+Without `RUNDECK_LOCAL_ROLE_TEST_USERNAME`, this specific test is skipped even when `RUNDECK_ENTERPRISE_TESTS=1` is set; `TestAccRundeckLocalRole_basic`/`_update` (role CRUD without membership) run under `RUNDECK_ENTERPRISE_TESTS=1` alone.
+
 **In CI/CD pipelines:**
 
 By default, Enterprise tests are skipped unless `RUNDECK_ENTERPRISE_TESTS=1` is set. To enable them in GitHub Actions or other CI:
