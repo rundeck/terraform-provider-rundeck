@@ -215,6 +215,7 @@ func (p *frameworkProvider) Resources(ctx context.Context) []func() resource.Res
 		NewProjectResource,
 		NewJobResource,
 		NewWebhookResource,
+		NewLocalRoleResource,
 	}
 }
 
