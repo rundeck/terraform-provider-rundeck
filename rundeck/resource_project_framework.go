@@ -439,11 +439,20 @@ func (r *projectResource) readProject(ctx context.Context, apiCtx context.Contex
 	// result after apply" error and refresh drift (#248). Keyed by source number
 	// (list position + 1), matching how sources are written as resources.source.N.
 	priorNullConfigKeys := map[int][]string{}
+	// Likewise, remember which sources had an explicitly-configured empty map
+	// (config = {}) as opposed to an omitted/null config, so an empty result
+	// below is preserved as an empty map rather than collapsed to null (#248
+	// only handles omitted vs. present; a known-empty map is neither).
+	priorEmptyConfig := map[int]bool{}
 	if !state.ResourceModelSource.IsNull() && !state.ResourceModelSource.IsUnknown() {
 		var priorSources []resourceModelSourceModel
 		if d := state.ResourceModelSource.ElementsAs(ctx, &priorSources, false); !d.HasError() {
 			for i, ps := range priorSources {
 				if ps.Config.IsNull() || ps.Config.IsUnknown() {
+					continue
+				}
+				if len(ps.Config.Elements()) == 0 {
+					priorEmptyConfig[i+1] = true
 					continue
 				}
 				var nullKeys []string
@@ -531,10 +540,16 @@ func (r *projectResource) readProject(ctx context.Context, apiCtx context.Contex
 			Type: types.StringValue(source["type"].(string)),
 		}
 
-		// Only set Config if there are actual config values
-		// This prevents null != {} drift when config is omitted
+		// Only collapse an empty result to null when config was actually omitted.
+		// If the user explicitly wrote config = {}, preserve it as an empty map -
+		// collapsing it to null here caused "inconsistent result after apply"
+		// since the plan had a known (non-null) empty map.
 		if len(configMap) == 0 {
-			sourceModel.Config = types.MapNull(types.StringType)
+			if priorEmptyConfig[index] {
+				sourceModel.Config = types.MapValueMust(types.StringType, configMap)
+			} else {
+				sourceModel.Config = types.MapNull(types.StringType)
+			}
 		} else {
 			sourceModel.Config = types.MapValueMust(types.StringType, configMap)
 		}
