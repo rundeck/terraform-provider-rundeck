@@ -1,6 +1,7 @@
 package rundeck
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -36,6 +37,23 @@ func TestAccSystemExecutionMode(t *testing.T) {
 				PlanOnly: true,
 			},
 			{
+				// Flip the mode out-of-band (directly against the API, not
+				// through this Terraform config) between the previous apply
+				// and this one, then confirm the next plan actually notices:
+				// the whole point of managing this as a resource rather than
+				// the startup-only rundeck.executionMode property is that an
+				// out-of-band change should surface as drift, not go unnoticed
+				// until someone happens to look.
+				// ExpectNonEmptyPlan defaults to false: the test framework's
+				// automatic post-apply "plan again, expect no diff" check
+				// only passes if this step's apply actually reconciled the
+				// drift Read() picked up, not merely flagged it.
+				PreConfig: func() { testAccFlipExecutionModeOutOfBand(t, "passive") },
+				Config:    testAccSystemExecutionModeConfig("active"),
+				Check: resource.TestCheckResourceAttr(
+					"rundeck_system_execution_mode.test", "mode", "active"),
+			},
+			{
 				ResourceName:      "rundeck_system_execution_mode.test",
 				ImportState:       true,
 				ImportStateVerify: true,
@@ -43,6 +61,24 @@ func TestAccSystemExecutionMode(t *testing.T) {
 			},
 		},
 	})
+}
+
+// testAccFlipExecutionModeOutOfBand switches the server's execution mode
+// directly through the API, bypassing Terraform entirely, so the following
+// test step's plan/apply has to detect and correct real drift rather than
+// just replaying state it already wrote itself.
+func testAccFlipExecutionModeOutOfBand(t *testing.T, mode string) {
+	t.Helper()
+
+	clients, err := getTestClients()
+	if err != nil {
+		t.Fatalf("getTestClients: %v", err)
+	}
+
+	r := &systemExecutionModeResource{client: clients}
+	if _, err := r.setMode(context.Background(), mode); err != nil {
+		t.Fatalf("flipping execution mode out-of-band to %q: %v", mode, err)
+	}
 }
 
 func testAccSystemExecutionModeConfig(mode string) string {

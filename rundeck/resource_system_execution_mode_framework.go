@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -30,6 +32,16 @@ const (
 	// The mode is a property of the server, not of a named object, so there is
 	// only ever one of these per Rundeck instance and the id is a constant.
 	systemExecutionModeID = "system"
+
+	// minExecutionModeAPIVersion is the lowest API version on which
+	// GET .../system/executions/status reliably reports passive mode instead
+	// of returning HTTP 503 (rundeck/rundeck#5846).
+	minExecutionModeAPIVersion = 36
+
+	// executionModeRequestTimeout bounds how long a single request to the
+	// execution mode endpoints may take, so a hung server or network
+	// partition doesn't block terraform apply/plan/destroy indefinitely.
+	executionModeRequestTimeout = 30 * time.Second
 )
 
 // NewSystemExecutionModeResource is a helper function to simplify the provider implementation.
@@ -90,6 +102,21 @@ func (r *systemExecutionModeResource) Configure(_ context.Context, req resource.
 		return
 	}
 
+	// GET .../system/executions/status returns HTTP 503 instead of the
+	// expected JSON body when the server is passive on API versions below 36
+	// (rundeck/rundeck#5846), which would otherwise surface as a confusing raw
+	// API error on every plan/refresh/import instead of a clear diagnostic.
+	if version, err := strconv.Atoi(clients.APIVersion); err != nil || version < minExecutionModeAPIVersion {
+		resp.Diagnostics.AddError(
+			"Insufficient API Version",
+			fmt.Sprintf("rundeck_system_execution_mode requires API version %d or higher (currently configured: %s), "+
+				"since the status endpoint does not reliably report passive mode before then. "+
+				"Please update your provider configuration with api_version = \"%d\" or higher.",
+				minExecutionModeAPIVersion, clients.APIVersion, minExecutionModeAPIVersion),
+		)
+		return
+	}
+
 	r.client = clients
 }
 
@@ -105,7 +132,7 @@ func (r *systemExecutionModeResource) apiRequest(ctx context.Context, method, pa
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("X-Rundeck-Auth-Token", r.client.Token)
 
-	httpResp, err := (&http.Client{}).Do(req)
+	httpResp, err := (&http.Client{Timeout: executionModeRequestTimeout}).Do(req)
 	if err != nil {
 		return "", fmt.Errorf("could not execute request: %w", err)
 	}
@@ -158,15 +185,23 @@ func (r *systemExecutionModeResource) Create(ctx context.Context, req resource.C
 		resp.Diagnostics.AddError("Error setting execution mode", err.Error())
 		return
 	}
+	plan.ID = types.StringValue(systemExecutionModeID)
 	if got != wanted {
+		// The POST already changed the live server even though the
+		// confirmation read didn't echo the requested mode back (e.g. a
+		// lagging read on a clustered/HA setup). Record what the server
+		// actually reports rather than erroring out with nothing saved to
+		// state: an untracked resource would otherwise re-issue the same
+		// POST against an already-changed server on the next apply.
+		plan.Mode = types.StringValue(got)
+		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 		resp.Diagnostics.AddError(
 			"Error setting execution mode",
-			fmt.Sprintf("Asked for %q but the server reports %q.", wanted, got),
+			fmt.Sprintf("Asked for %q but the server reports %q. Tracking the reported mode; re-apply once the server has settled.", wanted, got),
 		)
 		return
 	}
 
-	plan.ID = types.StringValue(systemExecutionModeID)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -203,15 +238,21 @@ func (r *systemExecutionModeResource) Update(ctx context.Context, req resource.U
 		resp.Diagnostics.AddError("Error setting execution mode", err.Error())
 		return
 	}
+	plan.ID = types.StringValue(systemExecutionModeID)
 	if got != wanted {
+		// See the identical comment in Create: persist what the server
+		// actually reports instead of leaving state stuck on the old mode,
+		// which would otherwise silently mask the fact that the POST already
+		// took effect.
+		plan.Mode = types.StringValue(got)
+		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 		resp.Diagnostics.AddError(
 			"Error setting execution mode",
-			fmt.Sprintf("Asked for %q but the server reports %q.", wanted, got),
+			fmt.Sprintf("Asked for %q but the server reports %q. Tracking the reported mode; re-apply once the server has settled.", wanted, got),
 		)
 		return
 	}
 
-	plan.ID = types.StringValue(systemExecutionModeID)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
