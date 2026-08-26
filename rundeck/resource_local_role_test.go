@@ -153,8 +153,11 @@ func testAccLocalRoleCheckExists(rn string, role *openapi.LoginRoleData) resourc
 		}
 
 		gotRole, resp, err := clients.V2.UserAPI.ApiGet(clients.ctx, rs.Primary.ID).Execute()
-		if resp.StatusCode != 200 {
-			return fmt.Errorf("failed to get role info: %v", err)
+		if err != nil {
+			return fmt.Errorf("failed to get role info: %w", err)
+		}
+		if resp == nil || resp.StatusCode != 200 {
+			return fmt.Errorf("failed to get role info: unexpected response %v", resp)
 		}
 
 		*role = *gotRole
