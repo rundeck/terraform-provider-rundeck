@@ -208,6 +208,19 @@ func TestConvertCommandsToJSON_nodeIntersectOmittedWhenUnset(t *testing.T) {
 	if _, exists := nf["dispatch"]; exists {
 		t.Errorf("dispatch = %v, want it omitted when no field is set", nf["dispatch"])
 	}
+
+	// testCommandWithJobRefs sets up the identical job reference under
+	// error_handler.job too, but that path's write logic is NOT identical
+	// to the direct one above: unlike the direct path (which always emits
+	// nodefilters once the block is present in config, even empty - the
+	// case asserted above), the error_handler path only emits nodefilters
+	// when something inside it was actually set, and omits it entirely
+	// otherwise. So here nodefilters itself, not just dispatch, is absent.
+	handler := cmd["errorhandler"].(map[string]interface{})
+	handlerRef := handler["jobref"].(map[string]interface{})
+	if _, exists := handlerRef["nodefilters"]; exists {
+		t.Errorf("errorhandler.jobref.nodefilters = %v, want it omitted entirely when nothing is set", handlerRef["nodefilters"])
+	}
 }
 
 // dispatchStateAttrs digs node_filters[0].dispatch[0] out of a job reference
