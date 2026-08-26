@@ -166,11 +166,7 @@ func (d *runnersDataSource) Configure(_ context.Context, req datasource.Configur
 	}
 
 	// Runner management requires API v56+ (Enterprise feature)
-	if clients.APIVersion < "56" {
-		resp.Diagnostics.AddError(
-			"Insufficient API Version",
-			fmt.Sprintf("Runner data sources require API version 56 or higher (currently configured: %s). Please update your provider configuration with api_version = \"56\" or higher.", clients.APIVersion),
-		)
+	if !requireMinAPIVersion(&resp.Diagnostics, clients.APIVersion, 56, "Runner data sources") {
 		return
 	}
 

@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -195,11 +197,7 @@ func (r *systemRunnerResource) Configure(_ context.Context, req resource.Configu
 	}
 
 	// System runner requires API v56+ (Enterprise feature)
-	if clients.APIVersion < "56" {
-		resp.Diagnostics.AddError(
-			"Insufficient API Version",
-			fmt.Sprintf("System runner resources require API version 56 or higher (currently configured: %s). Please update your provider configuration with api_version = \"56\" or higher.", clients.APIVersion),
-		)
+	if !requireMinAPIVersion(&resp.Diagnostics, clients.APIVersion, 56, "System runner resources") {
 		return
 	}
 
@@ -491,6 +489,27 @@ func (r *systemRunnerResource) Read(ctx context.Context, req resource.ReadReques
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
+// removeMapKeys returns m with the given keys dropped, preserving its
+// original element type. Used to correct assigned_projects/
+// assigned_projects_config in state when a project was already detached
+// server-side via RemoveProjectAssociation but a later step in the same
+// Update call fails, so state doesn't keep claiming that project is still
+// assigned when the server has already dropped it.
+func removeMapKeys(ctx context.Context, m types.Map, keys map[string]struct{}) (types.Map, diag.Diagnostics) {
+	if m.IsNull() || m.IsUnknown() || len(keys) == 0 {
+		return m, nil
+	}
+	elements := m.Elements()
+	remaining := make(map[string]attr.Value, len(elements))
+	for k, v := range elements {
+		if _, drop := keys[k]; drop {
+			continue
+		}
+		remaining[k] = v
+	}
+	return types.MapValue(m.ElementType(ctx), remaining)
+}
+
 func (r *systemRunnerResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan systemRunnerResourceModel
 	var state systemRunnerResourceModel
@@ -573,6 +592,11 @@ func (r *systemRunnerResource) Update(ctx context.Context, req resource.UpdateRe
 	// of the runner's project assignments.
 	assignedProjectsKnown := !plan.AssignedProjects.IsNull() && !plan.AssignedProjects.IsUnknown()
 	assignedProjectsConfigKnown := !plan.AssignedProjectsConfig.IsNull() && !plan.AssignedProjectsConfig.IsUnknown()
+	// Projects successfully detached via RemoveProjectAssociation below, before
+	// SaveRunner runs. If SaveRunner then fails, these are still gone
+	// server-side, so state has to reflect that even though nothing else in
+	// this Update took effect (see the SaveRunner error handling below).
+	detachedProjects := make(map[string]struct{})
 	if assignedProjectsKnown || assignedProjectsConfigKnown {
 		saveRequest.SetAssignedProjects(mergedProjects)
 
@@ -613,7 +637,9 @@ func (r *systemRunnerResource) Update(ctx context.Context, req resource.UpdateRe
 					"Warning detaching project",
 					fmt.Sprintf("Failed to cleanly detach runner %s from project %s: %s", runnerId, projectName, err.Error()),
 				)
+				continue
 			}
+			detachedProjects[projectName] = struct{}{}
 		}
 	}
 
@@ -626,6 +652,22 @@ func (r *systemRunnerResource) Update(ctx context.Context, req resource.UpdateRe
 	}
 
 	if err != nil {
+		// SaveRunner failed, but any projects in detachedProjects were already
+		// detached server-side above. Update's response state is pre-seeded
+		// with the prior state, and returning without touching it here would
+		// leave those projects listed as still assigned even though the
+		// server has already dropped them.
+		if len(detachedProjects) > 0 {
+			correctedProjects, projDiags := removeMapKeys(ctx, state.AssignedProjects, detachedProjects)
+			resp.Diagnostics.Append(projDiags...)
+			correctedConfig, configDiags := removeMapKeys(ctx, state.AssignedProjectsConfig, detachedProjects)
+			resp.Diagnostics.Append(configDiags...)
+			if !projDiags.HasError() && !configDiags.HasError() {
+				state.AssignedProjects = correctedProjects
+				state.AssignedProjectsConfig = correctedConfig
+				resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+			}
+		}
 		resp.Diagnostics.AddError(
 			"Error updating system runner",
 			fmt.Sprintf("Could not update system runner %s: %s", runnerId, err.Error()),
