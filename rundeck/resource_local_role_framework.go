@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -90,11 +91,7 @@ func (r *localRoleResource) Configure(_ context.Context, req resource.ConfigureR
 	}
 
 	// Local role management requires API v44+ (Enterprise local user store feature)
-	if clients.APIVersion < "44" {
-		resp.Diagnostics.AddError(
-			"Insufficient API Version",
-			fmt.Sprintf("Local role resources require API version 44 or higher (currently configured: %s). Please update your provider configuration with api_version = \"44\" or higher.", clients.APIVersion),
-		)
+	if !requireMinAPIVersion(&resp.Diagnostics, clients.APIVersion, 44, "Local role resources") {
 		return
 	}
 
@@ -196,8 +193,14 @@ func (r *localRoleResource) Create(ctx context.Context, req resource.CreateReque
 	client := r.clients.V2
 	apiCtx := r.clients.ctx
 
+	// Always send "description", even when unset (as ""): if ApiEdit below
+	// treats a missing key as "leave unchanged" rather than "clear it" - a
+	// real possibility, since it isn't a documented full-replace endpoint -
+	// omitting the key here would mean removing description from the config
+	// never clears it server-side.
 	body := map[string]interface{}{
-		"authority": plan.Authority.ValueString(),
+		"authority":   plan.Authority.ValueString(),
+		"description": "",
 	}
 	if !plan.Description.IsNull() && !plan.Description.IsUnknown() {
 		body["description"] = plan.Description.ValueString()
@@ -240,7 +243,11 @@ func (r *localRoleResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	// Assign initial membership, if any.
+	// Assign initial membership, if any. Track whether a user list was
+	// fetched here so the refresh below can reuse it instead of listing
+	// every local user a second time.
+	var prefetchedUsers []map[string]interface{}
+	hasPrefetchedUsers := false
 	if !plan.Members.IsNull() && !plan.Members.IsUnknown() {
 		var members []string
 		resp.Diagnostics.Append(plan.Members.ElementsAs(ctx, &members, false)...)
@@ -257,6 +264,7 @@ func (r *localRoleResource) Create(ctx context.Context, req resource.CreateReque
 				)
 				return
 			}
+			prefetchedUsers, hasPrefetchedUsers = users, true
 			idMap := usernameToIDMap(users)
 
 			var addIDs []int64
@@ -289,43 +297,51 @@ func (r *localRoleResource) Create(ctx context.Context, req resource.CreateReque
 		}
 	}
 
-	readReq := resource.ReadRequest{State: resp.State}
-	readResp := resource.ReadResponse{State: resp.State}
-	r.Read(ctx, readReq, &readResp)
-	resp.Diagnostics.Append(readResp.Diagnostics...)
+	var finalState localRoleResourceModel
+	resp.Diagnostics.Append(resp.State.Get(ctx, &finalState)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	resp.State = readResp.State
+	removed, diags := r.refreshRoleState(ctx, &finalState, hasPrefetchedUsers, prefetchedUsers)
+	resp.Diagnostics.Append(diags...)
+	if removed {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, &finalState)...)
 }
 
-func (r *localRoleResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state localRoleResourceModel
-
-	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
+// refreshRoleState re-reads a role's authority/description/membership from
+// the API into state.
+//
+// Determining membership requires listing every local user (there is no
+// "list members of a role" endpoint). Create and Update already do this
+// listLocalUsers scan themselves whenever they touch membership, so they
+// pass that list straight through via prefetchedUsers (hasPrefetchedUsers
+// true) rather than have this function fetch the same list again - a single
+// apply would otherwise scan every local user twice. Read always passes
+// hasPrefetchedUsers false, since it has no list of its own to reuse.
+func (r *localRoleResource) refreshRoleState(ctx context.Context, state *localRoleResourceModel, hasPrefetchedUsers bool, prefetchedUsers []map[string]interface{}) (removed bool, diags diag.Diagnostics) {
 	client := r.clients.V2
 	apiCtx := r.clients.ctx
 	roleID := state.ID.ValueString()
 
 	roleInfo, apiResp, err := client.UserAPI.ApiGet(apiCtx, roleID).Execute()
 	if apiResp != nil && apiResp.StatusCode == 404 {
-		resp.State.RemoveResource(ctx)
-		return
+		return true, diags
 	}
 	if err != nil {
-		resp.Diagnostics.AddError(
+		diags.AddError(
 			"Error reading local role",
 			fmt.Sprintf("Could not read local role %s: %s", roleID, err.Error()),
 		)
-		return
+		return false, diags
 	}
 	if roleInfo == nil {
-		resp.State.RemoveResource(ctx)
-		return
+		return true, diags
 	}
 
 	if roleInfo.Authority != nil {
@@ -339,46 +355,69 @@ func (r *localRoleResource) Read(ctx context.Context, req resource.ReadRequest, 
 
 	roleIDInt, err := strconv.ParseInt(roleID, 10, 64)
 	if err != nil {
-		resp.Diagnostics.AddError(
+		diags.AddError(
 			"Error reading local role",
 			fmt.Sprintf("Role ID %s is not numeric: %s", roleID, err.Error()),
 		)
-		return
+		return false, diags
 	}
 
-	// Determining membership requires listing every local user (there is no
-	// "list members of a role" endpoint), which some tokens with role-admin
-	// rights may not be authorized to do. Treat that as non-fatal: keep
-	// whatever was already in state rather than failing the whole read, so
-	// authority/description still refresh correctly.
-	users, err := listLocalUsers(apiCtx, client)
-	if err != nil {
-		resp.Diagnostics.AddWarning(
+	users, usersErr := prefetchedUsers, error(nil)
+	if !hasPrefetchedUsers {
+		// Listing every local user is something some tokens with role-admin
+		// rights may not be authorized to do. Treat that as non-fatal: keep
+		// whatever was already in state rather than failing the whole read,
+		// so authority/description still refresh correctly.
+		users, usersErr = listLocalUsers(apiCtx, client)
+	}
+	if usersErr != nil {
+		diags.AddWarning(
 			"Could not verify role membership",
-			fmt.Sprintf("Local role %s was read, but its member list could not be verified (listing local users failed: %s). Preserving members as last known.", roleID, err.Error()),
+			fmt.Sprintf("Local role %s was read, but its member list could not be verified (listing local users failed: %s). Preserving members as last known.", roleID, usersErr.Error()),
 		)
 		// If there's no known prior value to fall back to (e.g. this is the
-		// Read that follows Create, and members was never configured), an
+		// refresh that follows Create, and members was never configured), an
 		// empty set is the only value that can legally be returned - leaving
 		// it null/unknown here would fail Terraform's "must be known after
 		// apply" contract.
 		if state.Members.IsUnknown() || state.Members.IsNull() {
-			emptySet, diags := types.SetValueFrom(ctx, types.StringType, []string{})
-			resp.Diagnostics.Append(diags...)
-			if resp.Diagnostics.HasError() {
-				return
+			emptySet, d := types.SetValueFrom(ctx, types.StringType, []string{})
+			diags.Append(d...)
+			if diags.HasError() {
+				return false, diags
 			}
 			state.Members = emptySet
 		}
-	} else {
-		members := membersOfRole(users, roleIDInt)
+		return false, diags
+	}
 
-		membersSet, diags := types.SetValueFrom(ctx, types.StringType, members)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		state.Members = membersSet
+	members := membersOfRole(users, roleIDInt)
+	membersSet, d := types.SetValueFrom(ctx, types.StringType, members)
+	diags.Append(d...)
+	if diags.HasError() {
+		return false, diags
+	}
+	state.Members = membersSet
+
+	return false, diags
+}
+
+func (r *localRoleResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var state localRoleResourceModel
+
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	removed, diags := r.refreshRoleState(ctx, &state, false, nil)
+	resp.Diagnostics.Append(diags...)
+	if removed {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
@@ -402,8 +441,12 @@ func (r *localRoleResource) Update(ctx context.Context, req resource.UpdateReque
 	roleID := state.ID.ValueString()
 	plan.ID = state.ID
 
+	// See the identical comment in Create: always send "description" so
+	// clearing it in config actually clears it server-side, regardless of
+	// whether this endpoint treats a missing key as "leave unchanged".
 	body := map[string]interface{}{
-		"authority": plan.Authority.ValueString(),
+		"authority":   plan.Authority.ValueString(),
+		"description": "",
 	}
 	if !plan.Description.IsNull() && !plan.Description.IsUnknown() {
 		body["description"] = plan.Description.ValueString()
@@ -419,6 +462,23 @@ func (r *localRoleResource) Update(ctx context.Context, req resource.UpdateReque
 			"Error updating local role",
 			fmt.Sprintf("Could not update local role %s: %s", roleID, err.Error()),
 		)
+		return
+	}
+
+	// Seed state immediately, before touching membership below - if resolving
+	// a member username fails partway through, ApiEdit above has already
+	// taken effect server-side, and the framework pre-seeds this response's
+	// state with the *prior* state, so returning without calling Set here
+	// would silently roll the authority/description change back to its
+	// pre-Update value in state even though the server already has the new
+	// one. Members stays at its pre-Update value here, since membership
+	// hasn't been touched by the API yet; the resp.State.Set below (after
+	// membership is resolved) overwrites it with the settled value. Mirrors
+	// the identical seeding in Create.
+	interim := plan
+	interim.Members = state.Members
+	resp.Diagnostics.Append(resp.State.Set(ctx, &interim)...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
@@ -455,6 +515,10 @@ func (r *localRoleResource) Update(ctx context.Context, req resource.UpdateReque
 		}
 	}
 
+	// Track whether a user list was fetched here so the refresh below can
+	// reuse it instead of listing every local user a second time.
+	var prefetchedUsers []map[string]interface{}
+	hasPrefetchedUsers := false
 	if len(toAdd) > 0 || len(toRemove) > 0 {
 		users, err := listLocalUsers(apiCtx, client)
 		if err != nil {
@@ -464,6 +528,7 @@ func (r *localRoleResource) Update(ctx context.Context, req resource.UpdateReque
 			)
 			return
 		}
+		prefetchedUsers, hasPrefetchedUsers = users, true
 		idMap := usernameToIDMap(users)
 
 		resolve := func(usernames []string) []int64 {
@@ -506,14 +571,21 @@ func (r *localRoleResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	readReq := resource.ReadRequest{State: resp.State}
-	readResp := resource.ReadResponse{State: resp.State}
-	r.Read(ctx, readReq, &readResp)
-	resp.Diagnostics.Append(readResp.Diagnostics...)
+	var finalState localRoleResourceModel
+	resp.Diagnostics.Append(resp.State.Get(ctx, &finalState)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	resp.State = readResp.State
+	removed, diags := r.refreshRoleState(ctx, &finalState, hasPrefetchedUsers, prefetchedUsers)
+	resp.Diagnostics.Append(diags...)
+	if removed {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(resp.State.Set(ctx, &finalState)...)
 }
 
 func (r *localRoleResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -528,8 +600,14 @@ func (r *localRoleResource) Delete(ctx context.Context, req resource.DeleteReque
 	apiCtx := r.clients.ctx
 	roleID := state.ID.ValueString()
 
-	_, _, err := client.UserAPI.ApiDelete(apiCtx, roleID).Execute()
+	_, httpResp, err := client.UserAPI.ApiDelete(apiCtx, roleID).Execute()
 	if err != nil {
+		// Already gone (removed out-of-band, e.g. via the UI, or a dependent
+		// object cleaned it up already) is success, not failure - matches the
+		// convention elsewhere in this provider (e.g. resource_webhook_framework.go).
+		if httpResp != nil && httpResp.StatusCode == 404 {
+			return
+		}
 		resp.Diagnostics.AddError(
 			"Error deleting local role",
 			fmt.Sprintf("Could not delete local role %s: %s", roleID, err.Error()),
