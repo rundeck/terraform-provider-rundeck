@@ -525,7 +525,14 @@ func convertOptionsToJSON(ctx context.Context, optionsList types.List) ([]interf
 		if v, ok := attrs["value_choices_url"].(types.String); ok && !v.IsNull() {
 			optMap["valuesUrl"] = v.ValueString()
 		}
-		if v, ok := attrs["multi_value_delimiter"].(types.String); ok && !v.IsNull() {
+		// Unknown as well as null: although multi_value_delimiter is
+		// Optional-only (not Computed), its value can still be unknown at
+		// plan time if it's set from an expression not yet known (e.g. an
+		// attribute of a resource not yet applied). Serializing that would
+		// send an empty delimiter via ValueString() and overwrite the one
+		// Rundeck maintains, exactly like the values_list_delimiter case
+		// below.
+		if v, ok := attrs["multi_value_delimiter"].(types.String); ok && !v.IsNull() && !v.IsUnknown() {
 			optMap["delimiter"] = v.ValueString()
 		}
 		// Unknown as well as null: the attribute is Optional+Computed, so an

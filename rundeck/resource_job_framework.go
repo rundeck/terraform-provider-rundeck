@@ -1269,8 +1269,14 @@ func (r *jobResource) jobJSONToState(ctx context.Context, job *jobJSON, state *j
 	if job.Timeout != "" {
 		state.Timeout = types.StringValue(job.Timeout)
 	}
+	// Unlike Timeout/TimeZone just above (a pre-existing gap left alone
+	// here), explicitly clear this when the API stops returning it, so a
+	// threshold removed outside Terraform (e.g. via the UI) surfaces as
+	// drift on refresh instead of leaving state stuck on its last value.
 	if job.NotifyAvgDurationThreshold != "" {
 		state.NotifyAvgDurationThreshold = types.StringValue(job.NotifyAvgDurationThreshold)
+	} else {
+		state.NotifyAvgDurationThreshold = types.StringNull()
 	}
 	if job.TimeZone != "" {
 		state.TimeZone = types.StringValue(job.TimeZone)
@@ -1436,8 +1442,14 @@ func (r *jobResource) jobJSONAPIToState(ctx context.Context, job *JobJSON, state
 	if job.Timeout != "" {
 		state.Timeout = types.StringValue(job.Timeout)
 	}
+	// Unlike Timeout just above (a pre-existing gap left alone here),
+	// explicitly clear this when the API stops returning it, so a
+	// threshold removed outside Terraform (e.g. via the UI) surfaces as
+	// drift on refresh instead of leaving state stuck on its last value.
 	if job.NotifyAvgDurationThreshold != "" {
 		state.NotifyAvgDurationThreshold = types.StringValue(job.NotifyAvgDurationThreshold)
+	} else {
+		state.NotifyAvgDurationThreshold = types.StringNull()
 	}
 
 	// Handle retry

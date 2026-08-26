@@ -138,6 +138,30 @@ func TestConvertOptionsToJSON_valuesListDelimiterOmittedWhenUnknown(t *testing.T
 	}
 }
 
+// multi_value_delimiter is Optional-only, but its value can still be unknown
+// at plan time (e.g. set from an attribute of a resource not yet applied).
+// Serializing that via ValueString() would send an empty delimiter and
+// overwrite the one Rundeck maintains, same as values_list_delimiter above.
+func TestConvertOptionsToJSON_multiValueDelimiterOmittedWhenUnknown(t *testing.T) {
+	attrs := testOptionAttrs(types.StringNull())
+	attrs["multi_value_delimiter"] = types.StringUnknown()
+	opt, diags := types.ObjectValue(testOptionObjectType.AttrTypes, attrs)
+	if diags.HasError() {
+		t.Fatalf("building option object: %v", diags)
+	}
+
+	result, diags := convertOptionsToJSON(context.Background(),
+		types.ListValueMust(testOptionObjectType, []attr.Value{opt}))
+	if diags.HasError() {
+		t.Fatalf("convertOptionsToJSON: %v", diags)
+	}
+
+	optMap := result[0].(map[string]interface{})
+	if v, exists := optMap["delimiter"]; exists {
+		t.Errorf("delimiter = %q, want it omitted when unknown", v)
+	}
+}
+
 func TestConvertOptionsFromJSON_valuesListDelimiter(t *testing.T) {
 	options := []interface{}{
 		map[string]interface{}{
@@ -230,5 +254,36 @@ func TestJobJSONAPIToState_notifyAvgDurationThreshold(t *testing.T) {
 	if state.NotifyAvgDurationThreshold.ValueString() != "150%" {
 		t.Errorf("notify_avg_duration_threshold = %v, want %q",
 			state.NotifyAvgDurationThreshold, "150%")
+	}
+}
+
+// If the threshold is cleared on the Rundeck side (e.g. via the UI) between
+// applies, the API stops returning it and refresh must reflect that as
+// drift - not silently keep whatever was last in state.
+func TestJobJSONToState_notifyAvgDurationThresholdClearedRemotely(t *testing.T) {
+	r := &jobResource{}
+	job := &jobJSON{} // NotifyAvgDurationThreshold unset, as the API now returns it
+
+	state := &jobResourceModel{NotifyAvgDurationThreshold: types.StringValue("30m")}
+	if err := r.jobJSONToState(context.Background(), job, state); err != nil {
+		t.Fatalf("jobJSONToState: %v", err)
+	}
+	if !state.NotifyAvgDurationThreshold.IsNull() {
+		t.Errorf("notify_avg_duration_threshold = %v, want null after being cleared remotely",
+			state.NotifyAvgDurationThreshold)
+	}
+}
+
+func TestJobJSONAPIToState_notifyAvgDurationThresholdClearedRemotely(t *testing.T) {
+	r := &jobResource{}
+	job := &JobJSON{} // NotifyAvgDurationThreshold unset, as the API now returns it
+
+	state := &jobResourceModel{NotifyAvgDurationThreshold: types.StringValue("150%")}
+	if err := r.jobJSONAPIToState(context.Background(), job, state); err != nil {
+		t.Fatalf("jobJSONAPIToState: %v", err)
+	}
+	if !state.NotifyAvgDurationThreshold.IsNull() {
+		t.Errorf("notify_avg_duration_threshold = %v, want null after being cleared remotely",
+			state.NotifyAvgDurationThreshold)
 	}
 }
