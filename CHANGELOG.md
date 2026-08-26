@@ -18,6 +18,40 @@
 
   Note that Rundeck itself refuses a workflow-step handler on a node-oriented workflow (*"Error Handlers for Node Steps must also be Node Steps"*), so a job guarded this way needs `strategy = "sequential"`.
 
+### Project Resource
+
+- **Fixed an explicit `resource_model_source { config = {} }` collapsing to `null` on read** - Rundeck accepts an empty `config` map on a resource model source plugin, but the read-back treated an empty map the same as an absent one and returned `null`, causing `Provider produced inconsistent result after apply` for any project declaring the block with no plugin-specific properties.
+
+### System Runner Resource
+
+- **Fixed a project not being fully detached from a runner on update** - Removing a project from `assigned_projects`/`assigned_projects_config` relied on `SaveRunner`'s overwrite semantics to clear that project's other per-project dispatch settings (`runner_as_node_enabled`, `remote_node_dispatch`, `runner_node_filter`) server-side, which wasn't guaranteed. `Update` now explicitly calls `RemoveProjectAssociation` for every project dropped from either attribute.
+
+**Enhancements**
+
+### Job Resource
+
+- **Added `node_intersect` to a job reference's `node_filters` `dispatch` block** - Rundeck's "Match Node Filter Intersection" setting (`jobref.nodefilters.dispatch.nodeIntersect`) had no equivalent in the provider, so a referenced job configured this way always ran on its own node set instead of the intersection with the calling job's. The setting is now settable and round-trips on read. Note that Rundeck honors `nodeIntersect` even when the reference sets no `filter` — it is the only `dispatch` field read independently of one — so a `dispatch` block carrying nothing but `node_intersect` is a valid configuration.
+
+- **Added `values_list_delimiter` to job options** - Rundeck stores an option's predefined choices as a single delimited string plus the delimiter used to split it (`Option.toMap` always emits `valuesListDelimiter` alongside `values`, defaulting it to a comma). The provider had no way to set it, so a choice containing a comma could not be represented — the option silently split into the wrong values. Distinct from the existing `multi_value_delimiter`, which separates the values a user selects rather than the ones offered.
+
+- **Added `notify_avg_duration_threshold` to `rundeck_job`** - The threshold that decides when the `on_avg_duration` notification fires (a duration, a percentage of the job's average duration, or an increment over it). Without it Rundeck reads the threshold as zero and the guard `jobAverageDurationFinal > 0` never passes, so an `on_avg_duration` notification was configured but could never fire.
+
+### System Execution Mode Resource
+
+- **Added `rundeck_system_execution_mode`** - Controls whether a server executes jobs (`active` / `passive`), the switch used during migrations and maintenance windows. Rundeck exposes this over the API (`system/executions/{status,enable,disable}`) but the provider had no way to reach it, so the mode could only be set through the `rundeck.executionMode` property — which is read at startup only, meaning a change required a restart and any manual switch went unnoticed until the next one. Managing it as a resource makes the intended mode explicit and surfaces out-of-band changes as drift. Removing the resource leaves the server untouched rather than flipping its mode.
+
+### Runner Data Sources
+
+- **Added `rundeck_runner`, `rundeck_runners`, and `rundeck_runner_tags`** - Data sources for looking up and enumerating Enterprise runners without managing them, closing the long-standing `data.rundeck_runner` TODO item.
+
+### Local Role Resource
+
+- **Added `rundeck_local_role`** - Create/read/update/delete for Rundeck Enterprise local user store roles (requires the local user store auth realm, API v44+), including membership management. There's no API endpoint to list a role's members directly, so membership is resolved by listing all local users and diffing against each one's roles. `rundeck_local_user` is intentionally not implemented: the vendored SDK has no request-body support for the user create/edit endpoints, a gap in Rundeck's own published OpenAPI spec.
+
+### SCM Resources
+
+- **Added `rundeck_scm_import` and `rundeck_scm_export`** - Manage a project's SCM import/export plugin setup (`git-export`, `svn-export`, etc.) via `system/executions`-style config, closing [#76](https://github.com/rundeck/terraform-provider-rundeck/issues/76). `config` is a generic string map since the valid keys are plugin-specific and discovered at runtime rather than modeled client-side. Gated at API v15+, since these endpoints ship with core Rundeck rather than Enterprise.
+
 
 ## 1.3.1
 
