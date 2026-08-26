@@ -9,6 +9,12 @@ require (
 	github.com/rundeck/go-rundeck/rundeck-v2 v1.2.0
 )
 
+// TEMPORARY: point at the local, unreleased go-rundeck/rundeck-v2 regenerated
+// from the updated OpenAPI spec (API v56 -> v59), to validate compileability
+// and run the test suite before it's actually tagged/released. Remove this
+// and bump the version above once go-rundeck/rundeck-v2 has a real release.
+replace github.com/rundeck/go-rundeck/rundeck-v2 => /Users/forrest/Documents/GitHub/go-rundeck/rundeck-v2
+
 require (
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest v0.11.30 // indirect
