@@ -32,7 +32,7 @@ func TestAccRundeckScmExport_basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
-		CheckDestroy:             testAccScmCheckDestroy("export", &config),
+		CheckDestroy:             testAccScmCheckDestroy("export"),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccRundeckScmExportConfig_basic(gitURL, keyPath),
@@ -47,27 +47,36 @@ func TestAccRundeckScmExport_basic(t *testing.T) {
 	})
 }
 
-func testAccScmCheckDestroy(integration string, config *openapi.ScmProjectPluginConfig) resource.TestCheckFunc {
+// testAccScmCheckDestroy reads the project to verify straight from Terraform
+// state, rather than from a side-channel pointer populated by
+// testAccScmCheckExists - that pointer is only set if the exists check ran
+// and succeeded, so if an earlier step's apply/Check failed first, a
+// destroy-time check keyed on it would silently pass without ever asking the
+// API whether the plugin was actually disabled.
+func testAccScmCheckDestroy(integration string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		clients, err := getTestClients()
 		if err != nil {
 			return fmt.Errorf("failed to create test client: %s", err)
 		}
 
-		project := ""
-		if config.Project != nil {
-			project = *config.Project
-		}
-		if project == "" {
-			return nil
-		}
+		resourceType := "rundeck_scm_" + integration
+		for _, rs := range s.RootModule().Resources {
+			if rs.Type != resourceType {
+				continue
+			}
+			project := rs.Primary.Attributes["project"]
+			if project == "" {
+				return fmt.Errorf("%s %s has no project attribute in state to verify destruction against", resourceType, rs.Primary.ID)
+			}
 
-		got, resp, err := clients.V2.SCMAPI.ApiProjectConfig(clients.ctx, project, integration).Execute()
-		if resp != nil && resp.StatusCode == 404 {
-			return nil
-		}
-		if err == nil && got != nil && got.Enabled != nil && *got.Enabled {
-			return fmt.Errorf("scm %s plugin still enabled for project: %s", integration, project)
+			got, resp, err := clients.V2.SCMAPI.ApiProjectConfig(clients.ctx, project, integration).Execute()
+			if resp != nil && resp.StatusCode == 404 {
+				continue
+			}
+			if err == nil && got != nil && got.Enabled != nil && *got.Enabled {
+				return fmt.Errorf("scm %s plugin still enabled for project: %s", integration, project)
+			}
 		}
 		return nil
 	}

@@ -122,6 +122,13 @@ func buildScmSetupBody(ctx context.Context, config types.Map) (map[string]interf
 
 	pluginConfig := make(map[string]interface{})
 	for k, v := range configMap {
+		// A null map value (e.g. `config = { pathTemplate = null }`, leaving
+		// an optional plugin property unset) must be omitted, not sent as an
+		// empty string - the plugin may treat "" as an explicit, invalid
+		// value rather than "not provided".
+		if v.IsNull() {
+			continue
+		}
 		pluginConfig[k] = v.ValueString()
 	}
 
@@ -294,9 +301,39 @@ func (r *scmIntegrationResource) Read(ctx context.Context, req resource.ReadRequ
 		state.Enabled = types.BoolValue(*config.Enabled)
 	}
 
+	// config is Required, not Computed, so anything reflected back here that
+	// wasn't already known would fail apply with "inconsistent result after
+	// apply" - the schema has no way to say "this key is fine to appear on
+	// its own." Restrict the read-back to keys already in state (the ones
+	// last configured/planned) and drop anything the plugin adds beyond
+	// that, rather than reporting every key Rundeck happens to return.
+	//
+	// State has no known config yet right after ImportState (which only
+	// sets id/project/type), so there's nothing to filter against there -
+	// take the full config as-is in that case, or the resource would import
+	// as if nothing were configured.
+	//
+	// This doesn't cover a plugin normalizing the *value* of a key that was
+	// already configured (e.g. rewriting a relative path to an absolute
+	// one) - that would still surface as inconsistent, and would need
+	// config to become Optional+Computed to tolerate, which changes the
+	// "must configure something" contract this resource is meant to have.
+	hasKnownConfig := !state.Config.IsNull() && !state.Config.IsUnknown()
+	knownKeys := make(map[string]struct{})
+	if hasKnownConfig {
+		for k := range state.Config.Elements() {
+			knownKeys[k] = struct{}{}
+		}
+	}
+
 	configValues := make(map[string]types.String)
 	if config.Config != nil {
 		for k, v := range *config.Config {
+			if hasKnownConfig {
+				if _, known := knownKeys[k]; !known {
+					continue
+				}
+			}
 			configValues[k] = types.StringValue(v)
 		}
 	}
