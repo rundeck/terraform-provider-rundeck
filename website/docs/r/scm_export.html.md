@@ -10,14 +10,16 @@ description: |-
 
 Configures and enables a project's SCM **export** plugin (e.g. `git-export`, `svn-export`) - job definitions committed from Rundeck out to a version control repository.
 
-**Requirements:** API v15+ (bundled with core Rundeck, not Enterprise-gated - git/svn SCM plugins ship with OSS Rundeck).
+**Requirements:** none beyond the provider's own minimum. The SCM API endpoints this resource uses have shipped with core Rundeck (not Enterprise-gated) since API v15, well below the provider's documented overall minimum of v46 (Rundeck 5.0.0+), so there's no separate version constraint to configure for.
 
 ## Example Usage
 
 ```hcl
 resource "rundeck_private_key" "scm" {
   path         = "terraform/scm_export_key"
-  key_material = file("~/.ssh/rundeck_scm_deploy_key")
+  # Terraform's file() does not expand a leading "~" - use an absolute
+  # path, or one relative to this module (e.g. "${path.module}/rundeck_scm_deploy_key").
+  key_material = file("/home/youruser/.ssh/rundeck_scm_deploy_key")
 }
 
 resource "rundeck_project" "example" {
@@ -72,3 +74,4 @@ terraform import rundeck_scm_export.example my-project:git-export
 
 - There is no dedicated "delete" operation for SCM plugin configuration - destroying this resource disables the plugin (`ApiProjectDisable`), which is the closest available operation. The configuration may still persist server-side in a disabled state; there's no API to fully remove it.
 - Rundeck has no validation/dry-run endpoint for SCM plugin config - invalid configuration is only caught at apply time, surfaced as a Rundeck-reported validation error.
+- This resource only configures the export plugin; it does not trigger an export action (committing job definitions out to the repository). Triggering SCM actions (e.g. export/commit/synch) is not currently supported by this provider - a successful `terraform apply` means the plugin is configured and enabled, not that anything has been committed.

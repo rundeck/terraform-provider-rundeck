@@ -80,6 +80,7 @@ func (r *scmIntegrationResource) Schema(_ context.Context, _ resource.SchemaRequ
 				Description: "Plugin-specific configuration key/value pairs. The set of required/valid keys is dynamic per plugin type - see Rundeck's SCM plugin input schema for the plugin type in use. Reference external secret storage for any credential-like values rather than embedding raw secrets here.",
 				Required:    true,
 				ElementType: types.StringType,
+				Sensitive:   true,
 			},
 			"enabled": schema.BoolAttribute{
 				Description: "Whether the SCM plugin is currently enabled for the project.",
@@ -440,12 +441,31 @@ func (r *scmIntegrationResource) Delete(ctx context.Context, req resource.Delete
 	// the closest available operation. The plugin's configuration may still
 	// persist server-side in a disabled state; there's no way from this API
 	// to fully remove it.
-	_, _, err := client.SCMAPI.ApiProjectDisable(apiCtx, project, r.integration, pluginType).Execute()
+	disableResult, apiResp, err := client.SCMAPI.ApiProjectDisable(apiCtx, project, r.integration, pluginType).Execute()
+	if apiResp != nil && apiResp.StatusCode == 404 {
+		// Already gone (e.g. the project itself was removed) - nothing left
+		// to disable, so this is success, not failure.
+		return
+	}
 	if err != nil {
-		resp.Diagnostics.AddWarning(
-			fmt.Sprintf("Warning disabling SCM %s plugin", r.integration),
-			fmt.Sprintf("Failed to disable %s plugin for project %s: %s", r.integration, project, scmErrorDetail(err)),
+		// A failed disable leaves the plugin enabled server-side. Erroring
+		// here (rather than only warning) keeps the resource in Terraform
+		// state - the framework only removes it from state when Delete
+		// returns without an error diagnostic - so the next apply retries
+		// instead of Terraform silently treating an unmanaged, still-enabled
+		// integration as gone.
+		resp.Diagnostics.AddError(
+			fmt.Sprintf("Error disabling SCM %s plugin", r.integration),
+			fmt.Sprintf("Could not disable %s plugin for project %s: %s", r.integration, project, scmErrorDetail(err)),
 		)
+		return
+	}
+	if disableResult != nil && disableResult.Success != nil && !*disableResult.Success {
+		resp.Diagnostics.AddError(
+			fmt.Sprintf("Error disabling SCM %s plugin", r.integration),
+			fmt.Sprintf("Rundeck did not disable the %s plugin for project %s: %s", r.integration, project, scmActionErrorMessage(disableResult)),
+		)
+		return
 	}
 }
 

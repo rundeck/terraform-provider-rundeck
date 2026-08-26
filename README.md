@@ -118,7 +118,7 @@ Without `RUNDECK_PROJECT_SCHEDULES_CONFIGURED=1`, the project schedule tests wil
 
 To run it:
 
-1. Create an empty repository on a git host reachable from your Rundeck server.
+1. Create a repository on a git host reachable from your Rundeck server, **with at least one initial commit on its default branch** (e.g. a README committed via the host's own "initialize this repository" option). The test fixture sets `branch = "main"` with `createBranch = "true"`, and `createBranch` creates that branch *from* the repository's current default branch - a genuinely empty repository (zero commits) has no branch to create it from, and setup fails.
 2. Generate an SSH keypair dedicated to this test (e.g. `ssh-keygen -t ed25519 -f /tmp/rundeck-scm-test-key -N ""`).
 3. Add the public key to that repository as a deploy key (or an account key) with write/push access.
 4. Set both environment variables, then run the test:

@@ -10,7 +10,7 @@ description: |-
 
 Configures and enables a project's SCM **import** plugin (e.g. `git-import`, `svn-import`) - job definitions pulled into Rundeck from a version control repository.
 
-**Requirements:** API v15+ (bundled with core Rundeck, not Enterprise-gated - git/svn SCM plugins ship with OSS Rundeck).
+**Requirements:** none beyond the provider's own minimum. The SCM API endpoints this resource uses have shipped with core Rundeck (not Enterprise-gated) since API v15, well below the provider's documented overall minimum of v46 (Rundeck 5.0.0+), so there's no separate version constraint to configure for.
 
 ## Example Usage
 

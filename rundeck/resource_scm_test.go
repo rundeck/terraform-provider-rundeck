@@ -35,13 +35,28 @@ func TestAccRundeckScmExport_basic(t *testing.T) {
 		CheckDestroy:             testAccScmCheckDestroy("export"),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccRundeckScmExportConfig_basic(gitURL, keyPath),
+				Config: testAccRundeckScmExportConfig_basic(gitURL, keyPath, "main"),
 				Check: resource.ComposeTestCheckFunc(
 					testAccScmCheckExists("rundeck_scm_export.test", "export", &config),
 					resource.TestCheckResourceAttr("rundeck_scm_export.test", "type", "git-export"),
 					resource.TestCheckResourceAttr("rundeck_scm_export.test", "config.url", gitURL),
 					resource.TestCheckResourceAttr("rundeck_scm_export.test", "enabled", "true"),
 				),
+			},
+			{
+				// Update: re-invoke Setup with a changed config value
+				// (there's no separate update endpoint) and confirm it
+				// actually takes effect rather than being a no-op.
+				Config: testAccRundeckScmExportConfig_basic(gitURL, keyPath, "develop"),
+				Check: resource.ComposeTestCheckFunc(
+					testAccScmCheckExists("rundeck_scm_export.test", "export", &config),
+					resource.TestCheckResourceAttr("rundeck_scm_export.test", "config.branch", "develop"),
+				),
+			},
+			{
+				ResourceName:      "rundeck_scm_export.test",
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
@@ -72,9 +87,17 @@ func testAccScmCheckDestroy(integration string) resource.TestCheckFunc {
 
 			got, resp, err := clients.V2.SCMAPI.ApiProjectConfig(clients.ctx, project, integration).Execute()
 			if resp != nil && resp.StatusCode == 404 {
+				// The plugin config is gone entirely - definitely not
+				// still enabled.
 				continue
 			}
-			if err == nil && got != nil && got.Enabled != nil && *got.Enabled {
+			if err != nil {
+				// Any other error (auth, network, server failure) means
+				// destruction was never actually verified - don't let that
+				// pass silently as if it had been.
+				return fmt.Errorf("failed to verify scm %s plugin destroyed for project %s: %w", integration, project, err)
+			}
+			if got != nil && got.Enabled != nil && *got.Enabled {
 				return fmt.Errorf("scm %s plugin still enabled for project: %s", integration, project)
 			}
 		}
@@ -88,18 +111,43 @@ func testAccScmCheckExists(rn string, integration string, config *openapi.ScmPro
 		if !ok {
 			return fmt.Errorf("resource not found: %s", rn)
 		}
-		if rs.Primary.Attributes["project"] == "" {
+		project := rs.Primary.Attributes["project"]
+		if project == "" {
 			return fmt.Errorf("project not set")
 		}
+		wantType := rs.Primary.Attributes["type"]
 
 		clients, err := getTestClients()
 		if err != nil {
 			return fmt.Errorf("failed to create test client: %s", err)
 		}
 
-		got, resp, err := clients.V2.SCMAPI.ApiProjectConfig(clients.ctx, rs.Primary.Attributes["project"], integration).Execute()
-		if resp.StatusCode != 200 {
-			return fmt.Errorf("failed to get scm %s config: %v", integration, err)
+		got, resp, err := clients.V2.SCMAPI.ApiProjectConfig(clients.ctx, project, integration).Execute()
+		if err != nil {
+			return fmt.Errorf("failed to get scm %s config: %w", integration, err)
+		}
+		if resp == nil || resp.StatusCode != 200 {
+			return fmt.Errorf("failed to get scm %s config: unexpected response %v", integration, resp)
+		}
+
+		// Assert directly against what the API returned, not just against
+		// Terraform state - the state values in the Check list right after
+		// this one are populated by this same provider code, so on their
+		// own they can't catch a serialization bug that's consistent
+		// between write and read.
+		if got.Type == nil || *got.Type != wantType {
+			return fmt.Errorf("api type = %v, want %q", got.Type, wantType)
+		}
+		if got.Enabled == nil || !*got.Enabled {
+			return fmt.Errorf("api enabled = %v, want true", got.Enabled)
+		}
+		if got.Config == nil {
+			return fmt.Errorf("api config is nil, want a populated config map")
+		}
+		if wantURL := rs.Primary.Attributes["config.url"]; wantURL != "" {
+			if gotURL := (*got.Config)["url"]; gotURL != wantURL {
+				return fmt.Errorf("api config.url = %q, want %q", gotURL, wantURL)
+			}
 		}
 
 		*config = *got
@@ -107,7 +155,7 @@ func testAccScmCheckExists(rn string, integration string, config *openapi.ScmPro
 	}
 }
 
-func testAccRundeckScmExportConfig_basic(gitURL string, keyPath string) string {
+func testAccRundeckScmExportConfig_basic(gitURL string, keyPath string, branch string) string {
 	return fmt.Sprintf(`
 resource "rundeck_private_key" "test" {
   path         = "terraform_acceptance_tests/scm_export_key"
@@ -131,7 +179,7 @@ resource "rundeck_scm_export" "test" {
   config = {
     url                   = %q
     dir                   = "/tmp/rundeck-scm-test-export"
-    branch                = "main"
+    branch                = %q
     createBranch          = "true"
     committerName         = "terraform-test"
     committerEmail        = "terraform-test@example.com"
@@ -143,5 +191,5 @@ resource "rundeck_scm_export" "test" {
 
   depends_on = [rundeck_private_key.test]
 }
-`, keyPath, gitURL)
+`, keyPath, gitURL, branch)
 }

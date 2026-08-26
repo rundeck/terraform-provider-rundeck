@@ -195,34 +195,13 @@ After:  Error creating job "my-job" in project "prod": Rundeck returned validati
 
 ---
 
-### SCM Integration Support
-**Status**: ✅ Implemented - `rundeck_scm_import` and `rundeck_scm_export`
-(`rundeck/resource_scm_framework.go`). Config is a generic `map(string)`
-since the valid/required keys are dynamic per plugin type (discoverable via
-the SCM API's plugin-input-schema endpoint, not modeled by this provider).
-Gated at API v15+ (bundled with core Rundeck, not Enterprise-only). No
-delete/clear-config endpoint exists - destroying the resource disables the
-plugin (closest available operation); config may persist server-side in a
-disabled state.
-**GitHub Issue**: [#76](https://github.com/rundeck/terraform-provider-rundeck/issues/76) -
-demand picked back up via a direct customer request; the "low demand"
-reasoning below is stale.
+### SCM Action Triggering
+**GitHub Issue**: [#76](https://github.com/rundeck/terraform-provider-rundeck/issues/76)
 
-**Not yet covered**: triggering SCM actions (import/commit/synch) - this
-provider only configures and enables/disables the plugin, it doesn't expose
-an "action" resource/data-source for the commit/synch workflow. Consider as
-a follow-up if needed.
-
-<details>
-<summary>Original triage notes (superseded)</summary>
-
-**Priority Justification**:
-- Low demand (only 1 GitHub issue in 3 years)
-- Complex implementation
-- Workaround exists (manual SCM setup in Rundeck UI)
-
-**Recommendation**: Consider for future release if user demand increases
-</details>
+`rundeck_scm_import`/`rundeck_scm_export` (`rundeck/resource_scm_framework.go`)
+configure and enable/disable a project's SCM plugin, but don't trigger an
+SCM action (the actual import/commit/synch). Consider an "action"
+resource/data-source for that workflow as a follow-up if needed.
 
 ---
 
