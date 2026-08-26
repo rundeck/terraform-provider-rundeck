@@ -12,7 +12,7 @@ Controls whether a Rundeck server executes jobs. In `passive` mode no job runs a
 
 This is **server-wide runtime state**, not per-project configuration. To stop only the scheduled runs of a project while still allowing manual ones, set `project.disable.schedule` on that project instead.
 
-Requires `api_version` 36 or higher: below that, the status endpoint this resource reads from does not reliably report passive mode.
+This resource's own requirement is `api_version` 36 or higher, since the status endpoint it reads from doesn't reliably report passive mode below that — in practice this is already covered by the provider's overall minimum of 46 (Rundeck 5.0.0+), so it isn't a separate constraint you need to configure for.
 
 ## Example Usage
 

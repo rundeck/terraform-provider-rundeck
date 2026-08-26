@@ -106,7 +106,16 @@ func (r *systemExecutionModeResource) Configure(_ context.Context, req resource.
 	// expected JSON body when the server is passive on API versions below 36
 	// (rundeck/rundeck#5846), which would otherwise surface as a confusing raw
 	// API error on every plan/refresh/import instead of a clear diagnostic.
-	if version, err := strconv.Atoi(clients.APIVersion); err != nil || version < minExecutionModeAPIVersion {
+	version, err := strconv.Atoi(clients.APIVersion)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Invalid API Version",
+			fmt.Sprintf("Could not parse the configured api_version %q as an integer: %s. "+
+				"Please set api_version to a plain number (e.g. \"56\").", clients.APIVersion, err.Error()),
+		)
+		return
+	}
+	if version < minExecutionModeAPIVersion {
 		resp.Diagnostics.AddError(
 			"Insufficient API Version",
 			fmt.Sprintf("rundeck_system_execution_mode requires API version %d or higher (currently configured: %s), "+
@@ -269,6 +278,14 @@ func (r *systemExecutionModeResource) Delete(ctx context.Context, req resource.D
 }
 
 func (r *systemExecutionModeResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	if req.ID != systemExecutionModeID {
+		resp.Diagnostics.AddError(
+			"Invalid Import ID",
+			fmt.Sprintf("Expected import ID %q (a Rundeck server has a single execution mode), got: %q.", systemExecutionModeID, req.ID),
+		)
+		return
+	}
+
 	mode, err := r.apiRequest(ctx, http.MethodGet, "status")
 	if err != nil {
 		resp.Diagnostics.AddError("Error importing execution mode", err.Error())

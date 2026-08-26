@@ -2,9 +2,12 @@ package rundeck
 
 import (
 	"context"
+	"fmt"
+	"net/http"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 // TestAccSystemExecutionMode covers the two things that matter for this
@@ -13,9 +16,23 @@ import (
 // managing it here rather than through a configuration file only read at
 // startup.
 func TestAccSystemExecutionMode(t *testing.T) {
+	// Captured lazily on first use inside PreCheck (once testAccPreCheck has
+	// confirmed the env vars this needs are set), and restored via
+	// CheckDestroy once the test's own steps are done - this resource's
+	// Delete deliberately never touches server state, so without this the
+	// test would leave the server in whatever mode its last apply set,
+	// regardless of what it started in.
+	var startingMode string
+
 	resource.Test(t, resource.TestCase{
-		PreCheck:                 func() { testAccPreCheck(t) },
+		PreCheck: func() {
+			testAccPreCheck(t)
+			startingMode = testAccCurrentExecutionMode(t)
+		},
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
+		CheckDestroy: func(*terraform.State) error {
+			return testAccFlipExecutionModeOutOfBand(startingMode)
+		},
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSystemExecutionModeConfig("passive"),
@@ -48,8 +65,12 @@ func TestAccSystemExecutionMode(t *testing.T) {
 				// automatic post-apply "plan again, expect no diff" check
 				// only passes if this step's apply actually reconciled the
 				// drift Read() picked up, not merely flagged it.
-				PreConfig: func() { testAccFlipExecutionModeOutOfBand(t, "passive") },
-				Config:    testAccSystemExecutionModeConfig("active"),
+				PreConfig: func() {
+					if err := testAccFlipExecutionModeOutOfBand("passive"); err != nil {
+						t.Fatalf("flipping execution mode out-of-band: %v", err)
+					}
+				},
+				Config: testAccSystemExecutionModeConfig("active"),
 				Check: resource.TestCheckResourceAttr(
 					"rundeck_system_execution_mode.test", "mode", "active"),
 			},
@@ -66,8 +87,26 @@ func TestAccSystemExecutionMode(t *testing.T) {
 // testAccFlipExecutionModeOutOfBand switches the server's execution mode
 // directly through the API, bypassing Terraform entirely, so the following
 // test step's plan/apply has to detect and correct real drift rather than
-// just replaying state it already wrote itself.
-func testAccFlipExecutionModeOutOfBand(t *testing.T, mode string) {
+// just replaying state it already wrote itself. Also used by CheckDestroy
+// to restore the server's starting mode once the test's own steps are done.
+func testAccFlipExecutionModeOutOfBand(mode string) error {
+	clients, err := getTestClients()
+	if err != nil {
+		return fmt.Errorf("getTestClients: %w", err)
+	}
+
+	r := &systemExecutionModeResource{client: clients}
+	if _, err := r.setMode(context.Background(), mode); err != nil {
+		return fmt.Errorf("flipping execution mode out-of-band to %q: %w", mode, err)
+	}
+	return nil
+}
+
+// testAccCurrentExecutionMode reads the server's current execution mode
+// directly through the API, so the test can restore it via CheckDestroy
+// once done - this resource's own Delete deliberately never touches server
+// state.
+func testAccCurrentExecutionMode(t *testing.T) string {
 	t.Helper()
 
 	clients, err := getTestClients()
@@ -76,9 +115,11 @@ func testAccFlipExecutionModeOutOfBand(t *testing.T, mode string) {
 	}
 
 	r := &systemExecutionModeResource{client: clients}
-	if _, err := r.setMode(context.Background(), mode); err != nil {
-		t.Fatalf("flipping execution mode out-of-band to %q: %v", mode, err)
+	mode, err := r.apiRequest(context.Background(), http.MethodGet, "status")
+	if err != nil {
+		t.Fatalf("reading current execution mode: %v", err)
 	}
+	return mode
 }
 
 func testAccSystemExecutionModeConfig(mode string) string {
