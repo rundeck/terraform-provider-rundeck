@@ -1,12 +1,23 @@
 ## Unreleased
 
-**Enhancements**
+**Bug Fixes**
 
 ### Job Resource
 
-- **Added `values_list_delimiter` to job options** - Rundeck stores an option's predefined choices as a single delimited string plus the delimiter used to split it (`Option.toMap` always emits `valuesListDelimiter` alongside `values`, defaulting it to a comma). The provider had no way to set it, so a choice containing a comma could not be represented — the option silently split into the wrong values. Distinct from the existing `multi_value_delimiter`, which separates the values a user selects rather than the ones offered.
+- **Fixed updates being resolved by name instead of UUID, which created duplicate jobs** - On update the provider sent the job's UUID under `id`, but Rundeck writes a job's UUID out under both `uuid` and `id` (`ScheduledExecution.toMap`) while only reading it back from `uuid` (`fromMap`). The identifier therefore never reached the import, and Rundeck fell back to resolving the job by name + group + project — a fallback that only matches when *exactly one* job carries that name (`1 == schedlist.size()` in `loadImportedJobs`).
 
-- **Added `notify_avg_duration_threshold` to `rundeck_job`** - The threshold that decides when the `on_avg_duration` notification fires (a duration, a percentage of the job's average duration, or an increment over it). Without it Rundeck reads the threshold as zero and the guard `jobAverageDurationFinal > 0` never passes, so an `on_avg_duration` notification was configured but could never fire.
+  Two consequences. **Renaming a job created a second one** — `name` is not `RequiresReplace`, so a rename goes through Update, the new name matched nothing, and Rundeck created a job while the original stayed behind under its old name. And **two jobs sharing a name could never be updated**: every apply added another duplicate, which guaranteed the name would never resolve again. The fallback could also update the *wrong* job when an unrelated one happened to share the name.
+
+  In both cases the apply then fails with `Provider produced inconsistent result after apply`, since the id returned is the job that was just created rather than the one in state. The error is visible; what is silent is the damage left in Rundeck — the duplicate stays, and the original is no longer referenced by Terraform.
+
+  The update payload now carries `uuid`, so Rundeck takes its UUID-first resolution path and the job is targeted unambiguously. **Behaviour change:** renaming a job now renames it in place and succeeds, where it previously failed after creating a duplicate. Duplicates left behind by the previous behaviour are not cleaned up automatically — Terraform no longer references them, so they have to be removed from Rundeck by hand. `group_name` and `project_name` are unaffected: both carry `RequiresReplace`, so changing either already destroys and recreates the job.
+
+- **Fixed a plugin-based `error_handler` being silently discarded** - The schema accepts `step_plugin` and `node_step_plugin` under `error_handler`, and `errorHandlerObjectType` declares both, but neither conversion handled them: the write side emitted only `description`, the script/command fields and `jobref`, and the read side never looked for `type`/`configuration`. A handler such as `flow-control` therefore serialized to an object carrying no action at all. Rundeck accepted the job and dropped the handler, so the read-back returned no block and the apply failed with `error_handler: block count changed from 1 to 0`.
+
+  The plan being perfectly valid, this only ever surfaced at apply time — and the job was left in Rundeck without its handler, so a workflow meant to stop on a condition simply ran on. Both directions now carry `type`, `configuration` and `nodeStep`, the latter distinguishing a workflow step from a node step (Rundeck answers it as a bool or as the string `"true"`, both accepted).
+
+  Note that Rundeck itself refuses a workflow-step handler on a node-oriented workflow (*"Error Handlers for Node Steps must also be Node Steps"*), so a job guarded this way needs `strategy = "sequential"`.
+
 
 ## 1.3.1
 
