@@ -272,8 +272,11 @@ func (r *systemRunnerResource) Create(ctx context.Context, req resource.CreateRe
 	if err != nil {
 		errorMsg := err.Error()
 		if httpResp != nil {
-			bodyBytes, _ := io.ReadAll(httpResp.Body)
-			errorMsg = fmt.Sprintf("%s - Response: %s", err.Error(), string(bodyBytes))
+			bodyBytes, readErr := io.ReadAll(httpResp.Body)
+			httpResp.Body.Close()
+			if readErr == nil {
+				errorMsg = fmt.Sprintf("%s - Response: %s", err.Error(), string(bodyBytes))
+			}
 		}
 		resp.Diagnostics.AddError(
 			"Error creating system runner",

@@ -3,6 +3,7 @@ package rundeck
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -338,8 +339,18 @@ func flattenRunnerProjectAssociations(assoc *openapi.RunnerProjectAssociations) 
 		return nil
 	}
 
-	result := make([]runnerProjectAssociationModel, 0, len(projectNames))
+	// Sort project names before building the list: ranging over a map
+	// directly would make the resulting list's order nondeterministic
+	// between reads, showing up as a noisy diff on every refresh even when
+	// the underlying associations haven't changed.
+	sortedNames := make([]string, 0, len(projectNames))
 	for name := range projectNames {
+		sortedNames = append(sortedNames, name)
+	}
+	sort.Strings(sortedNames)
+
+	result := make([]runnerProjectAssociationModel, 0, len(projectNames))
+	for _, name := range sortedNames {
 		item := runnerProjectAssociationModel{ProjectName: types.StringValue(name)}
 		if assoc.ProjectNodeFilters != nil {
 			if v, ok := (*assoc.ProjectNodeFilters)[name]; ok {
