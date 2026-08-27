@@ -10,7 +10,7 @@ description: |-
 
 Manages a Rundeck Enterprise local role, including its member usernames. Local roles are referenced by name (`authority`) from ACL policies (`rundeck_acl_policy`) to determine what a role is authorized to do; this resource manages the role and its membership, not what it's authorized to do.
 
-**Requirements:** Requires Rundeck Enterprise with the **local user store** authentication realm enabled, and API v44+. Configure the provider with `api_version = "44"` or higher. If your instance authenticates users via LDAP/SSO/PAM instead of the local user store, this resource will not work — Rundeck has no REST-manageable role concept for those realms.
+**Requirements:** Requires Rundeck Enterprise with the **local user store** authentication realm enabled. This resource's own requirement is `api_version` 44 or higher, but in practice this is already covered by the provider's overall minimum of 46 (Rundeck 5.0.0+), so it isn't a separate constraint you need to configure for. If your instance authenticates users via LDAP/SSO/PAM instead of the local user store, this resource will not work — Rundeck has no REST-manageable role concept for those realms.
 
 **Note:** This resource manages roles and role membership only. It does not create local user accounts — see the note below on `rundeck_local_user`.
 
@@ -20,7 +20,7 @@ Manages a Rundeck Enterprise local role, including its member usernames. Local r
 provider "rundeck" {
   url         = "http://localhost:4440"
   auth_token  = "your-token"
-  api_version = "44"
+  api_version = "46"
 }
 
 resource "rundeck_local_role" "operators" {
