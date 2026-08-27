@@ -22,7 +22,7 @@ This provider is **community-supported**. While Rundeck/PagerDuty staff review a
 ## Requirements
 
 - [Terraform](https://www.terraform.io/downloads.html) >= 0.13.x
-- [Go](https://golang.org/doc/install) >= 1.24
+- [Go](https://golang.org/doc/install) >= 1.25.8
 - [Rundeck](https://www.rundeck.com/) >= 5.0.0 (API v46+)
 
 > Note: Some features will require newer or Enterprise versions of Rundeck.
@@ -78,6 +78,8 @@ Some tests require **Rundeck Enterprise** features and will fail on Rundeck Comm
 
 **Enterprise-only features tested:**
 - **Runner resources** - System runners and project runners (5 tests)
+- **Runner data sources** - `rundeck_runner`, `rundeck_runners`, `rundeck_runner_tags`
+- **Local roles** - `rundeck_local_role` CRUD and membership (see the dedicated setup section below)
 - **Project schedules** - Job scheduling via project-level schedules (3 tests)
 - **Execution lifecycle plugins**
 
@@ -144,7 +146,7 @@ env:
 
 #### Test Requirements
 
-- **Go 1.24+** - Required for modern Terraform Plugin Framework
+- **Go 1.25.8+** - Required by `terraform-plugin-sdk/v2`
 - **Rundeck 5.0.0+** - Minimum supported version (API v46)
 - **Docker** - For local testing environment (optional but recommended)
 - **Rundeck Enterprise** - Only if running Enterprise feature tests
