@@ -231,6 +231,17 @@ func (r *scmIntegrationResource) Create(ctx context.Context, req resource.Create
 	// description, since it's a harmless no-op if already enabled.
 	enableResult, _, err := client.SCMAPI.ApiProjectEnable(apiCtx, project, r.integration, pluginType).Execute()
 	if err != nil {
+		// enabled is Computed-only, so plan.Enabled is still Unknown at this
+		// point (req.Plan.Get never populates it - only a real read does).
+		// The state.Set above already persisted that Unknown value; returning
+		// an error without correcting it leaves the *final* state Unknown,
+		// which the framework rejects outright ("Provider returned invalid
+		// result object after apply") on top of the real error underneath -
+		// confirmed live, against Rundeck Enterprise 6.2.0-SNAPSHOT, when
+		// ApiProjectEnable failed after a successful ApiProjectSetup. Setup
+		// succeeded but enabling didn't, so the plugin isn't enabled.
+		plan.Enabled = types.BoolValue(false)
+		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 		resp.Diagnostics.AddError(
 			fmt.Sprintf("Error enabling SCM %s plugin", r.integration),
 			fmt.Sprintf("Plugin was configured but could not be enabled for project %s: %s", project, scmErrorDetail(err)),
@@ -238,6 +249,8 @@ func (r *scmIntegrationResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 	if enableResult != nil && enableResult.Success != nil && !*enableResult.Success {
+		plan.Enabled = types.BoolValue(false)
+		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 		resp.Diagnostics.AddError(
 			fmt.Sprintf("Error enabling SCM %s plugin", r.integration),
 			fmt.Sprintf("Plugin was configured but Rundeck did not enable it for project %s: %s", project, scmActionErrorMessage(enableResult)),
