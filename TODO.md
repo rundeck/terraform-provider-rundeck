@@ -2,7 +2,7 @@
 
 Forward-looking tasks for the Rundeck Terraform Provider.
 
-**Current Status**: 1.4.0 merged to `master` (not yet tagged) - local roles, system execution mode, runner data sources, plus job and system runner fixes. See `CHANGELOG.md` for full details.  
+**Current Status**: 1.4.0 merged to `main` (not yet tagged) - local roles, system execution mode, runner data sources, plus job and system runner fixes. See `CHANGELOG.md` for full details.  
 **Last Updated**: 2026-08-27 (1.4.0 merged)
 
 ---
