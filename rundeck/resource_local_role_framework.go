@@ -293,6 +293,23 @@ func (r *localRoleResource) Create(ctx context.Context, req resource.CreateReque
 					"Warning assigning role members",
 					fmt.Sprintf("Role %s was created but failed to assign members: %s", plan.Authority.ValueString(), err.Error()),
 				)
+			} else {
+				// prefetchedUsers was fetched to resolve usernames to IDs
+				// before this call, so it's a snapshot from before the
+				// membership change took effect - confirmed live: reusing
+				// it for the refresh below misses the just-added member
+				// entirely, since ApiUpdateMembers has no reflected effect
+				// on data fetched earlier. Re-fetch so the refresh actually
+				// reflects the change just made.
+				refreshedUsers, refreshErr := listLocalUsers(apiCtx, client)
+				if refreshErr != nil {
+					resp.Diagnostics.AddWarning(
+						"Warning refreshing role members",
+						fmt.Sprintf("Role %s's members were updated but the new list could not be re-fetched for this apply's state: %s. A subsequent refresh will pick it up.", plan.Authority.ValueString(), refreshErr.Error()),
+					)
+				} else {
+					prefetchedUsers = refreshedUsers
+				}
 			}
 		}
 	}
@@ -563,6 +580,21 @@ func (r *localRoleResource) Update(ctx context.Context, req resource.UpdateReque
 				"Warning updating role members",
 				fmt.Sprintf("Role %s was updated but failed to update members: %s", roleID, err.Error()),
 			)
+		} else {
+			// See the identical comment in Create: prefetchedUsers was
+			// fetched to resolve usernames to IDs before this call, so it's
+			// a snapshot from before the membership change took effect.
+			// Re-fetch so the refresh below actually reflects the change
+			// just made, instead of missing it entirely.
+			refreshedUsers, refreshErr := listLocalUsers(apiCtx, client)
+			if refreshErr != nil {
+				resp.Diagnostics.AddWarning(
+					"Warning refreshing role members",
+					fmt.Sprintf("Role %s's members were updated but the new list could not be re-fetched for this apply's state: %s. A subsequent refresh will pick it up.", roleID, refreshErr.Error()),
+				)
+			} else {
+				prefetchedUsers = refreshedUsers
+			}
 		}
 	}
 
