@@ -2,8 +2,19 @@
 
 Forward-looking tasks for the Rundeck Terraform Provider.
 
-**Current Status**: v1.2.0 released with webhooks, bug fixes, and max_concurrent_executions!  
-**Last Updated**: 2026-02-25 (v1.2.0 released)
+**Current Status**: 1.4.0 merged to `master` (not yet tagged) - local roles, system execution mode, runner data sources, plus job and system runner fixes. See `CHANGELOG.md` for full details.  
+**Last Updated**: 2026-08-27 (1.4.0 merged)
+
+---
+
+## ✅ Completed in 1.4.0
+
+- **`rundeck_local_role`** - Create/read/update/delete for Enterprise local user store roles, including membership management ([#291](https://github.com/rundeck/terraform-provider-rundeck/pull/291)). `rundeck_local_user` remains blocked - see the note under "New Resources (Other)" below.
+- **`rundeck_system_execution_mode`** - Controls whether a server executes jobs (`active`/`passive`) ([#287](https://github.com/rundeck/terraform-provider-rundeck/pull/287)).
+- **Runner data sources** - `rundeck_runner`, `rundeck_runners`, `rundeck_runner_tags`, closing the long-standing `data.rundeck_runner` item below ([#290](https://github.com/rundeck/terraform-provider-rundeck/pull/290)).
+- **`rundeck_system_runner` project detachment fix** - `Update` now explicitly clears per-project dispatch settings when a project is removed, instead of relying on unreliable overwrite semantics ([#290](https://github.com/rundeck/terraform-provider-rundeck/pull/290)).
+- **Job resource enhancements** - `node_intersect` on job reference dispatch blocks, `values_list_delimiter` for option choices, `notify_avg_duration_threshold` for `on_avg_duration` notifications ([#284](https://github.com/rundeck/terraform-provider-rundeck/pull/284), [#285](https://github.com/rundeck/terraform-provider-rundeck/pull/285)).
+- **SCM resources implemented, held from this release** - `rundeck_scm_import`/`rundeck_scm_export` are built and reviewed ([#292](https://github.com/rundeck/terraform-provider-rundeck/pull/292)) but not merged: acceptance testing surfaced a GitHub/SSHJ SSH handshake incompatibility that's on Rundeck's server side, not the provider. Held pending a Rundeck 6.2.0 fix; see the "SCM Integration Support" entry below for details.
 
 ---
 
@@ -37,7 +48,10 @@ Forward-looking tasks for the Rundeck Terraform Provider.
 **Effort**: Medium (1 week)  
 **Why Important**: Enables referencing existing Rundeck resources without managing them, common pattern in Terraform.
 
-**Priority Order**:
+**Completed in v1.4.0**:
+- ✅ `data.rundeck_runner`, `data.rundeck_runners`, `data.rundeck_runner_tags` - Look up and enumerate Enterprise runners
+
+**Remaining, priority order**:
 - `data.rundeck_project` - Look up project details, most requested
 - `data.rundeck_job` - Reference existing jobs by name/UUID
 - `data.rundeck_node` - Query nodes (lower priority)
@@ -194,28 +208,18 @@ After:  Error creating job "my-job" in project "prod": Rundeck returned validati
 ---
 
 ### SCM Integration Support
-**Effort**: Large (1-2 weeks)  
+**Effort**: Large (1-2 weeks) - **implemented, held from release**  
 **Why Important**: Users want to manage SCM configurations via Terraform.  
-**GitHub Issue**: [#76](https://github.com/rundeck/terraform-provider-rundeck/issues/76)
+**GitHub Issue**: [#76](https://github.com/rundeck/terraform-provider-rundeck/issues/76)  
+**PR**: [#292](https://github.com/rundeck/terraform-provider-rundeck/pull/292)
 
-**Feature Request**:
-Add support for Rundeck's Source Control Management (SCM) integration, allowing Terraform to configure Git import/export for projects.
+**Status**: `rundeck_scm_import` and `rundeck_scm_export` are implemented, reviewed, and passed acceptance testing for the resource logic itself. They're held out of 1.4.0 because that same acceptance testing (a Git-export config against a real GitHub remote) hit a GitHub/SSHJ SSH handshake incompatibility - confirmed via server logs to be on Rundeck's side (the SSHJ client disconnects before authentication completes), not a provider or SDK bug. A fix is going into Rundeck 6.2.0. Once that ships, re-run the SCM acceptance test against a real GitHub remote and merge.
 
-**Proposed Resources**:
-- `rundeck_scm_import` - Configure Git import for a project
-- `rundeck_scm_export` - Configure Git export for a project
-
-**API Support**:
-- Rundeck API v14+ supports SCM endpoints
-- Complex configuration schema varies by plugin
-- Authentication methods (SSH keys, tokens)
-
-**Priority Justification**:
-- Low demand (only 1 GitHub issue in 3 years)
-- Complex implementation
-- Workaround exists (manual SCM setup in Rundeck UI)
-
-**Recommendation**: Consider for future release if user demand increases
+**Resources** (as implemented):
+- `rundeck_scm_import` - Configure Git/SVN import for a project
+- `rundeck_scm_export` - Configure Git/SVN export for a project
+- `config` is a generic string map since valid keys are plugin-specific and discovered at runtime
+- Gated at API v15+ (ships with core Rundeck, not Enterprise-only)
 
 ---
 
@@ -234,6 +238,9 @@ Add support for Rundeck's Source Control Management (SCM) integration, allowing 
   upstream or the requests are hand-built, bypassing the generated client
   for those two calls.
 - `rundeck_execution` - Trigger/manage executions (questionable use case)
+
+**Completed in v1.4.0**:
+- ✅ `rundeck_local_role` - Enterprise local user store role CRUD + membership management
 
 **Completed in v1.2.0**:
 - ✅ `rundeck_webhook` - Webhook event handlers (fully implemented with all 8 plugin types)
