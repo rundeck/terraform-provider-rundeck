@@ -216,11 +216,14 @@ func (p *frameworkProvider) Resources(ctx context.Context) []func() resource.Res
 		NewJobResource,
 		NewWebhookResource,
 		NewLocalRoleResource,
+		NewSystemExecutionModeResource,
 	}
 }
 
 func (p *frameworkProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
-		// Data sources will be added here if needed
+		NewRunnerDataSource,
+		NewRunnersDataSource,
+		NewRunnerTagsDataSource,
 	}
 }

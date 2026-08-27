@@ -187,6 +187,10 @@ func jobCommandNestedBlock() schema.ListNestedBlock {
 														Optional:    true,
 														Description: "Rank order: ascending or descending",
 													},
+													"node_intersect": schema.BoolAttribute{
+														Optional:    true,
+														Description: "Run the referenced job only on the intersection of its own node set and the parent job's (Rundeck's \"Match Node Filter Intersection\")",
+													},
 												},
 											},
 										},
@@ -374,6 +378,10 @@ func jobCommandNestedBlock() schema.ListNestedBlock {
 																"rank_order": schema.StringAttribute{
 																	Optional: true,
 																},
+																"node_intersect": schema.BoolAttribute{
+																	Optional:    true,
+																	Description: "Run the referenced job only on the intersection of its own node set and the parent job's (Rundeck's \"Match Node Filter Intersection\")",
+																},
 															},
 														},
 													},
@@ -435,6 +443,21 @@ func jobOptionNestedBlock() schema.ListNestedBlock {
 				"value_choices": schema.ListAttribute{
 					Optional:    true,
 					ElementType: types.StringType,
+				},
+				// Computed as well as Optional: Rundeck always returns this field
+				// once an option has values, defaulting it to a comma. Leaving it
+				// Optional-only would make an unset delimiter read back as ","
+				// and fail the apply with an inconsistent result. UseStateForUnknown
+				// keeps an unconfigured delimiter from planning as "(known after
+				// apply)" on every subsequent plan, matching run_for_each_node/
+				// node_step, the other Optional+Computed attributes on this path.
+				"values_list_delimiter": schema.StringAttribute{
+					Optional:    true,
+					Computed:    true,
+					Description: "Separator used to join the value_choices into the option's values list (Rundeck defaults to a comma). Set it when a choice itself contains the default separator. Distinct from multi_value_delimiter, which separates the values a user selects.",
+					PlanModifiers: []planmodifier.String{
+						stringplanmodifier.UseStateForUnknown(),
+					},
 				},
 				"value_choices_url": schema.StringAttribute{
 					Optional: true,
@@ -670,6 +693,7 @@ var nodeFilterDispatchObjectType = types.ObjectType{
 		"keep_going":     types.BoolType,
 		"rank_attribute": types.StringType,
 		"rank_order":     types.StringType,
+		"node_intersect": types.BoolType,
 	},
 }
 

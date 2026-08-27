@@ -66,15 +66,23 @@ resource "rundeck_project_runner" "specific" {
 
 ## API Endpoints Used
 
+Both resources (and the runner data sources below) require API version 56 or
+higher, enforced by the provider at `Configure` time.
+
 ### System Runner
-- **Create**: `POST /api/53/runner`
-- **Read**: `GET /api/53/runner/{id}`
+- **Create**: `POST /api/56/runner`
+- **Read**: `GET /api/56/runner/{id}`
 - **Delete**: Via project associations
 
 ### Project Runner
-- **Create**: `POST /api/53/project/{project}/runner`
-- **Read**: `GET /api/53/project/{project}/runners` (list and filter)
-- **Delete**: `DELETE /api/53/project/{project}/runner/{id}`
+- **Create**: `POST /api/56/project/{project}/runner`
+- **Read**: `GET /api/56/project/{project}/runners` (list and filter)
+- **Delete**: `DELETE /api/56/project/{project}/runner/{id}`
+
+### Data Sources
+- `data.rundeck_runner` - look up a single runner by `runner_id`
+- `data.rundeck_runners` - list/filter runners, optionally scoped to a project
+- `data.rundeck_runner_tags` - discover runner tags in use and their usage counts
 
 ## Import Syntax
 

@@ -357,6 +357,97 @@ func TestAccJobOptions_value_choices_from_variable(t *testing.T) {
 	})
 }
 
+// TestAccJobOptions_valuesListDelimiterAndNotifyThreshold covers two
+// previously-unexpressible settings against a real server:
+//   - values_list_delimiter, left unconfigured on one option (the exact
+//     scenario that regressed without UseStateForUnknown: an Optional+
+//     Computed attribute the framework would otherwise replan as unknown
+//     on every subsequent plan, not just the first one) and explicitly set
+//     on another.
+//   - notify_avg_duration_threshold at the job level.
+//
+// The RefreshState/PlanOnly step is the actual regression check: it fails
+// if either attribute shows up as a diff with nothing in config having
+// changed.
+func TestAccJobOptions_valuesListDelimiterAndNotifyThreshold(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobOptions_valuesListDelimiterAndNotifyThreshold,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("rundeck_job.test", "name", "delimiter-and-threshold-job"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "notify_avg_duration_threshold", "30m"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "option.0.name", "default_delimiter"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "option.0.values_list_delimiter", ","),
+					resource.TestCheckResourceAttr("rundeck_job.test", "option.1.name", "custom_delimiter"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "option.1.values_list_delimiter", ";"),
+				),
+			},
+			// Core regression check: no diff on refresh with nothing in
+			// config changed. Without UseStateForUnknown on
+			// values_list_delimiter, option.0's unconfigured delimiter
+			// would show up here as "(known after apply)" every time.
+			{
+				RefreshState: true,
+				PlanOnly:     true,
+			},
+		},
+	})
+}
+
+const testAccJobOptions_valuesListDelimiterAndNotifyThreshold = `
+resource "rundeck_project" "test" {
+  name        = "terraform-acc-test-delimiter-threshold"
+  description = "parent project for job acceptance tests"
+
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests.yaml"
+    }
+  }
+}
+
+resource "rundeck_job" "test" {
+  project_name                  = rundeck_project.test.name
+  name                           = "delimiter-and-threshold-job"
+  description                    = "A job exercising values_list_delimiter and notify_avg_duration_threshold"
+  notify_avg_duration_threshold  = "30m"
+
+  option {
+    name                   = "default_delimiter"
+    value_choices          = ["a", "b", "c"]
+  }
+
+  # values_list_delimiter's actual purpose: switch away from the default
+  # comma when a choice value itself needs to contain one. Using ";" here
+  # lets "a,b" survive as a single choice instead of being split on comma.
+  option {
+    name                   = "custom_delimiter"
+    value_choices          = ["a,b", "c"]
+    values_list_delimiter  = ";"
+  }
+
+  command {
+    description   = "Prints Hello World"
+    shell_command = "echo Hello World"
+  }
+
+  # notify_avg_duration_threshold is inert without this: confirmed against
+  # a live server, Rundeck doesn't even persist the threshold unless an
+  # on_avg_duration notification actually exists on the job.
+  notification {
+    type = "on_avg_duration"
+    email {
+      recipients = ["test@example.com"]
+    }
+  }
+}
+`
+
 func TestAccJob_plugins(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
