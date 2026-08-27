@@ -1,6 +1,6 @@
 ## Unreleased
 
-## 1.4.0 (2026-08-27)
+## 1.4.0
 
 **Bug Fixes**
 
@@ -48,7 +48,7 @@
 
 ### Local Role Resource
 
-- **Added `rundeck_local_role`** - Create/read/update/delete for Rundeck Enterprise local user store roles (requires the local user store auth realm, API v44+), including membership management. There's no API endpoint to list a role's members directly, so membership is resolved by listing all local users and diffing against each one's roles. `rundeck_local_user` is intentionally not implemented: the vendored SDK has no request-body support for the user create/edit endpoints, a gap in Rundeck's own published OpenAPI spec.
+- **Added `rundeck_local_role`** - Create/read/update/delete for Rundeck Enterprise local user store roles (requires the local user store auth realm; the resource's own API v44+ requirement is already covered by the provider's overall minimum of v46+), including membership management. There's no API endpoint to list a role's members directly, so membership is resolved by listing all local users and diffing against each one's roles. `rundeck_local_user` is intentionally not implemented: the vendored SDK has no request-body support for the user create/edit endpoints, a gap in Rundeck's own published OpenAPI spec.
 
 
 ## 1.3.1
