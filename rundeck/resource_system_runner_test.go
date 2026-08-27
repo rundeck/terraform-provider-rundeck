@@ -392,8 +392,19 @@ func TestAccRundeckSystemRunner_detachProject(t *testing.T) {
 	})
 }
 
-// testAccSystemRunnerCheckProjectDetached verifies the given project no longer
-// appears in any of the runner's per-project dispatch-setting maps server-side.
+// testAccSystemRunnerCheckProjectDetached verifies the given project's
+// dispatch settings are actually inert server-side after detaching.
+//
+// Confirmed directly against a live server: RemoveProjectAssociation only
+// clears the access-level association (ProjectNodeFilters); it never
+// touches ProjectRunnerAsNodeEnabled/ProjectRemoteNodeDispatch, and those
+// two booleans are never removed from their map even when explicitly reset
+// - Rundeck keeps the key with value false rather than deleting it. Only
+// string-valued settings (ProjectRunnerNodeFilter) and the access-level map
+// actually lose the key when cleared. So "detached" here means: the
+// access-level and node-filter maps have no entry for the project, and the
+// two boolean maps either have no entry or an entry that's false - not
+// "no entry at all" for every map, which this API doesn't make possible.
 func testAccSystemRunnerCheckProjectDetached(project string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources["rundeck_system_runner.test"]
@@ -422,13 +433,13 @@ func testAccSystemRunnerCheckProjectDetached(project string) resource.TestCheckF
 			}
 		}
 		if assoc.ProjectRunnerAsNodeEnabled != nil {
-			if _, ok := (*assoc.ProjectRunnerAsNodeEnabled)[project]; ok {
-				return fmt.Errorf("project %s still present in ProjectRunnerAsNodeEnabled after detach", project)
+			if v, ok := (*assoc.ProjectRunnerAsNodeEnabled)[project]; ok && v {
+				return fmt.Errorf("project %s still has ProjectRunnerAsNodeEnabled=true after detach", project)
 			}
 		}
 		if assoc.ProjectRemoteNodeDispatch != nil {
-			if _, ok := (*assoc.ProjectRemoteNodeDispatch)[project]; ok {
-				return fmt.Errorf("project %s still present in ProjectRemoteNodeDispatch after detach", project)
+			if v, ok := (*assoc.ProjectRemoteNodeDispatch)[project]; ok && v {
+				return fmt.Errorf("project %s still has ProjectRemoteNodeDispatch=true after detach", project)
 			}
 		}
 		if assoc.ProjectRunnerNodeFilter != nil {

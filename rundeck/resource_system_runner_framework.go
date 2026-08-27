@@ -634,6 +634,29 @@ func (r *systemRunnerResource) Update(ctx context.Context, req resource.UpdateRe
 			if _, stillAssigned := mergedProjects[projectName]; stillAssigned {
 				continue
 			}
+
+			// RemoveProjectAssociation only clears the access-level
+			// association (confirmed against a live server: the resulting
+			// RunnerInfo's ProjectNodeFilters map loses the project, but
+			// ProjectRunnerAsNodeEnabled/ProjectRemoteNodeDispatch/
+			// ProjectRunnerNodeFilter are all left completely untouched -
+			// still at whatever they were last explicitly set to, not even
+			// reset to false). Explicitly reset those first, or a "detached"
+			// project can still have runner_as_node_enabled/
+			// remote_node_dispatch actively true server-side.
+			clearRequest := openapi.NewSaveProjectRunnerNodeDispatchSettingsRequest(runnerId)
+			clearRequest.SetRunnerAsNodeEnabled(false)
+			clearRequest.SetRemoteNodeDispatch(false)
+			clearRequest.SetRunnerNodeFilter("")
+			_, _, dispatchErr := client.RunnerAPI.SaveProjectRunnerNodeDispatchSettings(apiCtx, projectName).SaveProjectRunnerNodeDispatchSettingsRequest(*clearRequest).Execute()
+			if dispatchErr != nil {
+				resp.Diagnostics.AddWarning(
+					"Warning detaching project",
+					fmt.Sprintf("Failed to clear node dispatch settings for runner %s in project %s: %s", runnerId, projectName, dispatchErr.Error()),
+				)
+				continue
+			}
+
 			_, _, err := client.RunnerAPI.RemoveProjectAssociation(apiCtx, projectName, runnerId).Execute()
 			if err != nil {
 				resp.Diagnostics.AddWarning(
