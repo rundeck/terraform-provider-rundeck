@@ -188,6 +188,9 @@ func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]inte
 								if ro, ok := dispAttrs["rank_order"].(types.String); ok && !ro.IsNull() {
 									dispMap["rankOrder"] = ro.ValueString()
 								}
+								if ni, ok := dispAttrs["node_intersect"].(types.Bool); ok && !ni.IsNull() {
+									dispMap["nodeIntersect"] = ni.ValueBool()
+								}
 
 								if len(dispMap) > 0 {
 									nfMap["dispatch"] = dispMap
@@ -391,6 +394,9 @@ func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]inte
 										}
 										if ro, ok := dispAttrs["rank_order"].(types.String); ok && !ro.IsNull() {
 											dispMap["rankOrder"] = ro.ValueString()
+										}
+										if ni, ok := dispAttrs["node_intersect"].(types.Bool); ok && !ni.IsNull() {
+											dispMap["nodeIntersect"] = ni.ValueBool()
 										}
 
 										if len(dispMap) > 0 {
@@ -2060,6 +2066,7 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 							"keep_going":     types.BoolNull(),
 							"rank_attribute": types.StringNull(),
 							"rank_order":     types.StringNull(),
+							"node_intersect": types.BoolNull(),
 						}
 
 						// threadcount can be int or float64 from JSON
@@ -2077,6 +2084,9 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 						}
 						if ro, ok := dispatch["rankOrder"].(string); ok && ro != "" {
 							dispAttrs["rank_order"] = types.StringValue(ro)
+						}
+						if ni, ok := dispatch["nodeIntersect"].(bool); ok {
+							dispAttrs["node_intersect"] = types.BoolValue(ni)
 						}
 
 						dispObj, dispDiags := types.ObjectValue(
@@ -2115,60 +2125,19 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 					}
 				}
 				if hasJobRef {
+					// jobRefObjectType (resource_job_command_schema.go) is the single
+					// source of truth for this shape; a hand-rolled duplicate here
+					// previously omitted a field and made types.ObjectValue fail with a
+					// silent type-mismatch diagnostic, discarding the whole command on
+					// read (see the note on errorHandlerObjectType below, and #256).
 					jobObj, jobDiags := types.ObjectValue(
-						map[string]attr.Type{
-							"uuid":                 types.StringType,
-							"name":                 types.StringType,
-							"group_name":           types.StringType,
-							"project_name":         types.StringType,
-							"run_for_each_node":    types.BoolType,
-							"node_step":            types.BoolType,
-							"args":                 types.StringType,
-							"import_options":       types.BoolType,
-							"child_nodes":          types.BoolType,
-							"fail_on_disable":      types.BoolType,
-							"ignore_notifications": types.BoolType,
-							"node_filters": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-								"filter":             types.StringType,
-								"exclude_filter":     types.StringType,
-								"exclude_precedence": types.BoolType,
-								"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-									"thread_count":   types.Int64Type,
-									"keep_going":     types.BoolType,
-									"rank_attribute": types.StringType,
-									"rank_order":     types.StringType,
-								}}},
-							}}},
-						},
+						jobRefObjectType.AttrTypes,
 						jobAttrs,
 					)
 					diags.Append(jobDiags...)
 					if !jobObj.IsNull() {
 						handlerAttrs["job"] = types.ListValueMust(
-							types.ObjectType{AttrTypes: map[string]attr.Type{
-								"uuid":                 types.StringType,
-								"name":                 types.StringType,
-								"group_name":           types.StringType,
-								"project_name":         types.StringType,
-								"run_for_each_node":    types.BoolType,
-								"node_step":            types.BoolType,
-								"args":                 types.StringType,
-								"import_options":       types.BoolType,
-								"child_nodes":          types.BoolType,
-								"fail_on_disable":      types.BoolType,
-								"ignore_notifications": types.BoolType,
-								"node_filters": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-									"filter":             types.StringType,
-									"exclude_filter":     types.StringType,
-									"exclude_precedence": types.BoolType,
-									"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-										"thread_count":   types.Int64Type,
-										"keep_going":     types.BoolType,
-										"rank_attribute": types.StringType,
-										"rank_order":     types.StringType,
-									}}},
-								}}},
-							}},
+							jobRefObjectType,
 							[]attr.Value{jobObj},
 						)
 					}
@@ -2346,6 +2315,7 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 						"keep_going":     types.BoolNull(),
 						"rank_attribute": types.StringNull(),
 						"rank_order":     types.StringNull(),
+						"node_intersect": types.BoolNull(),
 					}
 
 					// threadcount can be int or float64 from JSON
@@ -2363,6 +2333,9 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 					}
 					if ro, ok := dispatch["rankOrder"].(string); ok && ro != "" {
 						dispAttrs["rank_order"] = types.StringValue(ro)
+					}
+					if ni, ok := dispatch["nodeIntersect"].(bool); ok {
+						dispAttrs["node_intersect"] = types.BoolValue(ni)
 					}
 
 					dispObj, dispDiags := types.ObjectValue(
@@ -2392,60 +2365,17 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 				jobAttrs["node_filters"] = types.ListNull(nodeFilterObjectType)
 			}
 
+			// jobRefObjectType (resource_job_command_schema.go) is the single source
+			// of truth for this shape; see the note above for why a hand-rolled
+			// duplicate here is a hazard (#256).
 			jobObj, jobDiags := types.ObjectValue(
-				map[string]attr.Type{
-					"uuid":                 types.StringType,
-					"name":                 types.StringType,
-					"group_name":           types.StringType,
-					"project_name":         types.StringType,
-					"run_for_each_node":    types.BoolType,
-					"node_step":            types.BoolType,
-					"args":                 types.StringType,
-					"import_options":       types.BoolType,
-					"child_nodes":          types.BoolType,
-					"fail_on_disable":      types.BoolType,
-					"ignore_notifications": types.BoolType,
-					"node_filters": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-						"filter":             types.StringType,
-						"exclude_filter":     types.StringType,
-						"exclude_precedence": types.BoolType,
-						"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-							"thread_count":   types.Int64Type,
-							"keep_going":     types.BoolType,
-							"rank_attribute": types.StringType,
-							"rank_order":     types.StringType,
-						}}},
-					}}},
-				},
+				jobRefObjectType.AttrTypes,
 				jobAttrs,
 			)
 			diags.Append(jobDiags...)
 
 			cmdAttrs["job"] = types.ListValueMust(
-				types.ObjectType{AttrTypes: map[string]attr.Type{
-					"uuid":                 types.StringType,
-					"name":                 types.StringType,
-					"group_name":           types.StringType,
-					"project_name":         types.StringType,
-					"run_for_each_node":    types.BoolType,
-					"node_step":            types.BoolType,
-					"args":                 types.StringType,
-					"import_options":       types.BoolType,
-					"child_nodes":          types.BoolType,
-					"fail_on_disable":      types.BoolType,
-					"ignore_notifications": types.BoolType,
-					"node_filters": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-						"filter":             types.StringType,
-						"exclude_filter":     types.StringType,
-						"exclude_precedence": types.BoolType,
-						"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-							"thread_count":   types.Int64Type,
-							"keep_going":     types.BoolType,
-							"rank_attribute": types.StringType,
-							"rank_order":     types.StringType,
-						}}},
-					}}},
-				}},
+				jobRefObjectType,
 				[]attr.Value{jobObj},
 			)
 		}
@@ -2528,120 +2458,28 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 			}
 		}
 
-		// Initialize any missing nested block fields as null to match schema
-		// We need to use the exact types from commandObjectType to avoid type mismatch errors
+		// Initialize any missing nested block fields as null to match schema.
+		// Reuse the canonical *ObjectType vars from resource_job_command_schema.go
+		// instead of hand-rolled literals: a duplicate here previously omitted a
+		// field, which made types.ObjectValue below fail with a silent
+		// type-mismatch diagnostic and discarded the entire command on read (#256).
 		if _, exists := cmdAttrs["script_interpreter"]; !exists {
-			cmdAttrs["script_interpreter"] = types.ListNull(
-				types.ObjectType{AttrTypes: map[string]attr.Type{
-					"args_quoted":       types.BoolType,
-					"invocation_string": types.StringType,
-				}},
-			)
+			cmdAttrs["script_interpreter"] = types.ListNull(scriptInterpreterObjectType)
 		}
 		if _, exists := cmdAttrs["plugins"]; !exists {
-			cmdAttrs["plugins"] = types.ListNull(
-				types.ObjectType{AttrTypes: map[string]attr.Type{
-					"log_filter_plugin": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-						"type":   types.StringType,
-						"config": types.MapType{ElemType: types.StringType},
-					}}},
-				}},
-			)
+			cmdAttrs["plugins"] = types.ListNull(commandPluginsObjectType)
 		}
 		if _, exists := cmdAttrs["job"]; !exists {
-			cmdAttrs["job"] = types.ListNull(
-				types.ObjectType{AttrTypes: map[string]attr.Type{
-					"name":                 types.StringType,
-					"group_name":           types.StringType,
-					"project_name":         types.StringType,
-					"uuid":                 types.StringType,
-					"args":                 types.StringType,
-					"run_for_each_node":    types.BoolType,
-					"node_step":            types.BoolType,
-					"child_nodes":          types.BoolType,
-					"import_options":       types.BoolType,
-					"fail_on_disable":      types.BoolType,
-					"ignore_notifications": types.BoolType,
-					"node_filters": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-						"filter":             types.StringType,
-						"exclude_filter":     types.StringType,
-						"exclude_precedence": types.BoolType,
-						"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-							"thread_count":   types.Int64Type,
-							"keep_going":     types.BoolType,
-							"rank_attribute": types.StringType,
-							"rank_order":     types.StringType,
-						}}},
-					}}},
-				}},
-			)
+			cmdAttrs["job"] = types.ListNull(jobRefObjectType)
 		}
 		if _, exists := cmdAttrs["step_plugin"]; !exists {
-			cmdAttrs["step_plugin"] = types.ListNull(
-				types.ObjectType{AttrTypes: map[string]attr.Type{
-					"type":   types.StringType,
-					"config": types.MapType{ElemType: types.StringType},
-				}},
-			)
+			cmdAttrs["step_plugin"] = types.ListNull(stepPluginObjectType)
 		}
 		if _, exists := cmdAttrs["node_step_plugin"]; !exists {
-			cmdAttrs["node_step_plugin"] = types.ListNull(
-				types.ObjectType{AttrTypes: map[string]attr.Type{
-					"type":   types.StringType,
-					"config": types.MapType{ElemType: types.StringType},
-				}},
-			)
+			cmdAttrs["node_step_plugin"] = types.ListNull(stepPluginObjectType)
 		}
 		if _, exists := cmdAttrs["error_handler"]; !exists {
-			cmdAttrs["error_handler"] = types.ListNull(
-				types.ObjectType{AttrTypes: map[string]attr.Type{
-					"description":                 types.StringType,
-					"shell_command":               types.StringType,
-					"inline_script":               types.StringType,
-					"script_url":                  types.StringType,
-					"script_file":                 types.StringType,
-					"script_file_args":            types.StringType,
-					"file_extension":              types.StringType,
-					"expand_token_in_script_file": types.BoolType,
-					"keep_going_on_success":       types.BoolType,
-					"script_interpreter": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-						"args_quoted":       types.BoolType,
-						"invocation_string": types.StringType,
-					}}},
-					"job": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-						"uuid":                 types.StringType,
-						"name":                 types.StringType,
-						"group_name":           types.StringType,
-						"project_name":         types.StringType,
-						"run_for_each_node":    types.BoolType,
-						"node_step":            types.BoolType,
-						"args":                 types.StringType,
-						"import_options":       types.BoolType,
-						"child_nodes":          types.BoolType,
-						"fail_on_disable":      types.BoolType,
-						"ignore_notifications": types.BoolType,
-						"node_filters": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-							"filter":             types.StringType,
-							"exclude_filter":     types.StringType,
-							"exclude_precedence": types.BoolType,
-							"dispatch": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-								"thread_count":   types.Int64Type,
-								"keep_going":     types.BoolType,
-								"rank_attribute": types.StringType,
-								"rank_order":     types.StringType,
-							}}},
-						}}},
-					}}},
-					"step_plugin": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-						"type":   types.StringType,
-						"config": types.MapType{ElemType: types.StringType},
-					}}},
-					"node_step_plugin": types.ListType{ElemType: types.ObjectType{AttrTypes: map[string]attr.Type{
-						"type":   types.StringType,
-						"config": types.MapType{ElemType: types.StringType},
-					}}},
-				}},
-			)
+			cmdAttrs["error_handler"] = types.ListNull(errorHandlerObjectType)
 		}
 
 		// Use the commandObjectType defined in resource_job_command_schema.go

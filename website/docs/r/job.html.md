@@ -570,6 +570,22 @@ A command's `node_filters` block has the following structure:
 
 * `exclude_filter`: (Optional) The query string for nodes ***not to use***.
 
+* `dispatch`: (Optional) A block overriding how the referenced job dispatches over its nodes. See below for the structure.
+
+A `node_filters` `dispatch` block has the following structure:
+
+* `thread_count`: (Optional) Number of threads to use for parallel dispatch.
+
+* `keep_going`: (Optional) Whether to continue on the remaining nodes after a node fails.
+
+* `rank_attribute`: (Optional) The name of the node attribute used to order the sequence of nodes.
+
+* `rank_order`: (Optional) The order direction for node ranking, either `ascending` or `descending`.
+
+* `node_intersect`: (Optional) Whether to run the referenced job only on the intersection of its own
+  node set and the calling job's — Rundeck's "Match Node Filter Intersection". Unlike the other
+  `dispatch` settings, Rundeck honors this one even when no `filter` is set on the reference.
+
 A command's `plugins` block has the following structure:
 
 * `log_filter_plugin`: A log filter plugin to add to the command. Can be repeated to add multiple log filters. See below for the structure.

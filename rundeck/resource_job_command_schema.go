@@ -187,6 +187,10 @@ func jobCommandNestedBlock() schema.ListNestedBlock {
 														Optional:    true,
 														Description: "Rank order: ascending or descending",
 													},
+													"node_intersect": schema.BoolAttribute{
+														Optional:    true,
+														Description: "Run the referenced job only on the intersection of its own node set and the parent job's (Rundeck's \"Match Node Filter Intersection\")",
+													},
 												},
 											},
 										},
@@ -373,6 +377,10 @@ func jobCommandNestedBlock() schema.ListNestedBlock {
 																},
 																"rank_order": schema.StringAttribute{
 																	Optional: true,
+																},
+																"node_intersect": schema.BoolAttribute{
+																	Optional:    true,
+																	Description: "Run the referenced job only on the intersection of its own node set and the parent job's (Rundeck's \"Match Node Filter Intersection\")",
 																},
 															},
 														},
@@ -685,6 +693,7 @@ var nodeFilterDispatchObjectType = types.ObjectType{
 		"keep_going":     types.BoolType,
 		"rank_attribute": types.StringType,
 		"rank_order":     types.StringType,
+		"node_intersect": types.BoolType,
 	},
 }
 
