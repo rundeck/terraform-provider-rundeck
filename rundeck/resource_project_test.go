@@ -135,6 +135,50 @@ resource "rundeck_project" "test" {
 }
 `
 
+// TestAccProject_localSourceEmptyConfig covers a different case than
+// TestAccProject_localSourceNoConfig above: explicitly setting
+// resource_model_source.config = {} (a known, empty map) rather than
+// omitting config entirely (which reads back as null). config is
+// Optional-only, not Computed, so an explicitly-configured empty map used
+// to collapse to null on read, failing apply with "Provider produced
+// inconsistent result after apply" (config was {} became null).
+func TestAccProject_localSourceEmptyConfig(t *testing.T) {
+	var project rundeck.Project
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
+		CheckDestroy:             testAccProjectCheckDestroy(&project),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccProjectConfig_localSourceEmptyConfig,
+				Check: resource.ComposeTestCheckFunc(
+					testAccProjectCheckExists("rundeck_project.test", &project),
+					resource.TestCheckResourceAttr("rundeck_project.test", "resource_model_source.0.config.%", "0"),
+				),
+			},
+			// Verify no plan drift on refresh - this is exactly what the
+			// empty-map-collapsing-to-null bug broke.
+			{
+				RefreshState: true,
+				PlanOnly:     true,
+			},
+		},
+	})
+}
+
+const testAccProjectConfig_localSourceEmptyConfig = `
+resource "rundeck_project" "test" {
+  name        = "terraform-acc-test-local-empty-config"
+  description = "Test project for local source with an explicit empty config map"
+
+  resource_model_source {
+    type   = "local"
+    config = {}
+  }
+}
+`
+
 // TestAccProject_SSHKeyFilePath tests that ssh_key_file_path is correctly stored
 // and does not produce drift after apply (regression for project.ssh-keypath mapping bug).
 func TestAccProject_SSHKeyFilePath(t *testing.T) {

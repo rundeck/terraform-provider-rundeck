@@ -195,29 +195,13 @@ After:  Error creating job "my-job" in project "prod": Rundeck returned validati
 
 ---
 
-### SCM Integration Support
-**Effort**: Large (1-2 weeks)  
-**Why Important**: Users want to manage SCM configurations via Terraform.  
+### SCM Action Triggering
 **GitHub Issue**: [#76](https://github.com/rundeck/terraform-provider-rundeck/issues/76)
 
-**Feature Request**:
-Add support for Rundeck's Source Control Management (SCM) integration, allowing Terraform to configure Git import/export for projects.
-
-**Proposed Resources**:
-- `rundeck_scm_import` - Configure Git import for a project
-- `rundeck_scm_export` - Configure Git export for a project
-
-**API Support**:
-- Rundeck API v14+ supports SCM endpoints
-- Complex configuration schema varies by plugin
-- Authentication methods (SSH keys, tokens)
-
-**Priority Justification**:
-- Low demand (only 1 GitHub issue in 3 years)
-- Complex implementation
-- Workaround exists (manual SCM setup in Rundeck UI)
-
-**Recommendation**: Consider for future release if user demand increases
+`rundeck_scm_import`/`rundeck_scm_export` (`rundeck/resource_scm_framework.go`)
+configure and enable/disable a project's SCM plugin, but don't trigger an
+SCM action (the actual import/commit/synch). Consider an "action"
+resource/data-source for that workflow as a follow-up if needed.
 
 ---
 
