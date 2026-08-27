@@ -225,7 +225,14 @@ Add support for Rundeck's Source Control Management (SCM) integration, allowing 
 
 **Candidates**:
 - `rundeck_node_source` - Dynamic node sources (Medium priority)
-- `rundeck_user` / `rundeck_role` - User management (if API supports)
+- `rundeck_local_user` - Enterprise local-user-store user management.
+  `rundeck_local_role` (role CRUD + membership) is implemented; users are
+  NOT, and can't be with the current SDK: the vendored client has no
+  request-body support at all for the create/edit user endpoints
+  (`PUT /secure/users/create`, `POST /secure/user/{id}`) - a gap in
+  Rundeck's own published OpenAPI spec. Blocked until that's fixed
+  upstream or the requests are hand-built, bypassing the generated client
+  for those two calls.
 - `rundeck_execution` - Trigger/manage executions (questionable use case)
 
 **Completed in v1.2.0**:
