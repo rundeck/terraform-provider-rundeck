@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -195,11 +197,7 @@ func (r *systemRunnerResource) Configure(_ context.Context, req resource.Configu
 	}
 
 	// System runner requires API v56+ (Enterprise feature)
-	if clients.APIVersion < "56" {
-		resp.Diagnostics.AddError(
-			"Insufficient API Version",
-			fmt.Sprintf("System runner resources require API version 56 or higher (currently configured: %s). Please update your provider configuration with api_version = \"56\" or higher.", clients.APIVersion),
-		)
+	if !requireMinAPIVersion(&resp.Diagnostics, clients.APIVersion, 56, "System runner resources") {
 		return
 	}
 
@@ -270,11 +268,19 @@ func (r *systemRunnerResource) Create(ctx context.Context, req resource.CreateRe
 	runnerRequest.SetReplicaType(strings.ToLower(replicaType))
 
 	// Create the system runner
-	response, _, err := client.RunnerAPI.CreateRunner(apiCtx).CreateProjectRunnerRequest(*runnerRequest).Execute()
+	response, httpResp, err := client.RunnerAPI.CreateRunner(apiCtx).CreateProjectRunnerRequest(*runnerRequest).Execute()
 	if err != nil {
+		errorMsg := err.Error()
+		if httpResp != nil {
+			bodyBytes, readErr := io.ReadAll(httpResp.Body)
+			httpResp.Body.Close()
+			if readErr == nil {
+				errorMsg = fmt.Sprintf("%s - Response: %s", err.Error(), string(bodyBytes))
+			}
+		}
 		resp.Diagnostics.AddError(
 			"Error creating system runner",
-			fmt.Sprintf("Could not create system runner: %s", err.Error()),
+			fmt.Sprintf("Could not create system runner: %s", errorMsg),
 		)
 		return
 	}
@@ -486,6 +492,27 @@ func (r *systemRunnerResource) Read(ctx context.Context, req resource.ReadReques
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
+// removeMapKeys returns m with the given keys dropped, preserving its
+// original element type. Used to correct assigned_projects/
+// assigned_projects_config in state when a project was already detached
+// server-side via RemoveProjectAssociation but a later step in the same
+// Update call fails, so state doesn't keep claiming that project is still
+// assigned when the server has already dropped it.
+func removeMapKeys(ctx context.Context, m types.Map, keys map[string]struct{}) (types.Map, diag.Diagnostics) {
+	if m.IsNull() || m.IsUnknown() || len(keys) == 0 {
+		return m, nil
+	}
+	elements := m.Elements()
+	remaining := make(map[string]attr.Value, len(elements))
+	for k, v := range elements {
+		if _, drop := keys[k]; drop {
+			continue
+		}
+		remaining[k] = v
+	}
+	return types.MapValue(m.ElementType(ctx), remaining)
+}
+
 func (r *systemRunnerResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan systemRunnerResourceModel
 	var state systemRunnerResourceModel
@@ -568,8 +595,78 @@ func (r *systemRunnerResource) Update(ctx context.Context, req resource.UpdateRe
 	// of the runner's project assignments.
 	assignedProjectsKnown := !plan.AssignedProjects.IsNull() && !plan.AssignedProjects.IsUnknown()
 	assignedProjectsConfigKnown := !plan.AssignedProjectsConfig.IsNull() && !plan.AssignedProjectsConfig.IsUnknown()
+	// Projects successfully detached via RemoveProjectAssociation below, before
+	// SaveRunner runs. If SaveRunner then fails, these are still gone
+	// server-side, so state has to reflect that even though nothing else in
+	// this Update took effect (see the SaveRunner error handling below).
+	detachedProjects := make(map[string]struct{})
 	if assignedProjectsKnown || assignedProjectsConfigKnown {
 		saveRequest.SetAssignedProjects(mergedProjects)
+
+		// SaveRunner's AssignedProjects is a single map[string]string, and there is no
+		// confirmed guarantee it also clears the other three per-project dispatch-setting
+		// maps (RunnerProjectAssociations) server-side for a project that's being dropped.
+		// Explicitly detach any project that was previously assigned but is no longer in
+		// the merged set, via RemoveProjectAssociation, before saving the smaller map.
+		priorProjects := make(map[string]struct{})
+		if !state.AssignedProjects.IsNull() && !state.AssignedProjects.IsUnknown() {
+			prior := make(map[string]types.String)
+			resp.Diagnostics.Append(state.AssignedProjects.ElementsAs(ctx, &prior, false)...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+			for k := range prior {
+				priorProjects[k] = struct{}{}
+			}
+		}
+		if !state.AssignedProjectsConfig.IsNull() && !state.AssignedProjectsConfig.IsUnknown() {
+			priorConfigs := make(map[string]projectRunnerConfig)
+			resp.Diagnostics.Append(state.AssignedProjectsConfig.ElementsAs(ctx, &priorConfigs, false)...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+			for k := range priorConfigs {
+				priorProjects[k] = struct{}{}
+			}
+		}
+
+		for projectName := range priorProjects {
+			if _, stillAssigned := mergedProjects[projectName]; stillAssigned {
+				continue
+			}
+
+			// RemoveProjectAssociation only clears the access-level
+			// association (confirmed against a live server: the resulting
+			// RunnerInfo's ProjectNodeFilters map loses the project, but
+			// ProjectRunnerAsNodeEnabled/ProjectRemoteNodeDispatch/
+			// ProjectRunnerNodeFilter are all left completely untouched -
+			// still at whatever they were last explicitly set to, not even
+			// reset to false). Explicitly reset those first, or a "detached"
+			// project can still have runner_as_node_enabled/
+			// remote_node_dispatch actively true server-side.
+			clearRequest := openapi.NewSaveProjectRunnerNodeDispatchSettingsRequest(runnerId)
+			clearRequest.SetRunnerAsNodeEnabled(false)
+			clearRequest.SetRemoteNodeDispatch(false)
+			clearRequest.SetRunnerNodeFilter("")
+			_, _, dispatchErr := client.RunnerAPI.SaveProjectRunnerNodeDispatchSettings(apiCtx, projectName).SaveProjectRunnerNodeDispatchSettingsRequest(*clearRequest).Execute()
+			if dispatchErr != nil {
+				resp.Diagnostics.AddWarning(
+					"Warning detaching project",
+					fmt.Sprintf("Failed to clear node dispatch settings for runner %s in project %s: %s", runnerId, projectName, dispatchErr.Error()),
+				)
+				continue
+			}
+
+			_, _, err := client.RunnerAPI.RemoveProjectAssociation(apiCtx, projectName, runnerId).Execute()
+			if err != nil {
+				resp.Diagnostics.AddWarning(
+					"Warning detaching project",
+					fmt.Sprintf("Failed to cleanly detach runner %s from project %s: %s", runnerId, projectName, err.Error()),
+				)
+				continue
+			}
+			detachedProjects[projectName] = struct{}{}
+		}
 	}
 
 	// Execute the save request
@@ -581,6 +678,22 @@ func (r *systemRunnerResource) Update(ctx context.Context, req resource.UpdateRe
 	}
 
 	if err != nil {
+		// SaveRunner failed, but any projects in detachedProjects were already
+		// detached server-side above. Update's response state is pre-seeded
+		// with the prior state, and returning without touching it here would
+		// leave those projects listed as still assigned even though the
+		// server has already dropped them.
+		if len(detachedProjects) > 0 {
+			correctedProjects, projDiags := removeMapKeys(ctx, state.AssignedProjects, detachedProjects)
+			resp.Diagnostics.Append(projDiags...)
+			correctedConfig, configDiags := removeMapKeys(ctx, state.AssignedProjectsConfig, detachedProjects)
+			resp.Diagnostics.Append(configDiags...)
+			if !projDiags.HasError() && !configDiags.HasError() {
+				state.AssignedProjects = correctedProjects
+				state.AssignedProjectsConfig = correctedConfig
+				resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+			}
+		}
 		resp.Diagnostics.AddError(
 			"Error updating system runner",
 			fmt.Sprintf("Could not update system runner %s: %s", runnerId, err.Error()),

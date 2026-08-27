@@ -40,13 +40,11 @@ Forward-looking tasks for the Rundeck Terraform Provider.
 **Priority Order**:
 - `data.rundeck_project` - Look up project details, most requested
 - `data.rundeck_job` - Reference existing jobs by name/UUID
-- `data.rundeck_runner` - Look up runner details (Enterprise)
 - `data.rundeck_node` - Query nodes (lower priority)
 
 **Use Cases**:
 - Reference existing projects created outside Terraform
 - Build job dependencies without hardcoding UUIDs
-- Dynamic runner assignment
 
 ---
 
