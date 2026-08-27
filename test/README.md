@@ -134,13 +134,13 @@ Use the test configurations in this directory for manual validation:
 
 ### For OSS Testing
 - Docker and Docker Compose
-- Go 1.24+ (for building provider)
+- Go 1.25.8+ (for building provider)
 - jq (for JSON parsing in test scripts)
 
 ### For Enterprise Testing
 - Running Rundeck Enterprise instance (5.17.0+)
 - Valid API token with appropriate permissions
-- Go 1.24+ (for building provider)
+- Go 1.25.8+ (for building provider)
 - jq (for JSON parsing)
 
 ## Contributing
@@ -169,7 +169,7 @@ When adding new tests:
 - Review test logs in `/tmp/enterprise_test.log`
 
 **Provider build failures:**
-- Ensure Go 1.24+ is installed
+- Ensure Go 1.25.8+ is installed
 - Run `go mod tidy`
 - Clear Go cache: `go clean -cache`
 
