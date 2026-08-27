@@ -312,7 +312,9 @@ The following arguments are supported:
   `on_avg_duration` notification fires. Accepts a duration ("2h", "30m"), a percentage of the job's
   average duration ("150%"), or an increment over it ("+5m"). Rundeck treats a missing threshold as
   zero and never fires the notification, so an `on_avg_duration` notification without this attribute
-  is configured but inert.
+  is configured but inert. The reverse is also true and easy to miss: setting this attribute without
+  an `on_avg_duration` notification block does nothing - confirmed against a live server, Rundeck
+  doesn't even persist the threshold in that case, so it reads back as unset on the next refresh.
 
 * `schedule` - (Optional) The job's schedule in Quartz schedule cron format. Similar to unix crontab, but with seven fields instead of five: Second Minute Hour Day-of-Month Month Day-of-Week Year
 
