@@ -1,5 +1,11 @@
 ## Unreleased
 
+**Enhancements**
+
+### Project Resource
+
+- **Added `runner` block to `resource_model_source`** - Runner selection settings for a resource model source (`resources.source.N.runner.filter`, `runnerFilterMode`, `runnerFilterType`, `providers`, `serviceProvidersFilter`) can now be set as first-class attributes (`filter`, `filter_mode`, `filter_type`, `providers`, `service_providers_filter`) instead of via `extra_config`. When the block is present, all five attributes are required.
+
 ## 1.4.0
 
 **Bug Fixes**

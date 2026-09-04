@@ -89,6 +89,39 @@ The following arguments are supported:
 * `config` - (Optional) Map of arbitrary configuration properties for the selected resource model
   plugin. Some source types (e.g., `local`) do not require any configuration.
 
+* `runner` - (Optional) Nested block selecting which Runner(s) execute this resource model source
+  (Rundeck Enterprise). Maps to the `resources.source.N.runner.*` project configuration keys.
+  If the block is present, all of its nested arguments must be set.
+
+`runner` blocks have the following nested arguments:
+
+* `filter` - (Required) Runner filter value, e.g. a tag name. Maps to `runner.filter`.
+* `filter_mode` - (Required) Runner filter mode, e.g. `TAGS`. Maps to `runner.runnerFilterMode`.
+* `filter_type` - (Required) Runner filter type, e.g. `TAG_FILTER_AND`. Maps to `runner.runnerFilterType`.
+* `providers` - (Required) Raw providers string exactly as Rundeck stores it, e.g.
+  `"[{provider=com.batix.rundeck.plugins.AnsibleResourceModelSourceFactory, serviceName=ResourceModelSource, checkProvider=true}]"`.
+  Maps to `runner.providers`.
+* `service_providers_filter` - (Required) Raw service providers filter string, e.g.
+  `"[ResourceModelSource]"`. Maps to `runner.serviceProvidersFilter`.
+
+Example:
+
+```hcl
+resource_model_source {
+  type = "com.batix.rundeck.plugins.AnsibleResourceModelSourceFactory"
+  config = {
+    # ...
+  }
+  runner {
+    filter                   = "BLAHBLAH"
+    filter_mode              = "TAGS"
+    filter_type              = "TAG_FILTER_AND"
+    providers                = "[{provider=com.batix.rundeck.plugins.AnsibleResourceModelSourceFactory, serviceName=ResourceModelSource, checkProvider=true}]"
+    service_providers_filter = "[ResourceModelSource]"
+  }
+}
+```
+
 ## Attributes Reference
 
 The following attributes are exported:

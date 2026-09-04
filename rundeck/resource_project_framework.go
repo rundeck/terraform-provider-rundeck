@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/objectvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -18,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
 	"github.com/rundeck/go-rundeck/rundeck"
 )
@@ -65,6 +67,39 @@ type projectResourceModel struct {
 type resourceModelSourceModel struct {
 	Type   types.String `tfsdk:"type"`
 	Config types.Map    `tfsdk:"config"`
+	Runner types.Object `tfsdk:"runner"`
+}
+
+type resourceModelSourceRunnerModel struct {
+	Filter                 types.String `tfsdk:"filter"`
+	FilterMode             types.String `tfsdk:"filter_mode"`
+	FilterType             types.String `tfsdk:"filter_type"`
+	Providers              types.String `tfsdk:"providers"`
+	ServiceProvidersFilter types.String `tfsdk:"service_providers_filter"`
+}
+
+// resourceModelSourceRunnerConfigKeys maps runner block attribute names to the
+// key suffix used under resources.source.N.runner.
+var resourceModelSourceRunnerConfigKeys = map[string]string{
+	"filter":                   "filter",
+	"filter_mode":              "runnerFilterMode",
+	"filter_type":              "runnerFilterType",
+	"providers":                "providers",
+	"service_providers_filter": "serviceProvidersFilter",
+}
+
+var resourceModelSourceRunnerAttrTypes = map[string]attr.Type{
+	"filter":                   types.StringType,
+	"filter_mode":              types.StringType,
+	"filter_type":              types.StringType,
+	"providers":                types.StringType,
+	"service_providers_filter": types.StringType,
+}
+
+var resourceModelSourceAttrTypes = map[string]attr.Type{
+	"type":   types.StringType,
+	"config": types.MapType{ElemType: types.StringType},
+	"runner": types.ObjectType{AttrTypes: resourceModelSourceRunnerAttrTypes},
 }
 
 func (r *projectResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -148,6 +183,42 @@ func (r *projectResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 							Description: "Configuration parameters for the resource model source.",
 							ElementType: types.StringType,
 							Optional:    true,
+						},
+					},
+					Blocks: map[string]schema.Block{
+						"runner": schema.SingleNestedBlock{
+							Description: "Runner selection settings for this resource model source (Rundeck Enterprise). Maps to resources.source.N.runner.* project configuration keys. If the block is present, all of its attributes are required.",
+							Validators: []validator.Object{
+								objectvalidator.AlsoRequires(
+									path.MatchRelative().AtName("filter"),
+									path.MatchRelative().AtName("filter_mode"),
+									path.MatchRelative().AtName("filter_type"),
+									path.MatchRelative().AtName("providers"),
+									path.MatchRelative().AtName("service_providers_filter"),
+								),
+							},
+							Attributes: map[string]schema.Attribute{
+								"filter": schema.StringAttribute{
+									Description: "Runner filter value, e.g. a tag name (resources.source.N.runner.filter).",
+									Optional:    true,
+								},
+								"filter_mode": schema.StringAttribute{
+									Description: "Runner filter mode, e.g. TAGS (resources.source.N.runner.runnerFilterMode).",
+									Optional:    true,
+								},
+								"filter_type": schema.StringAttribute{
+									Description: "Runner filter type, e.g. TAG_FILTER_AND (resources.source.N.runner.runnerFilterType).",
+									Optional:    true,
+								},
+								"providers": schema.StringAttribute{
+									Description: "Raw providers string as stored by Rundeck, e.g. \"[{provider=..., serviceName=ResourceModelSource, checkProvider=true}]\" (resources.source.N.runner.providers).",
+									Optional:    true,
+								},
+								"service_providers_filter": schema.StringAttribute{
+									Description: "Raw service providers filter string as stored by Rundeck, e.g. \"[ResourceModelSource]\" (resources.source.N.runner.serviceProvidersFilter).",
+									Optional:    true,
+								},
+							},
 						},
 					},
 				},
@@ -362,6 +433,28 @@ func (r *projectResource) updateProjectConfig(ctx context.Context, apiCtx contex
 		configKeyPrefix := fmt.Sprintf("%vconfig.", attrKeyPrefix)
 		updateMap[typeKey] = pluginType
 
+		// Handle runner block
+		if !rms.Runner.IsNull() && !rms.Runner.IsUnknown() {
+			var runner resourceModelSourceRunnerModel
+			diags.Append(rms.Runner.As(ctx, &runner, basetypes.ObjectAsOptions{})...)
+			if diags.HasError() {
+				return
+			}
+			runnerKeyPrefix := attrKeyPrefix + "runner."
+			for attrName, v := range map[string]types.String{
+				"filter":                   runner.Filter,
+				"filter_mode":              runner.FilterMode,
+				"filter_type":              runner.FilterType,
+				"providers":                runner.Providers,
+				"service_providers_filter": runner.ServiceProvidersFilter,
+			} {
+				if v.IsNull() || v.IsUnknown() {
+					continue
+				}
+				updateMap[runnerKeyPrefix+resourceModelSourceRunnerConfigKeys[attrName]] = v.ValueString()
+			}
+		}
+
 		if rms.Config.IsNull() || rms.Config.IsUnknown() {
 			continue
 		}
@@ -471,6 +564,7 @@ func (r *projectResource) readProject(ctx context.Context, apiCtx context.Contex
 	// Parse resource model sources
 	resourceSourceMap := map[int]interface{}{}
 	configMaps := map[int]interface{}{}
+	runnerMaps := map[int]map[string]string{}
 	for configKey, v := range projectConfig {
 		if strings.HasPrefix(configKey, "resources.source.") {
 			nameParts := strings.Split(configKey, ".")
@@ -504,6 +598,14 @@ func (r *projectResource) readProject(ctx context.Context, apiCtx context.Contex
 				}
 				m := configMaps[index].(map[string]interface{})
 				m[nameParts[4]] = v
+			case "runner":
+				if len(nameParts) != 5 {
+					continue
+				}
+				if _, ok := runnerMaps[index]; !ok {
+					runnerMaps[index] = map[string]string{}
+				}
+				runnerMaps[index][nameParts[4]] = v.(string)
 			}
 
 			delete(projectConfig, configKey)
@@ -537,7 +639,26 @@ func (r *projectResource) readProject(ctx context.Context, apiCtx context.Contex
 		}
 
 		sourceModel := resourceModelSourceModel{
-			Type: types.StringValue(source["type"].(string)),
+			Type:   types.StringValue(source["type"].(string)),
+			Runner: types.ObjectNull(resourceModelSourceRunnerAttrTypes),
+		}
+
+		// Build the runner block from resources.source.N.runner.* keys.
+		if runnerCfg, ok := runnerMaps[index]; ok {
+			runnerAttrs := map[string]attr.Value{}
+			for attrName, cfgKey := range resourceModelSourceRunnerConfigKeys {
+				if v, ok := runnerCfg[cfgKey]; ok {
+					runnerAttrs[attrName] = types.StringValue(v)
+				} else {
+					runnerAttrs[attrName] = types.StringNull()
+				}
+			}
+			runnerObj, diagsRunner := types.ObjectValue(resourceModelSourceRunnerAttrTypes, runnerAttrs)
+			diags.Append(diagsRunner...)
+			if diags.HasError() {
+				return
+			}
+			sourceModel.Runner = runnerObj
 		}
 
 		// Only collapse an empty result to null when config was actually omitted.
@@ -554,14 +675,7 @@ func (r *projectResource) readProject(ctx context.Context, apiCtx context.Contex
 			sourceModel.Config = types.MapValueMust(types.StringType, configMap)
 		}
 
-		objType := types.ObjectType{
-			AttrTypes: map[string]attr.Type{
-				"type":   types.StringType,
-				"config": types.MapType{ElemType: types.StringType},
-			},
-		}
-
-		objVal, diagsObj := types.ObjectValueFrom(ctx, objType.AttrTypes, sourceModel)
+		objVal, diagsObj := types.ObjectValueFrom(ctx, resourceModelSourceAttrTypes, sourceModel)
 		diags.Append(diagsObj...)
 		if diags.HasError() {
 			return
@@ -570,16 +684,7 @@ func (r *projectResource) readProject(ctx context.Context, apiCtx context.Contex
 		resourceModelSourceElements = append(resourceModelSourceElements, objVal)
 	}
 
-	listType := types.ListType{
-		ElemType: types.ObjectType{
-			AttrTypes: map[string]attr.Type{
-				"type":   types.StringType,
-				"config": types.MapType{ElemType: types.StringType},
-			},
-		},
-	}
-
-	listVal, diagsList := types.ListValue(listType.ElemType, resourceModelSourceElements)
+	listVal, diagsList := types.ListValue(types.ObjectType{AttrTypes: resourceModelSourceAttrTypes}, resourceModelSourceElements)
 	diags.Append(diagsList...)
 	if diags.HasError() {
 		return
