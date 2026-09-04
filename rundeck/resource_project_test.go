@@ -3,6 +3,7 @@ package rundeck
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/rundeck/go-rundeck/rundeck"
@@ -222,6 +223,104 @@ resource "rundeck_project" "test" {
       file   = "/tmp/terraform-acc-tests.yaml"
       # Null element must be treated as omitted (regression for #248)
       generateFileAutomatically = var.optional_file
+    }
+  }
+}
+`
+
+// TestAccProject_RunnerBlock verifies the resource_model_source runner block is
+// written to and read back from resources.source.N.runner.* config keys.
+func TestAccProject_RunnerBlock(t *testing.T) {
+	var project rundeck.Project
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
+		CheckDestroy:             testAccProjectCheckDestroy(&project),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccProjectConfig_RunnerBlock,
+				Check: resource.ComposeTestCheckFunc(
+					testAccProjectCheckExists("rundeck_project.test", &project),
+					resource.TestCheckResourceAttr("rundeck_project.test", "resource_model_source.0.runner.filter", "BLAHBLAH"),
+					resource.TestCheckResourceAttr("rundeck_project.test", "resource_model_source.0.runner.filter_mode", "TAGS"),
+					resource.TestCheckResourceAttr("rundeck_project.test", "resource_model_source.0.runner.filter_type", "TAG_FILTER_AND"),
+					resource.TestCheckResourceAttr("rundeck_project.test", "resource_model_source.0.runner.providers", "[{provider=com.batix.rundeck.plugins.AnsibleResourceModelSourceFactory, serviceName=ResourceModelSource, checkProvider=true}]"),
+					resource.TestCheckResourceAttr("rundeck_project.test", "resource_model_source.0.runner.service_providers_filter", "[ResourceModelSource]"),
+					func(s *terraform.State) error {
+						projectConfig := project.Config.(map[string]interface{})
+						expected := map[string]string{
+							"resources.source.1.runner.filter":                 "BLAHBLAH",
+							"resources.source.1.runner.runnerFilterMode":       "TAGS",
+							"resources.source.1.runner.runnerFilterType":       "TAG_FILTER_AND",
+							"resources.source.1.runner.serviceProvidersFilter": "[ResourceModelSource]",
+						}
+						for k, v := range expected {
+							if projectConfig[k] != v {
+								return fmt.Errorf("wrong %s config; expected %v, got %v", k, v, projectConfig[k])
+							}
+						}
+						return nil
+					},
+				),
+			},
+			{
+				RefreshState: true,
+				PlanOnly:     true,
+			},
+		},
+	})
+}
+
+// TestAccProject_RunnerBlockAllFieldsRequired verifies that a runner block with
+// any attribute omitted fails validation.
+func TestAccProject_RunnerBlockAllFieldsRequired(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
+		Steps: []resource.TestStep{
+			{
+				Config:      testAccProjectConfig_RunnerBlockPartial,
+				PlanOnly:    true,
+				ExpectError: regexp.MustCompile(`service_providers_filter`),
+			},
+		},
+	})
+}
+
+const testAccProjectConfig_RunnerBlockPartial = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-runner-block-partial"
+
+  resource_model_source {
+    type = "local"
+    runner {
+      filter      = "BLAHBLAH"
+      filter_mode = "TAGS"
+      filter_type = "TAG_FILTER_AND"
+      providers   = "[{provider=com.batix.rundeck.plugins.AnsibleResourceModelSourceFactory, serviceName=ResourceModelSource, checkProvider=true}]"
+    }
+  }
+}
+`
+
+const testAccProjectConfig_RunnerBlock = `
+resource "rundeck_project" "test" {
+  name        = "terraform-acc-test-runner-block"
+  description = "Test project for resource model source runner block"
+
+  resource_model_source {
+    type = "file"
+    config = {
+      format = "resourceyaml"
+      file   = "/tmp/terraform-acc-tests.yaml"
+    }
+    runner {
+      filter                   = "BLAHBLAH"
+      filter_mode              = "TAGS"
+      filter_type              = "TAG_FILTER_AND"
+      providers                = "[{provider=com.batix.rundeck.plugins.AnsibleResourceModelSourceFactory, serviceName=ResourceModelSource, checkProvider=true}]"
+      service_providers_filter = "[ResourceModelSource]"
     }
   }
 }
