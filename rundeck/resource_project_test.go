@@ -3,6 +3,7 @@ package rundeck
 import (
 	"context"
 	"fmt"
+	"os"
 	"regexp"
 	"testing"
 
@@ -231,6 +232,10 @@ resource "rundeck_project" "test" {
 // TestAccProject_RunnerBlock verifies the resource_model_source runner block is
 // written to and read back from resources.source.N.runner.* config keys.
 func TestAccProject_RunnerBlock(t *testing.T) {
+	if os.Getenv("RUNDECK_ENTERPRISE_TESTS") != "1" {
+		t.Skip("ENTERPRISE ONLY: Resource model source runner filters - set RUNDECK_ENTERPRISE_TESTS=1")
+	}
+
 	var project rundeck.Project
 
 	resource.Test(t, resource.TestCase{
@@ -253,6 +258,7 @@ func TestAccProject_RunnerBlock(t *testing.T) {
 							"resources.source.1.runner.filter":                 "BLAHBLAH",
 							"resources.source.1.runner.runnerFilterMode":       "TAGS",
 							"resources.source.1.runner.runnerFilterType":       "TAG_FILTER_AND",
+							"resources.source.1.runner.providers":              "[{provider=com.batix.rundeck.plugins.AnsibleResourceModelSourceFactory, serviceName=ResourceModelSource, checkProvider=true}]",
 							"resources.source.1.runner.serviceProvidersFilter": "[ResourceModelSource]",
 						}
 						for k, v := range expected {
@@ -275,6 +281,10 @@ func TestAccProject_RunnerBlock(t *testing.T) {
 // TestAccProject_RunnerBlockAllFieldsRequired verifies that a runner block with
 // any attribute omitted fails validation.
 func TestAccProject_RunnerBlockAllFieldsRequired(t *testing.T) {
+	if os.Getenv("RUNDECK_ENTERPRISE_TESTS") != "1" {
+		t.Skip("ENTERPRISE ONLY: Resource model source runner filters - set RUNDECK_ENTERPRISE_TESTS=1")
+	}
+
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),

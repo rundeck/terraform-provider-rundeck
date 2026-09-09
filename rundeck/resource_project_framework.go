@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
-	"github.com/hashicorp/terraform-plugin-framework-validators/objectvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -188,35 +187,29 @@ func (r *projectResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 					Blocks: map[string]schema.Block{
 						"runner": schema.SingleNestedBlock{
 							Description: "Runner selection settings for this resource model source (Rundeck Enterprise). Maps to resources.source.N.runner.* project configuration keys. If the block is present, all of its attributes are required.",
-							Validators: []validator.Object{
-								objectvalidator.AlsoRequires(
-									path.MatchRelative().AtName("filter"),
-									path.MatchRelative().AtName("filter_mode"),
-									path.MatchRelative().AtName("filter_type"),
-									path.MatchRelative().AtName("providers"),
-									path.MatchRelative().AtName("service_providers_filter"),
-								),
-							},
+							// The block itself is optional (0 or 1 occurrences); Terraform does not
+							// evaluate a null block's children, so Required here means "required
+							// when the block is present".
 							Attributes: map[string]schema.Attribute{
 								"filter": schema.StringAttribute{
 									Description: "Runner filter value, e.g. a tag name (resources.source.N.runner.filter).",
-									Optional:    true,
+									Required:    true,
 								},
 								"filter_mode": schema.StringAttribute{
 									Description: "Runner filter mode, e.g. TAGS (resources.source.N.runner.runnerFilterMode).",
-									Optional:    true,
+									Required:    true,
 								},
 								"filter_type": schema.StringAttribute{
 									Description: "Runner filter type, e.g. TAG_FILTER_AND (resources.source.N.runner.runnerFilterType).",
-									Optional:    true,
+									Required:    true,
 								},
 								"providers": schema.StringAttribute{
 									Description: "Raw providers string as stored by Rundeck, e.g. \"[{provider=..., serviceName=ResourceModelSource, checkProvider=true}]\" (resources.source.N.runner.providers).",
-									Optional:    true,
+									Required:    true,
 								},
 								"service_providers_filter": schema.StringAttribute{
 									Description: "Raw service providers filter string as stored by Rundeck, e.g. \"[ResourceModelSource]\" (resources.source.N.runner.serviceProvidersFilter).",
-									Optional:    true,
+									Required:    true,
 								},
 							},
 						},
