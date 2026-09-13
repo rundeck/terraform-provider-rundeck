@@ -75,16 +75,22 @@ type resourceModelSourceRunnerModel struct {
 	FilterType             types.String `tfsdk:"filter_type"`
 	Providers              types.String `tfsdk:"providers"`
 	ServiceProvidersFilter types.String `tfsdk:"service_providers_filter"`
+	CheckProviders         types.String `tfsdk:"check_providers"`
 }
 
 // resourceModelSourceRunnerConfigKeys maps runner block attribute names to the
-// key suffix used under resources.source.N.runner.
+// key suffix used under resources.source.N.runner. Every key Rundeck writes
+// under that prefix must be represented here: readProject consumes the whole
+// resources.source.N.* namespace and updateProjectConfig rebuilds it from the
+// plan, so an unmapped key is dropped from state and then erased server-side on
+// the next apply.
 var resourceModelSourceRunnerConfigKeys = map[string]string{
 	"filter":                   "filter",
 	"filter_mode":              "runnerFilterMode",
 	"filter_type":              "runnerFilterType",
 	"providers":                "providers",
 	"service_providers_filter": "serviceProvidersFilter",
+	"check_providers":          "checkProviders",
 }
 
 var resourceModelSourceRunnerAttrTypes = map[string]attr.Type{
@@ -93,6 +99,7 @@ var resourceModelSourceRunnerAttrTypes = map[string]attr.Type{
 	"filter_type":              types.StringType,
 	"providers":                types.StringType,
 	"service_providers_filter": types.StringType,
+	"check_providers":          types.StringType,
 }
 
 var resourceModelSourceAttrTypes = map[string]attr.Type{
@@ -209,6 +216,10 @@ func (r *projectResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 								},
 								"service_providers_filter": schema.StringAttribute{
 									Description: "Raw service providers filter string as stored by Rundeck, e.g. \"[ResourceModelSource]\" (resources.source.N.runner.serviceProvidersFilter).",
+									Required:    true,
+								},
+								"check_providers": schema.StringAttribute{
+									Description: "Whether Rundeck validates the runner's provider list, e.g. \"true\" (resources.source.N.runner.checkProviders). Rundeck writes this key alongside the others when a runner filter is configured, so it must be set for the configuration to round-trip.",
 									Required:    true,
 								},
 							},
@@ -440,6 +451,7 @@ func (r *projectResource) updateProjectConfig(ctx context.Context, apiCtx contex
 				"filter_type":              runner.FilterType,
 				"providers":                runner.Providers,
 				"service_providers_filter": runner.ServiceProvidersFilter,
+				"check_providers":          runner.CheckProviders,
 			} {
 				if v.IsNull() || v.IsUnknown() {
 					continue
@@ -592,7 +604,7 @@ func (r *projectResource) readProject(ctx context.Context, apiCtx context.Contex
 				m := configMaps[index].(map[string]interface{})
 				m[nameParts[4]] = v
 			case "runner":
-				if len(nameParts) != 5 {
+				if len(nameParts) != 6 {
 					continue
 				}
 				if _, ok := runnerMaps[index]; !ok {

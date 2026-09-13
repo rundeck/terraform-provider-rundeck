@@ -4,7 +4,9 @@
 
 ### Project Resource
 
-- **Added `runner` block to `resource_model_source`** - Runner selection settings for a resource model source (`resources.source.N.runner.filter`, `runnerFilterMode`, `runnerFilterType`, `providers`, `serviceProvidersFilter`) can now be set as first-class attributes (`filter`, `filter_mode`, `filter_type`, `providers`, `service_providers_filter`) instead of via `extra_config`. When the block is present, all five attributes are required.
+- **Added `runner` block to `resource_model_source`** - Runner selection settings for a resource model source (`resources.source.N.runner.filter`, `runnerFilterMode`, `runnerFilterType`, `providers`, `serviceProvidersFilter`, `checkProviders`) can now be set as first-class attributes (`filter`, `filter_mode`, `filter_type`, `providers`, `service_providers_filter`, `check_providers`) instead of via `extra_config`. When the block is present, all six attributes are required.
+
+  All six keys Rundeck writes under `resources.source.N.runner.*` are mapped deliberately. `readProject` consumes that entire namespace and `updateProjectConfig` rebuilds it from the plan, so any key the block does not represent would be dropped from state on read and then erased server-side on the next apply.
 
 ## 1.4.0
 

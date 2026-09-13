@@ -252,6 +252,7 @@ func TestAccProject_RunnerBlock(t *testing.T) {
 					resource.TestCheckResourceAttr("rundeck_project.test", "resource_model_source.0.runner.filter_type", "TAG_FILTER_AND"),
 					resource.TestCheckResourceAttr("rundeck_project.test", "resource_model_source.0.runner.providers", "[{provider=com.batix.rundeck.plugins.AnsibleResourceModelSourceFactory, serviceName=ResourceModelSource, checkProvider=true}]"),
 					resource.TestCheckResourceAttr("rundeck_project.test", "resource_model_source.0.runner.service_providers_filter", "[ResourceModelSource]"),
+					resource.TestCheckResourceAttr("rundeck_project.test", "resource_model_source.0.runner.check_providers", "true"),
 					func(s *terraform.State) error {
 						projectConfig := project.Config.(map[string]interface{})
 						expected := map[string]string{
@@ -260,6 +261,7 @@ func TestAccProject_RunnerBlock(t *testing.T) {
 							"resources.source.1.runner.runnerFilterType":       "TAG_FILTER_AND",
 							"resources.source.1.runner.providers":              "[{provider=com.batix.rundeck.plugins.AnsibleResourceModelSourceFactory, serviceName=ResourceModelSource, checkProvider=true}]",
 							"resources.source.1.runner.serviceProvidersFilter": "[ResourceModelSource]",
+							"resources.source.1.runner.checkProviders":         "true",
 						}
 						for k, v := range expected {
 							if projectConfig[k] != v {
@@ -331,6 +333,7 @@ resource "rundeck_project" "test" {
       filter_type              = "TAG_FILTER_AND"
       providers                = "[{provider=com.batix.rundeck.plugins.AnsibleResourceModelSourceFactory, serviceName=ResourceModelSource, checkProvider=true}]"
       service_providers_filter = "[ResourceModelSource]"
+      check_providers          = "true"
     }
   }
 }

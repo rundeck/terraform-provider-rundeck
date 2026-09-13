@@ -103,6 +103,10 @@ The following arguments are supported:
   Maps to `runner.providers`.
 * `service_providers_filter` - (Required) Raw service providers filter string, e.g.
   `"[ResourceModelSource]"`. Maps to `runner.serviceProvidersFilter`.
+* `check_providers` - (Required) Whether Rundeck validates the runner's provider list, e.g.
+  `"true"`. Maps to `runner.checkProviders`. Rundeck writes this key alongside the others
+  whenever a runner filter is configured, so it must be set for the configuration to
+  round-trip without being erased on the next apply.
 
 Example:
 
@@ -118,6 +122,7 @@ resource_model_source {
     filter_type              = "TAG_FILTER_AND"
     providers                = "[{provider=com.batix.rundeck.plugins.AnsibleResourceModelSourceFactory, serviceName=ResourceModelSource, checkProvider=true}]"
     service_providers_filter = "[ResourceModelSource]"
+    check_providers          = "true"
   }
 }
 ```
