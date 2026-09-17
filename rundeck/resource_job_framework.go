@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -22,6 +23,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -170,11 +172,14 @@ func (r *jobResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				Required:    true,
 				Description: "Job name",
 			},
+			// No RequiresReplace: the update resolves the job by uuid, so the group
+			// no longer takes part in identifying it and Rundeck moves the job.
+			// project_name still replaces, its lookup being scoped to a project.
 			"group_name": schema.StringAttribute{
 				Optional:    true,
-				Description: "Job group name",
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
+				Description: "Job group name. Changing it moves the job; omit it for the project root.",
+				Validators: []validator.String{
+					stringvalidator.LengthAtLeast(1),
 				},
 			},
 			"project_name": schema.StringAttribute{
@@ -926,6 +931,16 @@ func (r *jobResource) Update(ctx context.Context, req resource.UpdateRequest, re
 	// Read the job back from API to ensure state matches what's actually stored
 	// This is important for fields like notifications which are sorted by the API
 	jobID := importResult.Succeeded[0].ID
+	if jobID != plan.ID.ValueString() {
+		resp.Diagnostics.AddError(
+			"Update created a second job instead of updating the existing one",
+			fmt.Sprintf("The update targeted job %q but Rundeck answered with %q, which means it resolved the import by name rather than by uuid and created a new job.\n\n"+
+				"Job %q is still in Rundeck, holding the execution history, and is no longer referenced by Terraform. Remove one of the two by hand before applying again.",
+				plan.ID.ValueString(), jobID, plan.ID.ValueString()),
+		)
+		return
+	}
+
 	apiJobData, err := GetJobJSON(r.client.V1, jobID)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -1396,7 +1411,9 @@ func (r *jobResource) jobJSONAPIToState(ctx context.Context, job *JobJSON, state
 	state.ID = types.StringValue(job.ID)
 	state.Name = types.StringValue(job.Name)
 
-	// Only set group_name if API returns a non-empty value
+	// toMap emits "group" exactly when the job has one, so an absent group means
+	// the job sits at the project root and must read back as null.
+	state.GroupName = types.StringNull()
 	if job.Group != "" {
 		state.GroupName = types.StringValue(job.Group)
 	}
