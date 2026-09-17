@@ -6,7 +6,7 @@ require (
 	github.com/hashicorp/terraform-plugin-go v0.31.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.40.1
 	github.com/rundeck/go-rundeck/rundeck v1.2.0
-	github.com/rundeck/go-rundeck/rundeck-v2 v1.2.0
+	github.com/rundeck/go-rundeck/rundeck-v2 v1.3.0
 )
 
 require (
