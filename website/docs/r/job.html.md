@@ -662,7 +662,9 @@ refers to a job by UUID — `jobref` blocks, documentation and runbook links, bo
 points at a job that no longer exists. Setting `uuid` moves that identity into the
 configuration, so a rebuild reproduces it:
 
-Generate your own UUID for each job — `uuidgen`, or a `random_uuid` resource — and commit it.
+Generate a UUID for each job with `uuidgen`, then commit that literal value in the job
+configuration. A `random_uuid` resource is only stable while its Terraform state is preserved,
+so it cannot reproduce the same identity from configuration alone after state loss.
 Rundeck requires job UUIDs to be unique across the whole instance, so a value copied from this
 page collides with every other job that copied it.
 
