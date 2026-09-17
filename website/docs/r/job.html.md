@@ -69,7 +69,7 @@ resource "rundeck_job" "deploy_with_cleanup" {
   
   command {
     job {
-      uuid = rundeck_job.cleanup.id  # References by UUID - won't break if cleanup job renamed
+      uuid = rundeck_job.cleanup.uuid  # References by UUID - won't break if cleanup job renamed
     }
     description = "Run cleanup after deployment"
   }
@@ -219,7 +219,7 @@ resource "rundeck_job" "sequential_task" {
       }
     command {
       job {
-        uuid              = rundeck_job.git_pull.id  # uuid reference recommended
+        uuid              = rundeck_job.git_pull.uuid  # uuid reference recommended
         args              = "-environment_numbers $${data.environment_numbers}"
       }
     }
@@ -279,6 +279,12 @@ The following arguments are supported:
 * `description` - (Required) A longer description of the job, describing the job in the Rundeck UI.
 
 * `project_name` - (Required) The name of the project that this job should belong to.
+
+* `uuid` - (Optional) The job's UUID, which is its identity in Rundeck. Left unset, Rundeck
+  generates one on create and it is recorded in state — the default, and unchanged behaviour.
+  Set it to a canonical lowercase UUID to make the identity come from the configuration
+  instead, so that rebuilding a Rundeck instance from the same Terraform reproduces the same
+  job UUIDs. See [Pinning a job's UUID](#pinning-a-jobs-uuid) below.
 
 * `execution_enabled` - (Optional) If you want job execution to be enabled or disabled. Defaults to `true`.
 
@@ -541,7 +547,7 @@ A command's `job` block has the following structure:
 
 **Job Identification (either uuid or name must be specified):**
 
-* `uuid`: (Optional) The UUID of the job to execute. **Recommended** for production use as UUIDs are immutable and will not break if the referenced job is renamed. You can reference another `rundeck_job` resource's `id` attribute (e.g., `uuid = rundeck_job.target.id`).
+* `uuid`: (Optional) The UUID of the job to execute. **Recommended** for production use as UUIDs are immutable and will not break if the referenced job is renamed. Reference another `rundeck_job` resource's `uuid` attribute (e.g., `uuid = rundeck_job.target.uuid`); its `id` holds the same value but is computed only, so it reads as `(known after apply)` while the referenced job is being created.
 
 * `name`: (Optional) The name of the job to execute. If no specific `project_name` was given the target job should be in the same project as the current job. Note that name-based references can break if the target job is renamed.
 
@@ -647,11 +653,88 @@ A notification's `plugin` list element has the following structure:
 * `type` - (Required) The name of the execution lifecycle plugin to use. Must match an installed plugin type in Rundeck.
 
 * `config` - (Optional) Map of arbitrary configuration properties for the selected plugin. The available configuration options depend on the specific plugin being used.
+
+## Pinning a job's UUID
+
+By default Rundeck assigns a job's UUID when the job is created, so rebuilding an instance
+from the same Terraform produces different UUIDs than the instance it replaces. Anything that
+refers to a job by UUID — `jobref` blocks, documentation and runbook links, bookmarks — then
+points at a job that no longer exists. Setting `uuid` moves that identity into the
+configuration, so a rebuild reproduces it:
+
+Generate a UUID for each job with `uuidgen`, then commit that literal value in the job
+configuration. A `random_uuid` resource is only stable while its Terraform state is preserved,
+so it cannot reproduce the same identity from configuration alone after state loss.
+Rundeck requires job UUIDs to be unique across the whole instance, so a value copied from this
+page collides with every other job that copied it.
+
+```hcl
+resource "rundeck_job" "deploy" {
+  project_name = rundeck_project.main.name
+  uuid         = "REPLACE-WITH-YOUR-OWN-UUID"
+  name         = "deploy-application"
+  description  = "Deploy the application"
+
+  command {
+    shell_command = "deploy.sh"
+  }
+}
+```
+
+### Pinning jobs that already exist
+
+Setting `uuid` to the value a job already has plans as no change, so an existing estate can be
+pinned in place without recreating anything. Read each job's current UUID from state and write
+it into the configuration:
+
+```bash
+terraform show -json \
+  | jq -r '[.values.root_module | recurse(.child_modules[]?) | .resources[]?]
+           | .[]
+           | select(.type == "rundeck_job")
+           | "\(.address)\t\(.values.uuid)"'
+```
+
+The `recurse` is what reaches jobs declared inside modules; a filter rooted at
+`.values.root_module.resources` alone would silently skip them and pin only part of the estate.
+
+Then re-run `terraform plan` and confirm it reports no changes before applying.
+
+Jobs whose UUID is not a canonical lowercase UUID cannot be pinned: Rundeck accepts a wider
+set of identifiers than this provider validates. Such a job keeps working — `uuid` is read back
+into state either way — it simply cannot be written into the configuration.
+
+Note also that `terraform plan -generate-config-out` emits a `uuid` line for every job it
+generates, since the attribute always has a value in state. Those jobs are then pinned, and
+each generated `uuid` is governed by the replacement rule below. Delete the lines you did not
+mean to pin.
+
+### Changing a UUID
+
+Changing a `uuid` that is already set replaces the job: Rundeck has no way to renumber a job
+in place, so the existing one is destroyed and a new one created under the new UUID. The plan
+shows the replacement and the provider emits a warning, because the references that break are
+outside Terraform's state and it cannot show them. The job's execution history stays with the
+destroyed job.
+
+Removing `uuid` from the configuration is not a change — the job keeps the UUID it has.
+
+Rundeck requires job UUIDs to be unique across the whole instance, not per project, so an
+apply that would collide with an existing job's UUID fails rather than creating a duplicate.
+Under `create_before_destroy`, or after a lost state file, that collision can be with the job
+being replaced or with one this configuration no longer tracks; adopt it with
+`terraform import` rather than letting the create retry.
+
 ## Attributes Reference
 
-The following attribute is exported:
+The following attributes are exported:
 
-* `id` - A unique identifier for the job.
+* `uuid` - The job's UUID. Readable whether or not it was configured, and known at plan time
+  when it was — prefer it over `id` when referencing the job from another resource.
+
+* `id` - The same value as `uuid`. Computed only, so on creation it is `(known after apply)`
+  even when `uuid` is pinned: a `jobref` written as `rundeck_job.x.id` therefore makes the
+  referring job's plan unknown, where `rundeck_job.x.uuid` stays known.
 
 ## Import
 

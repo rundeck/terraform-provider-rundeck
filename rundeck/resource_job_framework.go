@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -27,6 +28,71 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
+// Rundeck itself only constrains a job uuid to VALID_RESOURCE_NAME_REGEX, but its
+// UI, job references and documentation links all assume a UUID.
+var canonicalUUIDPattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+
+// jobIdentity picks the job's UUID from a response that may carry it under
+// either key: Rundeck's toMap writes it to both "uuid" and "id".
+func jobIdentity(uuid, id string) string {
+	if uuid != "" {
+		return uuid
+	}
+	return id
+}
+
+// requiresReplaceOnUUIDChange decides the replacement and warns about it in one
+// place, so the two can never disagree.
+func requiresReplaceOnUUIDChange() planmodifier.String {
+	const description = "If the value of this attribute is configured and changes, Terraform will destroy and recreate the resource."
+
+	return stringplanmodifier.RequiresReplaceIf(
+		func(ctx context.Context, req planmodifier.StringRequest, resp *stringplanmodifier.RequiresReplaceIfFuncResponse) {
+			if req.ConfigValue.IsNull() {
+				return
+			}
+
+			prior := req.StateValue
+			if prior.IsNull() {
+				// State written before this attribute existed records the job's
+				// UUID under id alone.
+				resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("id"), &prior)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+			}
+
+			if req.ConfigValue.Equal(prior) {
+				return
+			}
+
+			resp.RequiresReplace = true
+
+			if req.ConfigValue.IsUnknown() {
+				resp.Diagnostics.AddAttributeWarning(
+					req.Path,
+					"Job UUID is not known until apply, so the job will be replaced",
+					"uuid resolves to a value that is only known at apply time, so Terraform cannot tell whether it differs from the job's current UUID and plans a replacement either way.\n\n"+
+						"Destroying the job takes its execution history with it and breaks every reference to it that lives outside Terraform. Pin uuid to a literal value to avoid this.",
+				)
+				return
+			}
+
+			resp.Diagnostics.AddAttributeWarning(
+				req.Path,
+				"Job UUID change replaces the job",
+				fmt.Sprintf("Changing uuid from %q to %q destroys this job and creates a new one under the new UUID.\n\n"+
+					"A job's UUID is how it is referenced outside Terraform: jobref blocks pointing at it by UUID (including in jobs this configuration does not manage), documentation and runbook links, and bookmarks all name the old UUID and will not follow the change. The job's execution history stays with the job being destroyed.\n\n"+
+					"Rundeck requires job UUIDs to be unique across the whole instance, so if %[2]q already belongs to another job the apply fails after this one has been destroyed.\n\n"+
+					"If the intent is to pin this job's current identity rather than change it, set uuid to %[1]q — that plans as no change.",
+					prior.ValueString(), req.ConfigValue.ValueString()),
+			)
+		},
+		description,
+		description,
+	)
+}
+
 type jobResource struct {
 	client *RundeckClients
 }
@@ -34,6 +100,7 @@ type jobResource struct {
 // jobResourceModel represents the Terraform resource model
 type jobResourceModel struct {
 	ID                          types.String `tfsdk:"id"`
+	UUID                        types.String `tfsdk:"uuid"`
 	Name                        types.String `tfsdk:"name"`
 	GroupName                   types.String `tfsdk:"group_name"`
 	ProjectName                 types.String `tfsdk:"project_name"`
@@ -166,6 +233,21 @@ func (r *jobResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"uuid": schema.StringAttribute{
+				Optional:    true,
+				Computed:    true,
+				Description: "Job UUID. Set it to pin the job's identity across rebuilds of a Rundeck instance; leave it unset to let Rundeck generate one. Changing a configured value replaces the job.",
+				PlanModifiers: []planmodifier.String{
+					requiresReplaceOnUUIDChange(),
+					stringplanmodifier.UseNonNullStateForUnknown(),
+				},
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(
+						canonicalUUIDPattern,
+						"must be a canonical lowercase UUID (8-4-4-4-12 hexadecimal digits), e.g. \"11111111-2222-3333-4444-555555555555\"",
+					),
 				},
 			},
 			"name": schema.StringAttribute{
@@ -586,6 +668,8 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 		return
 	}
 
+	requestedUUID := plan.UUID
+
 	// Convert Terraform model to Rundeck JSON format
 	jobData, err := r.planToJobJSON(ctx, &plan)
 	if err != nil {
@@ -696,10 +780,11 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 		if errorMsg == "" {
 			errorMsg = importResult.Failed[0].Message
 		}
-		resp.Diagnostics.AddError(
-			"Error creating job",
-			fmt.Sprintf("Job import failed: %s\nFull response: %s", errorMsg, string(responseBody)),
-		)
+		detail := fmt.Sprintf("Job import failed: %s\nFull response: %s", errorMsg, string(responseBody))
+		if pinned := requestedUUID.ValueString(); pinned != "" {
+			detail += fmt.Sprintf("\n\nThis job pins uuid %q, and Rundeck requires job UUIDs to be unique across the whole instance. If a job already holds it — left behind by a lost state file, or still alive under create_before_destroy — adopt it with `terraform import` instead of creating it.", pinned)
+		}
+		resp.Diagnostics.AddError("Error creating job", detail)
 		return
 	}
 
@@ -746,7 +831,17 @@ func (r *jobResource) Create(ctx context.Context, req resource.CreateRequest, re
 		return
 	}
 
+	// State is written either way: the job exists in Rundeck, and leaving it out
+	// of state would orphan it.
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+
+	if pinned := requestedUUID.ValueString(); pinned != "" && plan.ID.ValueString() != pinned {
+		resp.Diagnostics.AddError(
+			"Rundeck did not preserve the configured job UUID",
+			fmt.Sprintf("The configuration pinned uuid %q, but Rundeck created the job as %q.\n\n"+
+				"The job exists under the UUID Rundeck chose and has been recorded in state under it. Import requires API v46+ with uuidOption=preserve, which this provider sends; a server that ignores it cannot pin job UUIDs.", pinned, plan.ID.ValueString()),
+		)
+	}
 }
 
 func (r *jobResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -803,14 +898,6 @@ func (r *jobResource) Update(ctx context.Context, req resource.UpdateRequest, re
 		)
 		return
 	}
-
-	// Target the existing job by its UUID. Rundeck resolves the job to update
-	// from "uuid" first and only falls back to name + group + project, and that
-	// fallback needs the name to match exactly one job — so without the UUID a
-	// rename creates a second job and leaves the original orphaned, and two
-	// jobs sharing a name can never be updated at all.
-	jobData.ID = plan.ID.ValueString()
-	jobData.UUID = plan.ID.ValueString()
 
 	// Marshal to JSON
 	jobJSON, err := json.Marshal([]interface{}{jobData})
@@ -1049,6 +1136,13 @@ func (r *jobResource) planToJobJSON(ctx context.Context, plan *jobResourceModel)
 		ScheduleEnabled:        plan.ScheduleEnabled.ValueBool(),
 	}
 
+	// "uuid" is the only identifier the import reads back, so it both targets an
+	// existing job and pins a new one. Empty on create, where Rundeck mints one.
+	job.UUID = plan.UUID.ValueString()
+	if plan.UUID.IsNull() || plan.UUID.IsUnknown() {
+		job.UUID = plan.ID.ValueString()
+	}
+
 	if !plan.AllowConcurrentExecutions.IsNull() {
 		job.MultipleExecutions = plan.AllowConcurrentExecutions.ValueBool()
 	}
@@ -1253,6 +1347,7 @@ func (r *jobResource) planToJobJSON(ctx context.Context, plan *jobResourceModel)
 // jobJSONToState converts Rundeck job JSON to Terraform state
 func (r *jobResource) jobJSONToState(ctx context.Context, job *jobJSON, state *jobResourceModel) error {
 	state.ID = types.StringValue(job.ID)
+	state.UUID = types.StringValue(jobIdentity(job.UUID, job.ID))
 	state.Name = types.StringValue(job.Name)
 	state.GroupName = types.StringValue(job.Group)
 	// Project name is not returned by JobGet API, preserve from current state
@@ -1408,7 +1503,11 @@ func (r *jobResource) jobJSONToState(ctx context.Context, job *jobJSON, state *j
 // jobJSONAPIToState converts API JSON response to Terraform state
 func (r *jobResource) jobJSONAPIToState(ctx context.Context, job *JobJSON, state *jobResourceModel) error {
 	// Map JSON fields directly to Terraform state
-	state.ID = types.StringValue(job.ID)
+	identity := jobIdentity(job.UUID, job.ID)
+	if identity != "" {
+		state.ID = types.StringValue(identity)
+		state.UUID = types.StringValue(identity)
+	}
 	state.Name = types.StringValue(job.Name)
 
 	// toMap emits "group" exactly when the job has one, so an absent group means

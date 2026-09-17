@@ -57,6 +57,7 @@ import (
 // - Matches Rundeck API v46+ JSON response format
 type JobJSON struct {
 	ID                         string                   `json:"id"`
+	UUID                       string                   `json:"uuid,omitempty"`
 	Name                       string                   `json:"name"`
 	Group                      string                   `json:"group,omitempty"`
 	Project                    string                   `json:"project"`
