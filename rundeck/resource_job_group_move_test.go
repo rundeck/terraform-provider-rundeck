@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
 	"testing"
@@ -184,32 +183,31 @@ func TestAccJob_groupNameMovesInPlace(t *testing.T) {
 
 // testRunJob starts the job and returns the id of the execution Rundeck recorded.
 func testRunJob(clients *RundeckClients, jobID string) (string, error) {
-	resp, err := clients.V2.JobsAPI.ApiJobRun(clients.ctx, jobID).Execute()
+	// rundeck-v2 v1.3.0 decodes this endpoint's response into a map directly,
+	// rather than returning the raw *http.Response body for the caller to parse.
+	result, resp, err := clients.V2.JobsAPI.ApiJobRun(clients.ctx, jobID).Execute()
 	if resp != nil {
 		defer resp.Body.Close()
 	}
 	if err != nil {
 		return "", fmt.Errorf("running job %s: %w", jobID, err)
 	}
-
-	body, readErr := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("running job %s returned status %d: %s", jobID, resp.StatusCode, testTruncate(body))
-	}
-	if readErr != nil {
-		return "", fmt.Errorf("reading run response: %w", readErr)
+		return "", fmt.Errorf("running job %s returned status %d: %v", jobID, resp.StatusCode, result)
 	}
 
-	var execution struct {
-		ID int `json:"id"`
+	id, ok := result["id"]
+	if !ok {
+		return "", fmt.Errorf("run response carried no execution id: %v", result)
 	}
-	if err := json.Unmarshal(body, &execution); err != nil {
-		return "", fmt.Errorf("decoding run response %s: %w", testTruncate(body), err)
+	switch v := id.(type) {
+	case float64:
+		return strconv.Itoa(int(v)), nil
+	case string:
+		return v, nil
+	default:
+		return "", fmt.Errorf("run response id has unexpected type %T: %v", id, result)
 	}
-	if execution.ID == 0 {
-		return "", fmt.Errorf("run response carried no execution id: %s", testTruncate(body))
-	}
-	return strconv.Itoa(execution.ID), nil
 }
 
 // testJobExecutionIDs lists every execution Rundeck holds for the job.
@@ -229,14 +227,6 @@ func testJobExecutionIDs(clients *RundeckClients, jobID string) ([]string, error
 		}
 	}
 	return ids, nil
-}
-
-func testTruncate(body []byte) string {
-	const max = 512
-	if len(body) > max {
-		return string(body[:max]) + "…"
-	}
-	return string(body)
 }
 
 func testAccJobConfig_group(groupLine string) string {
