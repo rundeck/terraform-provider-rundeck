@@ -2,6 +2,20 @@
 
 **Enhancements**
 
+### Job Resource
+
+- **Changing `group_name` now moves the job instead of replacing it** - `group_name` carried `RequiresReplace`, so reorganising jobs into different groups destroyed and recreated each one, losing its UUID and its execution history along the way.
+
+  That constraint dated from when the update resolved the job by name + group + project: moving a job broke the resolution, and replacing it was the defensive answer. Since the update targets the job by the UUID held in state, the group takes no part in identifying it — `findByUuidAndProject` looks the job up by uuid and project alone — and the group in the payload is simply applied. `name` was already in this position and renames have worked in place since then; the group is the same case.
+
+  `project_name` keeps `RequiresReplace`: that lookup *is* scoped to a project, so moving a job across projects still has to recreate it.
+
+  Removing `group_name` from a configuration moves the job back to the project root. The payload omits the field, and Rundeck reads it back as `se.groupPath = data['group'] ? data['group'] : null` (`ScheduledExecution.fromMap`), so an absent group clears it.
+
+  The read-back was changed to match: `group_name` now reads as null when the API returns no group, so a job moved to the project root outside Terraform shows as drift instead of leaving the old group in state forever. `group_name = ""` is rejected at plan time rather than silently behaving as "no group". And an update whose import comes back under a different id — which is what resolution by name rather than by uuid looks like — is now an error naming both jobs, instead of silently pointing state at the duplicate.
+
+  **Behaviour change:** a plan that previously showed a job being destroyed and recreated now shows an in-place update. Jobs keep their UUID, so `jobref` references by UUID, `rundeck_webhook.job_id`, and documentation links survive a reorganisation, as does the execution history. Job references written by *name* carry the group they expect and do not follow a move — see the upgrade guide.
+
 ### Project Resource
 
 - **Added `runner` block to `resource_model_source`** - Runner selection settings for a resource model source (`resources.source.N.runner.filter`, `runnerFilterMode`, `runnerFilterType`, `providers`, `serviceProvidersFilter`, `checkProviders`) can now be set as first-class attributes (`filter`, `filter_mode`, `filter_type`, `providers`, `service_providers_filter`, `check_providers`) instead of via `extra_config`. When the block is present, all six attributes are required.

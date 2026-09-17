@@ -285,6 +285,15 @@ The following arguments are supported:
 * `default_tab` - (Optional) The default tab to show during job execution. Set to 'output' to follow the execution log. Must be set to `output`, `html`, or `nodes`
 
 * `group_name` - (Optional) The name of a group within the project in which to place the job.
+  Changing it moves the job in place: the job keeps its UUID and its execution history, so
+  `jobref` references by UUID and documentation links survive a reorganisation. Omit it to
+  place the job at the project root — removing it from an existing configuration moves the
+  job back there. Note that `project_name` behaves differently: moving a job to another
+  project still destroys and recreates it.
+  **Job references by name do not follow a move.** A `jobref` written as
+  `job { name = "…" group_name = "…" }` names the group it expects, and Terraform has no
+  dependency edge to catch it: the referring job plans and applies clean, then fails the next
+  time it runs. Update those references in the same change, or reference by `uuid` instead.
   Setting this creates collapsable subcategories within the Rundeck UI's project job index.
 
 * `log_level` - (Optional) The log level that Rundeck should use for this job. Defaults to "INFO".
