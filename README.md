@@ -22,7 +22,7 @@ This provider is **community-supported**. While Rundeck/PagerDuty staff review a
 ## Requirements
 
 - [Terraform](https://www.terraform.io/downloads.html) >= 0.13.x
-- [Go](https://golang.org/doc/install) >= 1.24
+- [Go](https://golang.org/doc/install) >= 1.25.8
 - [Rundeck](https://www.rundeck.com/) >= 5.0.0 (API v46+)
 
 > Note: Some features will require newer or Enterprise versions of Rundeck.
@@ -78,6 +78,8 @@ Some tests require **Rundeck Enterprise** features and will fail on Rundeck Comm
 
 **Enterprise-only features tested:**
 - **Runner resources** - System runners and project runners (5 tests)
+- **Runner data sources** - `rundeck_runner`, `rundeck_runners`, `rundeck_runner_tags`
+- **Local roles** - `rundeck_local_role` CRUD and membership (see the dedicated setup section below)
 - **Project schedules** - Job scheduling via project-level schedules (3 tests)
 - **Execution lifecycle plugins**
 
@@ -131,6 +133,24 @@ $ go test ./rundeck/... -run TestAccRundeckScmExport_basic -v
 
 The private key's contents are never passed through Go code or Terraform variables - `RUNDECK_SCM_TEST_SSH_KEY_PATH` only supplies a local file path, and the generated test config reads it directly via Terraform's `file()` function at apply time, uploading it into Rundeck's key storage via `rundeck_private_key`.
 
+**Local Role Membership Tests (Additional Setup Required):**
+
+`TestAccRundeckLocalRole_members` exercises `rundeck_local_role`'s member add/remove workflow, which requires a real, pre-existing local username on the target instance - Terraform can't provision one itself, since this provider doesn't implement `rundeck_local_user` (the vendored SDK has no request-body support at all for the create/edit user endpoints, a gap in Rundeck's own published OpenAPI spec).
+
+To run it:
+
+1. Ensure your Rundeck Enterprise instance authenticates via the **local user store** realm (not LDAP/SSO/PAM) - `rundeck_local_role` only works against that realm.
+2. Create (or identify) a local user account on that instance.
+3. Set both environment variables:
+
+```sh
+$ export RUNDECK_ENTERPRISE_TESTS=1
+$ export RUNDECK_LOCAL_ROLE_TEST_USERNAME="an-existing-local-username"
+$ make testacc
+```
+
+Without `RUNDECK_LOCAL_ROLE_TEST_USERNAME`, this specific test is skipped even when `RUNDECK_ENTERPRISE_TESTS=1` is set; `TestAccRundeckLocalRole_basic`/`_update` (role CRUD without membership) run under `RUNDECK_ENTERPRISE_TESTS=1` alone.
+
 **In CI/CD pipelines:**
 
 By default, Enterprise tests are skipped unless `RUNDECK_ENTERPRISE_TESTS=1` is set. To enable them in GitHub Actions or other CI:
@@ -145,7 +165,7 @@ env:
 
 #### Test Requirements
 
-- **Go 1.24+** - Required for modern Terraform Plugin Framework
+- **Go 1.25.8+** - Required by `terraform-plugin-sdk/v2`
 - **Rundeck 5.0.0+** - Minimum supported version (API v46)
 - **Docker** - For local testing environment (optional but recommended)
 - **Rundeck Enterprise** - Only if running Enterprise feature tests

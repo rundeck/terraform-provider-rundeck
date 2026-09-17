@@ -15,7 +15,7 @@ This directory contains comprehensive test configurations for Rundeck Enterprise
 ### Required
 - Running Rundeck Enterprise instance (5.17.0 or later)
 - Valid API token with admin/sufficient permissions
-- Go 1.24+ installed
+- Go 1.25.8+ installed
 - jq installed (`brew install jq` on macOS)
 
 ### Enterprise Features Tested
@@ -178,7 +178,7 @@ If build fails:
 # Ensure you're in the repo root
 cd /path/to/terraform-provider-rundeck
 
-# Check Go version (requires 1.24+)
+# Check Go version (requires 1.25.8+)
 go version
 
 # Try manual build

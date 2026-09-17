@@ -308,6 +308,14 @@ The following arguments are supported:
 
 * `timeout` - (Optional) The maximum time for an execution to run. Time in seconds, or specify time units: "120m", "2h", "3d". Use blank or 0 to indicate no timeout.
 
+* `notify_avg_duration_threshold` - (Optional) How long an execution may run before the
+  `on_avg_duration` notification fires. Accepts a duration ("2h", "30m"), a percentage of the job's
+  average duration ("150%"), or an increment over it ("+5m"). Rundeck treats a missing threshold as
+  zero and never fires the notification, so an `on_avg_duration` notification without this attribute
+  is configured but inert. The reverse is also true and easy to miss: setting this attribute without
+  an `on_avg_duration` notification block does nothing - confirmed against a live server, Rundeck
+  doesn't even persist the threshold in that case, so it reads back as unset on the next refresh.
+
 * `schedule` - (Optional) The job's schedule in Quartz schedule cron format. Similar to unix crontab, but with seven fields instead of five: Second Minute Hour Day-of-Month Month Day-of-Week Year
 
 * `orchestrator` - (Optional) The orchestrator for the job, described below and [here](https://docs.rundeck.com/docs/manual/orchestrator-plugins/bundled.html)
@@ -428,6 +436,12 @@ The following arguments are supported:
 
 * `value_choices`: (Optional) A list of strings giving a set of predefined values that the user
   may choose from when entering a value for the option.
+
+* `values_list_delimiter`: (Optional) Separator Rundeck uses to join `value_choices` into the
+  option's values list, and to split them apart again. Defaults to a comma. Set it when a choice
+  itself contains the default separator — for example a space or a semicolon. This is distinct
+  from `multi_value_delimiter`, which separates the values a user *selects* rather than the ones
+  offered.
 
 * `value_choices_url`: (Optional) Can be used instead of `value_choices` to cause Rundeck to
   obtain a list of choices dynamically by fetching this URL.
@@ -555,6 +569,22 @@ A command's `node_filters` block has the following structure:
 * `filter`: (Optional) The query string for nodes ***to use***.
 
 * `exclude_filter`: (Optional) The query string for nodes ***not to use***.
+
+* `dispatch`: (Optional) A block overriding how the referenced job dispatches over its nodes. See below for the structure.
+
+A `node_filters` `dispatch` block has the following structure:
+
+* `thread_count`: (Optional) Number of threads to use for parallel dispatch.
+
+* `keep_going`: (Optional) Whether to continue on the remaining nodes after a node fails.
+
+* `rank_attribute`: (Optional) The name of the node attribute used to order the sequence of nodes.
+
+* `rank_order`: (Optional) The order direction for node ranking, either `ascending` or `descending`.
+
+* `node_intersect`: (Optional) Whether to run the referenced job only on the intersection of its own
+  node set and the calling job's — Rundeck's "Match Node Filter Intersection". Unlike the other
+  `dispatch` settings, Rundeck honors this one even when no `filter` is set on the reference.
 
 A command's `plugins` block has the following structure:
 
