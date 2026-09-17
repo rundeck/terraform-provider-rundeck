@@ -129,12 +129,14 @@ func getTestClients() (*RundeckClients, error) {
 	clientV1 := rundeck.NewRundeckWithBaseURI(apiURL.String())
 	clientV1.Authorizer = &auth.TokenAuthorizer{Token: token}
 
-	// Create the V2 client
-	cfg := openapi.NewConfiguration()
-	cfg.Host = apiURL.Host
-	cfg.Scheme = apiURL.Scheme
-
-	clientV2 := openapi.NewAPIClient(cfg)
+	// Create the V2 client. Reuses buildV2Configuration rather than
+	// constructing a Configuration by hand so this stays correct if the
+	// generated SDK's baked-in default API version ever changes again (as it
+	// did between rundeck-v2 v1.2.0 and v1.3.0, from 56 to 59) - a hand-rolled
+	// Configuration here has no version override at all, so it silently
+	// tracks whatever the SDK's own default happens to be instead of the
+	// apiVersion this function actually resolved above.
+	clientV2 := openapi.NewAPIClient(buildV2Configuration(apiURL, apiVersion, "test"))
 
 	// Create a context with the API token
 	ctx := context.WithValue(context.Background(), openapi.ContextAPIKeys, map[string]openapi.APIKey{

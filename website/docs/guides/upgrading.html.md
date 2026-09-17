@@ -299,3 +299,34 @@ If you encounter issues during upgrade:
 - No breaking changes from v1.1.x
 - Adds webhook resource
 - Bug fixes for import and option enforcement
+
+### Changing a job's group is now an in-place move
+
+Changing `group_name` on a `rundeck_job` used to destroy and recreate the job. It now moves it:
+the job keeps its UUID and its execution history.
+
+**What changes in your plans.** A line that read `# rundeck_job.x must be replaced` now reads
+`~ update in-place`. Nothing in your configuration has to change, but a reorganisation that you
+previously treated as destructive is no longer one — and conversely, a plan you would have
+reviewed carefully because it said "replace" now looks routine while still moving a live job.
+
+**What to check before applying.** Job references written by name carry the group they expect:
+
+```hcl
+command {
+  job {
+    name       = "cleanup-temp-files"
+    group_name = "ops/maintenance"
+  }
+}
+```
+
+Moving `cleanup-temp-files` leaves that reference pointing at a group the job has left. The
+referring job plans and applies cleanly — none of its own attributes changed — and only fails
+the next time it executes. Terraform has no dependency edge that would catch this. Update those
+references in the same change, or reference the target by `uuid`, which does follow the move.
+
+References by `uuid`, `rundeck_webhook.job_id`, documentation links and bookmarks all survive a
+move, where previously the replacement broke every one of them.
+
+`project_name` is unaffected: moving a job to another project still destroys and recreates it.

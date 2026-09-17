@@ -13,6 +13,17 @@
   Rundeck constrains job UUIDs to be unique across the whole instance rather than per project (`ScheduledExecution.uuid(unique: true)`), and `Create` sends `dupeOption=create`, so creating a job whose pinned UUID is already taken fails instead of silently creating a duplicate under a fresh UUID. That can happen after a lost state file, or under `create_before_destroy` while the job being replaced still holds the UUID; the error now says so and points at `terraform import`.
 
   A pinned UUID that Rundeck does not honour is reported as such rather than surfacing as `Provider produced inconsistent result after apply`, and the job is still recorded in state so it is not orphaned.
+- **Changing `group_name` now moves the job instead of replacing it** - `group_name` carried `RequiresReplace`, so reorganising jobs into different groups destroyed and recreated each one, losing its UUID and its execution history along the way.
+
+  That constraint dated from when the update resolved the job by name + group + project: moving a job broke the resolution, and replacing it was the defensive answer. Since the update targets the job by the UUID held in state, the group takes no part in identifying it — `findByUuidAndProject` looks the job up by uuid and project alone — and the group in the payload is simply applied. `name` was already in this position and renames have worked in place since then; the group is the same case.
+
+  `project_name` keeps `RequiresReplace`: that lookup *is* scoped to a project, so moving a job across projects still has to recreate it.
+
+  Removing `group_name` from a configuration moves the job back to the project root. The payload omits the field, and Rundeck reads it back as `se.groupPath = data['group'] ? data['group'] : null` (`ScheduledExecution.fromMap`), so an absent group clears it.
+
+  The read-back was changed to match: `group_name` now reads as null when the API returns no group, so a job moved to the project root outside Terraform shows as drift instead of leaving the old group in state forever. `group_name = ""` is rejected at plan time rather than silently behaving as "no group". And an update whose import comes back under a different id — which is what resolution by name rather than by uuid looks like — is now an error naming both jobs, instead of silently pointing state at the duplicate.
+
+  **Behaviour change:** a plan that previously showed a job being destroyed and recreated now shows an in-place update. Jobs keep their UUID, so `jobref` references by UUID, `rundeck_webhook.job_id`, and documentation links survive a reorganisation, as does the execution history. Job references written by *name* carry the group they expect and do not follow a move — see the upgrade guide.
 
 ## 1.4.0
 
