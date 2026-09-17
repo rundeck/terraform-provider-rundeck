@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/objectvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -194,33 +195,46 @@ func (r *projectResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 					Blocks: map[string]schema.Block{
 						"runner": schema.SingleNestedBlock{
 							Description: "Runner selection settings for this resource model source (Rundeck Enterprise). Maps to resources.source.N.runner.* project configuration keys. If the block is present, all of its attributes are required.",
-							// The block itself is optional (0 or 1 occurrences); Terraform does not
-							// evaluate a null block's children, so Required here means "required
-							// when the block is present".
+							// The block itself is optional (0 or 1 occurrences), but a
+							// SingleNestedBlock's Required children ARE validated even when
+							// the block is absent from config (confirmed against CI: marking
+							// these Required broke every resource_model_source test that
+							// doesn't configure a runner block at all). AlsoRequires on the
+							// block itself is what actually gives "required when present".
+							Validators: []validator.Object{
+								objectvalidator.AlsoRequires(
+									path.MatchRelative().AtName("filter"),
+									path.MatchRelative().AtName("filter_mode"),
+									path.MatchRelative().AtName("filter_type"),
+									path.MatchRelative().AtName("providers"),
+									path.MatchRelative().AtName("service_providers_filter"),
+									path.MatchRelative().AtName("check_providers"),
+								),
+							},
 							Attributes: map[string]schema.Attribute{
 								"filter": schema.StringAttribute{
 									Description: "Runner filter value, e.g. a tag name (resources.source.N.runner.filter).",
-									Required:    true,
+									Optional:    true,
 								},
 								"filter_mode": schema.StringAttribute{
 									Description: "Runner filter mode, e.g. TAGS (resources.source.N.runner.runnerFilterMode).",
-									Required:    true,
+									Optional:    true,
 								},
 								"filter_type": schema.StringAttribute{
 									Description: "Runner filter type, e.g. TAG_FILTER_AND (resources.source.N.runner.runnerFilterType).",
-									Required:    true,
+									Optional:    true,
 								},
 								"providers": schema.StringAttribute{
 									Description: "Raw providers string as stored by Rundeck, e.g. \"[{provider=..., serviceName=ResourceModelSource, checkProvider=true}]\" (resources.source.N.runner.providers).",
-									Required:    true,
+									Optional:    true,
 								},
 								"service_providers_filter": schema.StringAttribute{
 									Description: "Raw service providers filter string as stored by Rundeck, e.g. \"[ResourceModelSource]\" (resources.source.N.runner.serviceProvidersFilter).",
-									Required:    true,
+									Optional:    true,
 								},
 								"check_providers": schema.StringAttribute{
 									Description: "Whether Rundeck validates the runner's provider list, e.g. \"true\" (resources.source.N.runner.checkProviders). Rundeck writes this key alongside the others when a runner filter is configured, so it must be set for the configuration to round-trip.",
-									Required:    true,
+									Optional:    true,
 								},
 							},
 						},
@@ -604,7 +618,7 @@ func (r *projectResource) readProject(ctx context.Context, apiCtx context.Contex
 				m := configMaps[index].(map[string]interface{})
 				m[nameParts[4]] = v
 			case "runner":
-				if len(nameParts) != 6 {
+				if len(nameParts) != 5 {
 					continue
 				}
 				if _, ok := runnerMaps[index]; !ok {
