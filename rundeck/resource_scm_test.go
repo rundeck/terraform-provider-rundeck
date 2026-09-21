@@ -62,6 +62,76 @@ func TestAccRundeckScmExport_basic(t *testing.T) {
 	})
 }
 
+// TestAccRundeckScmExport_enabledDriftCorrection covers `enabled`'s default:
+// disabling the plugin out-of-band (as an operator might during an incident)
+// must show up as drift and get corrected back to enabled on the next apply,
+// since the configuration never set `enabled` explicitly and so takes the
+// `true` default.
+func TestAccRundeckScmExport_enabledDriftCorrection(t *testing.T) {
+	gitURL := os.Getenv("RUNDECK_SCM_TEST_GIT_URL")
+	keyPath := os.Getenv("RUNDECK_SCM_TEST_SSH_KEY_PATH")
+	if gitURL == "" || keyPath == "" {
+		t.Skip("Skipping TestAccRundeckScmExport_enabledDriftCorrection: RUNDECK_SCM_TEST_GIT_URL and RUNDECK_SCM_TEST_SSH_KEY_PATH must both be set")
+	}
+
+	var config openapi.ScmProjectPluginConfig
+
+	disableOutOfBand := func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources["rundeck_scm_export.test"]
+		if !ok {
+			return fmt.Errorf("rundeck_scm_export.test not found in state")
+		}
+		project := rs.Primary.Attributes["project"]
+
+		clients, err := getTestClients()
+		if err != nil {
+			return fmt.Errorf("failed to create test client: %s", err)
+		}
+		result, _, err := clients.V2.SCMAPI.ApiProjectDisable(clients.ctx, project, "export", "git-export").Execute()
+		if err != nil {
+			return fmt.Errorf("failed to disable plugin out-of-band: %w", err)
+		}
+		if result != nil && result.Success != nil && !*result.Success {
+			return fmt.Errorf("disabling plugin out-of-band did not succeed: %s", scmActionErrorMessage(result))
+		}
+		return nil
+	}
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
+		CheckDestroy:             testAccScmCheckDestroy("export"),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccRundeckScmExportConfig_basic(gitURL, keyPath, "main"),
+				Check: resource.ComposeTestCheckFunc(
+					testAccScmCheckExists("rundeck_scm_export.test", "export", &config),
+					resource.TestCheckResourceAttr("rundeck_scm_export.test", "enabled", "true"),
+					disableOutOfBand,
+				),
+				// The disableOutOfBand Check above runs after this step's
+				// apply, so the test framework's own post-apply refresh
+				// sees state disagree with the (unchanged) config's default
+				// - nothing in configuration changed, but state now says
+				// enabled=false while the default plans enabled=true.
+				// That mismatch is exactly the drift this step exists to
+				// induce, so a non-empty plan here is expected, not a bug.
+				ExpectNonEmptyPlan: true,
+			},
+			{
+				// The same config, applied for real, must correct the
+				// drift: Update calls setEnabledState, which re-enables
+				// the plugin since plan.Enabled resolves to the default.
+				Config: testAccRundeckScmExportConfig_basic(gitURL, keyPath, "main"),
+				Check: resource.ComposeTestCheckFunc(
+					testAccScmCheckExists("rundeck_scm_export.test", "export", &config),
+					resource.TestCheckResourceAttr("rundeck_scm_export.test", "enabled", "true"),
+				),
+			},
+		},
+	})
+}
+
 // testAccScmCheckDestroy reads the project to verify straight from Terraform
 // state, rather than from a side-channel pointer populated by
 // testAccScmCheckExists - that pointer is only set if the exists check ran

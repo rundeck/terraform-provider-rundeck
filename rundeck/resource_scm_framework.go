@@ -10,8 +10,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	openapi "github.com/rundeck/go-rundeck/rundeck-v2"
@@ -83,8 +85,15 @@ func (r *scmIntegrationResource) Schema(_ context.Context, _ resource.SchemaRequ
 				Sensitive:   true,
 			},
 			"enabled": schema.BoolAttribute{
-				Description: "Whether the SCM plugin is currently enabled for the project.",
-				Computed:    true,
+				Description: "Whether the SCM plugin should be enabled for the project. Defaults to true. Rundeck " +
+					"treats this as an operational toggle rather than a normal argument - it's common to disable " +
+					"a plugin out-of-band (during an incident, a migration, etc.) and expect it to stay disabled " +
+					"until someone re-enables it. Leaving this at its default preserves the old Computed-only " +
+					"behavior of correcting that drift back to enabled on the next apply; set it explicitly to " +
+					"`false` to have Terraform respect and enforce a disabled state instead.",
+				Optional: true,
+				Computed: true,
+				Default:  booldefault.StaticBool(true),
 			},
 		},
 	}
@@ -226,35 +235,12 @@ func (r *scmIntegrationResource) Create(ctx context.Context, req resource.Create
 	}
 
 	// ApiProjectSetup's own documentation says it configures AND enables the
-	// plugin, but ApiProjectEnable is documented as idempotent - call it
-	// explicitly anyway rather than relying on that possibly-imprecise
-	// description, since it's a harmless no-op if already enabled.
-	enableResult, _, err := client.SCMAPI.ApiProjectEnable(apiCtx, project, r.integration, pluginType).Execute()
-	if err != nil {
-		// enabled is Computed-only, so plan.Enabled is still Unknown at this
-		// point (req.Plan.Get never populates it - only a real read does).
-		// The state.Set above already persisted that Unknown value; returning
-		// an error without correcting it leaves the *final* state Unknown,
-		// which the framework rejects outright ("Provider returned invalid
-		// result object after apply") on top of the real error underneath -
-		// confirmed live, against Rundeck Enterprise 6.2.0-SNAPSHOT, when
-		// ApiProjectEnable failed after a successful ApiProjectSetup. Setup
-		// succeeded but enabling didn't, so the plugin isn't enabled.
-		plan.Enabled = types.BoolValue(false)
-		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
-		resp.Diagnostics.AddError(
-			fmt.Sprintf("Error enabling SCM %s plugin", r.integration),
-			fmt.Sprintf("Plugin was configured but could not be enabled for project %s: %s", project, scmErrorDetail(err)),
-		)
-		return
-	}
-	if enableResult != nil && enableResult.Success != nil && !*enableResult.Success {
-		plan.Enabled = types.BoolValue(false)
-		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
-		resp.Diagnostics.AddError(
-			fmt.Sprintf("Error enabling SCM %s plugin", r.integration),
-			fmt.Sprintf("Plugin was configured but Rundeck did not enable it for project %s: %s", project, scmActionErrorMessage(enableResult)),
-		)
+	// plugin, but ApiProjectEnable is documented as idempotent - call the
+	// appropriate one of Enable/Disable explicitly anyway to match
+	// plan.Enabled, rather than relying on that possibly-imprecise
+	// description, since it's a harmless no-op if already in the right state.
+	r.setEnabledState(ctx, apiCtx, project, pluginType, &plan, &resp.State, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
@@ -266,6 +252,49 @@ func (r *scmIntegrationResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 	resp.State = readResp.State
+}
+
+// setEnabledState calls ApiProjectEnable or ApiProjectDisable to match
+// plan.Enabled. On failure it corrects plan.Enabled to the actual value
+// before persisting state - an error diagnostic without a known, correct
+// final value leaves state Unknown, which the framework rejects outright
+// ("Provider returned invalid result object after apply") on top of the
+// real error underneath (confirmed live against Rundeck Enterprise
+// 6.2.0-SNAPSHOT, when ApiProjectEnable failed after a successful
+// ApiProjectSetup).
+func (r *scmIntegrationResource) setEnabledState(ctx context.Context, apiCtx context.Context, project, pluginType string, plan *scmIntegrationResourceModel, state *tfsdk.State, diags *diag.Diagnostics) {
+	client := r.clients.V2
+	wantEnabled := plan.Enabled.ValueBool()
+
+	action := "enable"
+	var result *openapi.ScmActionResult
+	var err error
+	if wantEnabled {
+		result, _, err = client.SCMAPI.ApiProjectEnable(apiCtx, project, r.integration, pluginType).Execute()
+	} else {
+		action = "disable"
+		result, _, err = client.SCMAPI.ApiProjectDisable(apiCtx, project, r.integration, pluginType).Execute()
+	}
+	actioning := strings.TrimSuffix(action, "e") + "ing"
+
+	if err != nil {
+		plan.Enabled = types.BoolValue(!wantEnabled)
+		diags.Append(state.Set(ctx, plan)...)
+		diags.AddError(
+			fmt.Sprintf("Error %s SCM %s plugin", actioning, r.integration),
+			fmt.Sprintf("Plugin was configured but could not be %sd for project %s: %s", action, project, scmErrorDetail(err)),
+		)
+		return
+	}
+	if result != nil && result.Success != nil && !*result.Success {
+		plan.Enabled = types.BoolValue(!wantEnabled)
+		diags.Append(state.Set(ctx, plan)...)
+		diags.AddError(
+			fmt.Sprintf("Error %s SCM %s plugin", actioning, r.integration),
+			fmt.Sprintf("Plugin was configured but Rundeck did not %s it for project %s: %s", action, project, scmActionErrorMessage(result)),
+		)
+		return
+	}
 }
 
 func (r *scmIntegrationResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -413,13 +442,27 @@ func (r *scmIntegrationResource) Update(ctx context.Context, req resource.Update
 		return
 	}
 
-	readReq := resource.ReadRequest{State: resp.State}
-	readResp := resource.ReadResponse{State: resp.State}
+	// Seed state before the enable/disable call below, same reasoning as
+	// Create: if that call fails, the reconfigured plugin must still be
+	// tracked in Terraform state rather than left orphaned.
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	readReq.State = resp.State
+
+	// Setup's own documentation says it configures AND enables the plugin,
+	// but that leaves no way to actually enforce a desired `enabled = false`
+	// - and no way to correct drift back to enabled if it was disabled
+	// out-of-band, since Setup's re-enabling is undocumented behavior this
+	// provider shouldn't rely on. Call the appropriate one of Enable/Disable
+	// explicitly to match plan.Enabled; harmless no-op if already correct.
+	r.setEnabledState(ctx, apiCtx, project, pluginType, &plan, &resp.State, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	readReq := resource.ReadRequest{State: resp.State}
+	readResp := resource.ReadResponse{State: resp.State}
 	r.Read(ctx, readReq, &readResp)
 	resp.Diagnostics.Append(readResp.Diagnostics...)
 	if resp.Diagnostics.HasError() {

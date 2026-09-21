@@ -120,7 +120,7 @@ Without `RUNDECK_PROJECT_SCHEDULES_CONFIGURED=1`, the project schedule tests wil
 
 To run it:
 
-1. Create a repository on a git host reachable from your Rundeck server, **with at least one initial commit on its default branch** (e.g. a README committed via the host's own "initialize this repository" option). The test fixture sets `branch = "main"` with `createBranch = "true"`, and `createBranch` creates that branch *from* the repository's current default branch - a genuinely empty repository (zero commits) has no branch to create it from, and setup fails.
+1. Create a repository on a git host reachable from your Rundeck server, with **both** of these branches already existing and containing at least one commit each: `main` and `develop`. The test config sets `createBranch = "true"`, but that's passed through to Rundeck's plugin config as-is - this resource only calls Setup/Enable to configure and validate the plugin, not an actual export action, and Setup's own validation does a real fetch/checkout of the configured branch, so it fails immediately if that branch doesn't exist yet. Both branches need to be there upfront; the test doesn't create either of them. (Most git hosts let you create a branch from the web UI without cloning locally.)
 2. Generate an SSH keypair dedicated to this test (e.g. `ssh-keygen -t ed25519 -f /tmp/rundeck-scm-test-key -N ""`).
 3. Add the public key to that repository as a deploy key (or an account key) with write/push access.
 4. Set both environment variables, then run the test:
@@ -131,7 +131,7 @@ $ export RUNDECK_SCM_TEST_SSH_KEY_PATH="/tmp/rundeck-scm-test-key"
 $ go test ./rundeck/... -run TestAccRundeckScmExport_basic -v
 ```
 
-The private key's contents are never passed through Go code or Terraform variables - `RUNDECK_SCM_TEST_SSH_KEY_PATH` only supplies a local file path, and the generated test config reads it directly via Terraform's `file()` function at apply time, uploading it into Rundeck's key storage via `rundeck_private_key`.
+`RUNDECK_SCM_TEST_SSH_KEY_PATH` only supplies a local file path - the private key itself is never passed as a CLI argument or environment variable. The generated test config reads it directly via Terraform's `file()` function at apply time; from there it's handled the same way any `rundeck_private_key` resource handles key material - read into the provider's memory and uploaded to Rundeck's key storage, not logged or otherwise exposed.
 
 **Local Role Membership Tests (Additional Setup Required):**
 

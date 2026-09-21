@@ -40,12 +40,15 @@ resource "rundeck_scm_export" "example" {
     url                   = "git@github.com:myorg/myproject-rundeck.git"
     dir                   = "/var/rundeck/scm/example"
     branch                = "main"
-    createBranch          = "true" # only needed if "main" doesn't exist yet on the remote
+    createBranch          = "true" # passed through to Rundeck, but has no effect via this resource - "main" must already exist on the remote (see below)
     committerName         = "rundeck"
     committerEmail        = "rundeck@example.com"
     pathTemplate          = "$${job.group}$${job.name}-$${job.id}.xml"
     format                = "xml"
     sshPrivateKeyPath     = "keys/${rundeck_private_key.scm.path}"
+    # "no" disables host key verification and is only reasonable for a
+    # throwaway/test remote. In production, pre-populate the Rundeck
+    # server's known_hosts for the remote and leave this unset (or "yes").
     strictHostKeyChecking = "no"
   }
 }
@@ -57,7 +60,9 @@ resource "rundeck_scm_export" "example" {
 * `type` - (Required, Forces new resource) SCM plugin type name (e.g. `git-export`, `svn-export`). Changing this requires replacing the resource, since it amounts to reconfiguring from scratch.
 * `config` - (Required) Plugin-specific configuration key/value pairs. The set of required/valid keys is dynamic per plugin type - check Rundeck's SCM plugin setup page in the UI, or the plugin's documentation, for the exact keys it expects. Reference external secret storage for credential-like values (e.g. SSH key paths, not raw key material) rather than embedding secrets directly.
 
-  For the bundled `git-export` plugin specifically, confirmed against a live instance: `dir` (a local checkout directory on the Rundeck server) is required in addition to `url`; an SSH key referenced via `sshPrivateKeyPath` must use the **full** Rundeck key storage path including the `keys/` prefix (e.g. `keys/${rundeck_private_key.example.path}`, not just `${rundeck_private_key.example.path}`); and if `branch` doesn't already exist on the remote, you also need `createBranch = "true"`. `createBranch` creates the new branch based on `baseBranch` (default `master`) - a genuinely empty repository (zero commits) has no branch for it to base off of at all, so the remote repository needs at least one existing commit on some branch before `createBranch` can work.
+  For the bundled `git-export` plugin specifically, confirmed against a live instance: `dir` (a local checkout directory on the Rundeck server) is required in addition to `url`; an SSH key referenced via `sshPrivateKeyPath` must use the **full** Rundeck key storage path including the `keys/` prefix (e.g. `keys/${rundeck_private_key.example.path}`, not just `${rundeck_private_key.example.path}`).
+
+  **`branch` must already exist on the remote.** `createBranch` and `baseBranch` are real `git-export` plugin settings, but this resource only calls Rundeck's Setup/Enable API to configure and validate the plugin - it doesn't trigger the export action that would actually create a new branch. Setup itself does a real fetch/checkout of `branch` as part of validating the config, so it fails immediately with "Remote branch not found" if that branch doesn't exist yet, regardless of `createBranch`. Create `branch` on the remote yourself before applying. (Triggering SCM actions - import/export/commit - isn't implemented by this provider yet; see `TODO.md`.)
 
 ## Attributes Reference
 
