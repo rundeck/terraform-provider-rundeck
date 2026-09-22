@@ -132,6 +132,92 @@ func TestAccRundeckScmExport_enabledDriftCorrection(t *testing.T) {
 	})
 }
 
+// TestAccRundeckScmExport_nullConfigValue covers a null config element,
+// mirroring rundeck_project's #248 regression: Rundeck never returns a key
+// it was never given a value for, so a naive read-back that only copies keys
+// present in the API response drops the key entirely instead of preserving
+// it as null - which then fails apply as an inconsistent result.
+func TestAccRundeckScmExport_nullConfigValue(t *testing.T) {
+	gitURL := os.Getenv("RUNDECK_SCM_TEST_GIT_URL")
+	keyPath := os.Getenv("RUNDECK_SCM_TEST_SSH_KEY_PATH")
+	if gitURL == "" || keyPath == "" {
+		t.Skip("Skipping TestAccRundeckScmExport_nullConfigValue: RUNDECK_SCM_TEST_GIT_URL and RUNDECK_SCM_TEST_SSH_KEY_PATH must both be set")
+	}
+
+	var config openapi.ScmProjectPluginConfig
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
+		CheckDestroy:             testAccScmCheckDestroy("export"),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccRundeckScmExportConfig_nullConfigValue(gitURL, keyPath),
+				Check: resource.ComposeTestCheckFunc(
+					testAccScmCheckExists("rundeck_scm_export.test", "export", &config),
+					resource.TestCheckResourceAttr("rundeck_scm_export.test", "config.branch", "main"),
+				),
+			},
+			// Core regression: a null config element must not cause drift
+			// on refresh.
+			{
+				RefreshState: true,
+				PlanOnly:     true,
+			},
+		},
+	})
+}
+
+func testAccRundeckScmExportConfig_nullConfigValue(gitURL string, keyPath string) string {
+	return fmt.Sprintf(`
+variable "optional_export_uuid_behavior" {
+  type    = string
+  default = null
+}
+
+resource "rundeck_private_key" "test" {
+  path         = "terraform_acceptance_tests/scm_export_key"
+  key_material = file(%q)
+}
+
+resource "rundeck_project" "test" {
+  name        = "test-project-scm"
+  description = "Terraform acceptance test project for SCM export"
+
+  resource_model_source {
+    type   = "local"
+    config = {}
+  }
+}
+
+resource "rundeck_scm_export" "test" {
+  project = rundeck_project.test.name
+  type    = "git-export"
+
+  config = {
+    url                   = %q
+    dir                   = "/tmp/rundeck-scm-test-export"
+    branch                = "main"
+    committerName         = "terraform-test"
+    committerEmail        = "terraform-test@example.com"
+    pathTemplate          = "$${job.group}$${job.name}-$${job.id}.xml"
+    format                = "xml"
+    sshPrivateKeyPath     = "keys/${rundeck_private_key.test.path}"
+    strictHostKeyChecking = "no"
+    # Null element must be treated as omitted (regression for the same bug
+    # as rundeck_project's #248), not replaced with whatever default
+    # Rundeck applies server-side. Genuinely optional per the plugin's own
+    # input schema (required: false, defaultValue: "preserve"), unlike
+    # pathTemplate/strictHostKeyChecking which Rundeck rejects outright as
+    # null despite also carrying a default.
+    exportUuidBehavior    = var.optional_export_uuid_behavior
+  }
+
+  depends_on = [rundeck_private_key.test]
+}
+`, keyPath, gitURL)
+}
+
 // testAccScmCheckDestroy reads the project to verify straight from Terraform
 // state, rather than from a side-channel pointer populated by
 // testAccScmCheckExists - that pointer is only set if the exists check ran

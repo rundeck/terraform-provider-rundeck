@@ -277,24 +277,42 @@ func (r *scmIntegrationResource) setEnabledState(ctx context.Context, apiCtx con
 	}
 	actioning := strings.TrimSuffix(action, "e") + "ing"
 
+	if err == nil && (result == nil || result.Success == nil || *result.Success) {
+		return
+	}
+
+	// Neither a failed response nor a reported failure establishes that the
+	// plugin actually ended up in the opposite state: ApiProjectSetup may
+	// already have enabled it before this call, and the enable/disable
+	// request can complete server-side even when its own response fails.
+	// Read the actual state back rather than assuming !wantEnabled.
+	plan.Enabled = r.readActualEnabled(apiCtx, project, !wantEnabled)
+	diags.Append(state.Set(ctx, plan)...)
+
 	if err != nil {
-		plan.Enabled = types.BoolValue(!wantEnabled)
-		diags.Append(state.Set(ctx, plan)...)
 		diags.AddError(
 			fmt.Sprintf("Error %s SCM %s plugin", actioning, r.integration),
 			fmt.Sprintf("Plugin was configured but could not be %sd for project %s: %s", action, project, scmErrorDetail(err)),
 		)
 		return
 	}
-	if result != nil && result.Success != nil && !*result.Success {
-		plan.Enabled = types.BoolValue(!wantEnabled)
-		diags.Append(state.Set(ctx, plan)...)
-		diags.AddError(
-			fmt.Sprintf("Error %s SCM %s plugin", actioning, r.integration),
-			fmt.Sprintf("Plugin was configured but Rundeck did not %s it for project %s: %s", action, project, scmActionErrorMessage(result)),
-		)
-		return
+	diags.AddError(
+		fmt.Sprintf("Error %s SCM %s plugin", actioning, r.integration),
+		fmt.Sprintf("Plugin was configured but Rundeck did not %s it for project %s: %s", action, project, scmActionErrorMessage(result)),
+	)
+}
+
+// readActualEnabled re-reads the plugin's enabled state directly, for use
+// after an Enable/Disable call whose own response doesn't reliably establish
+// the result. Falls back to the caller's best guess if this read itself
+// fails too - persisting *something* known is still better than leaving
+// state Unknown, which the framework rejects outright.
+func (r *scmIntegrationResource) readActualEnabled(apiCtx context.Context, project string, fallback bool) types.Bool {
+	config, _, err := r.clients.V2.SCMAPI.ApiProjectConfig(apiCtx, project, r.integration).Execute()
+	if err != nil || config == nil || config.Enabled == nil {
+		return types.BoolValue(fallback)
 	}
+	return types.BoolValue(*config.Enabled)
 }
 
 func (r *scmIntegrationResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -363,9 +381,13 @@ func (r *scmIntegrationResource) Read(ctx context.Context, req resource.ReadRequ
 	// "must configure something" contract this resource is meant to have.
 	hasKnownConfig := !state.Config.IsNull() && !state.Config.IsUnknown()
 	knownKeys := make(map[string]struct{})
+	priorNullKeys := make(map[string]struct{})
 	if hasKnownConfig {
-		for k := range state.Config.Elements() {
+		for k, v := range state.Config.Elements() {
 			knownKeys[k] = struct{}{}
+			if v.IsNull() {
+				priorNullKeys[k] = struct{}{}
+			}
 		}
 	}
 
@@ -378,6 +400,16 @@ func (r *scmIntegrationResource) Read(ctx context.Context, req resource.ReadRequ
 				}
 			}
 			configValues[k] = types.StringValue(v)
+		}
+	}
+	// A key configured as null is never in config.Config above - Rundeck
+	// doesn't return keys it was never given a value for. Preserve it
+	// explicitly instead of just omitting it, or `config = { key = null }`
+	// fails apply as inconsistent (the same fix already applied to
+	// rundeck_project's resource_model_source.config, #248).
+	for k := range priorNullKeys {
+		if _, present := configValues[k]; !present {
+			configValues[k] = types.StringNull()
 		}
 	}
 	configMap, diags := types.MapValueFrom(ctx, types.StringType, configValues)
