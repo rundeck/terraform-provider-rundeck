@@ -2,28 +2,8 @@
 
 Forward-looking tasks for the Rundeck Terraform Provider.
 
-**Current Status**: 1.5.0 merged to `main` (not yet tagged) - SCM resources, settable job UUID, in-place job group moves, project runner filters, plus a Rundeck 6.2.1 compatibility fix. See `CHANGELOG.md` for full details.  
-**Last Updated**: 2026-09-22 (1.5.0 merged)
-
----
-
-## ✅ Completed in 1.5.0
-
-- **`rundeck_scm_import`/`rundeck_scm_export`** - Configure a project's SCM import/export plugin setup, closing the long-standing [#76](https://github.com/rundeck/terraform-provider-rundeck/issues/76) ([#292](https://github.com/rundeck/terraform-provider-rundeck/pull/292)). See "SCM Action Triggering" below for what's deliberately still out of scope.
-- **Settable `uuid` on `rundeck_job`** - Pin a job's identity across rebuilds of a Rundeck instance ([#302](https://github.com/rundeck/terraform-provider-rundeck/pull/302)).
-- **`group_name` changes move the job instead of replacing it** - Reorganising a job into a different group is now an in-place update; the job keeps its UUID and execution history ([#301](https://github.com/rundeck/terraform-provider-rundeck/pull/301)).
-- **`runner` block on `resource_model_source`** - Runner selection settings for a project's resource model source, as first-class attributes instead of `extra_config` ([#300](https://github.com/rundeck/terraform-provider-rundeck/pull/300)).
-- **Rundeck 6.2.1 compatibility fix** - `expand_token_in_script_file` on script-based job commands failed every apply against 6.2.1, since Rundeck changed that field's JSON serialization; fixed to tolerate both the old and new behavior.
-
----
-
-## ✅ Completed in 1.4.0
-
-- **`rundeck_local_role`** - Create/read/update/delete for Enterprise local user store roles, including membership management ([#291](https://github.com/rundeck/terraform-provider-rundeck/pull/291)). `rundeck_local_user` remains blocked - see the note under "New Resources (Other)" below.
-- **`rundeck_system_execution_mode`** - Controls whether a server executes jobs (`active`/`passive`) ([#287](https://github.com/rundeck/terraform-provider-rundeck/pull/287)).
-- **Runner data sources** - `rundeck_runner`, `rundeck_runners`, `rundeck_runner_tags`, closing the long-standing `data.rundeck_runner` item below ([#290](https://github.com/rundeck/terraform-provider-rundeck/pull/290)).
-- **`rundeck_system_runner` project detachment fix** - `Update` now explicitly clears per-project dispatch settings when a project is removed, instead of relying on unreliable overwrite semantics ([#290](https://github.com/rundeck/terraform-provider-rundeck/pull/290)).
-- **Job resource enhancements** - `node_intersect` on job reference dispatch blocks, `values_list_delimiter` for option choices, `notify_avg_duration_threshold` for `on_avg_duration` notifications ([#284](https://github.com/rundeck/terraform-provider-rundeck/pull/284), [#285](https://github.com/rundeck/terraform-provider-rundeck/pull/285)).
+**Current Status**: 1.5.0 merged to `main` (not yet tagged). See `CHANGELOG.md` for what shipped in this and prior releases.  
+**Last Updated**: 2026-09-22
 
 ---
 
