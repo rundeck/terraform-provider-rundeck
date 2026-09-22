@@ -256,6 +256,7 @@ rm -f terraform-provider-rundeck .terraformrc
 | `comprehensive.tf` | Complete test configuration with 9 test jobs |
 | `comprehensive.sh` | Automated comprehensive test runner |
 | `test-custom.sh` | **NEW** - Test your own Terraform plans |
+| `scm-testing.md` | Prerequisites and setup for `rundeck_scm_import`/`rundeck_scm_export` acceptance testing (`TestAccRundeckScmExport_basic`) - a real git remote reachable from the Rundeck server, plus a known GitHub/SSHJ compatibility issue and a recommended self-hosted alternative |
 | `README.md` | This file |
 
 ## Test Configuration

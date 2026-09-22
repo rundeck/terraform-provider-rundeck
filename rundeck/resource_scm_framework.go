@@ -1,0 +1,584 @@
+package rundeck
+
+import (
+	"context"
+	"fmt"
+	"sort"
+	"strings"
+
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	openapi "github.com/rundeck/go-rundeck/rundeck-v2"
+)
+
+// scmIntegrationResource implements both rundeck_scm_import and
+// rundeck_scm_export, which are identical except for the fixed "integration"
+// value ("import"/"export") passed to the shared SCM API calls.
+var (
+	_ resource.Resource                = &scmIntegrationResource{}
+	_ resource.ResourceWithConfigure   = &scmIntegrationResource{}
+	_ resource.ResourceWithImportState = &scmIntegrationResource{}
+)
+
+func NewScmImportResource() resource.Resource {
+	return &scmIntegrationResource{integration: "import"}
+}
+
+func NewScmExportResource() resource.Resource {
+	return &scmIntegrationResource{integration: "export"}
+}
+
+type scmIntegrationResource struct {
+	clients     *RundeckClients
+	integration string // "import" or "export"
+}
+
+type scmIntegrationResourceModel struct {
+	ID      types.String `tfsdk:"id"`
+	Project types.String `tfsdk:"project"`
+	Type    types.String `tfsdk:"type"`
+	Config  types.Map    `tfsdk:"config"`
+	Enabled types.Bool   `tfsdk:"enabled"`
+}
+
+func (r *scmIntegrationResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_scm_" + r.integration
+}
+
+func (r *scmIntegrationResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		Description: fmt.Sprintf("Manages a Rundeck project's SCM %s plugin configuration (e.g. git-%s, svn-%s).", r.integration, r.integration, r.integration),
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Description: "The ID of this resource, in the form \"project:type\".",
+				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"project": schema.StringAttribute{
+				Description: "Name of the project to configure SCM for.",
+				Required:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"type": schema.StringAttribute{
+				Description: fmt.Sprintf("SCM plugin type name (e.g. \"git-%s\", \"svn-%s\"). Changing this requires replacing the resource, since it amounts to reconfiguring from scratch.", r.integration, r.integration),
+				Required:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"config": schema.MapAttribute{
+				Description: "Plugin-specific configuration key/value pairs. The set of required/valid keys is dynamic per plugin type - see Rundeck's SCM plugin input schema for the plugin type in use. Reference external secret storage for any credential-like values rather than embedding raw secrets here.",
+				Required:    true,
+				ElementType: types.StringType,
+				Sensitive:   true,
+			},
+			"enabled": schema.BoolAttribute{
+				Description: "Whether the SCM plugin should be enabled for the project. Defaults to true. Rundeck " +
+					"treats this as an operational toggle rather than a normal argument - it's common to disable " +
+					"a plugin out-of-band (during an incident, a migration, etc.) and expect it to stay disabled " +
+					"until someone re-enables it. Leaving this at its default preserves the old Computed-only " +
+					"behavior of correcting that drift back to enabled on the next apply; set it explicitly to " +
+					"`false` to have Terraform respect and enforce a disabled state instead.",
+				Optional: true,
+				Computed: true,
+				Default:  booldefault.StaticBool(true),
+			},
+		},
+	}
+}
+
+func (r *scmIntegrationResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+
+	clients, ok := req.ProviderData.(*RundeckClients)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Resource Configure Type",
+			fmt.Sprintf("Expected *RundeckClients, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+		return
+	}
+
+	// SCM endpoints have shipped since API v15, well below the provider's
+	// documented overall minimum of v46 - but that minimum is a documented
+	// convention, not something the provider enforces anywhere else, so a
+	// configured api_version below 15 would otherwise reach these endpoints
+	// and fail with a raw, confusing Rundeck error instead of this clear
+	// diagnostic.
+	if !requireMinAPIVersion(&resp.Diagnostics, clients.APIVersion, 15, "SCM import/export resources") {
+		return
+	}
+
+	r.clients = clients
+}
+
+// buildScmSetupBody builds the request body for ApiProjectSetup. Rundeck
+// expects the plugin's properties nested under a "config" key
+// (confirmed against a live instance - "json: expected 'config' property"
+// when the properties are sent flattened at the top level), not as the
+// top-level body itself.
+func buildScmSetupBody(ctx context.Context, config types.Map) (map[string]interface{}, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	configMap := make(map[string]types.String)
+	diags.Append(config.ElementsAs(ctx, &configMap, false)...)
+	if diags.HasError() {
+		return nil, diags
+	}
+
+	pluginConfig := make(map[string]interface{})
+	for k, v := range configMap {
+		// A null map value (e.g. `config = { pathTemplate = null }`, leaving
+		// an optional plugin property unset) must be omitted, not sent as an
+		// empty string - the plugin may treat "" as an explicit, invalid
+		// value rather than "not provided".
+		if v.IsNull() {
+			continue
+		}
+		pluginConfig[k] = v.ValueString()
+	}
+
+	return map[string]interface{}{
+		"config": pluginConfig,
+	}, diags
+}
+
+// scmActionErrorMessage formats a non-successful ScmActionResult into a
+// human-readable message, including any per-field validation errors.
+func scmActionErrorMessage(result *openapi.ScmActionResult) string {
+	msg := "unknown error"
+	if result != nil && result.Message != nil {
+		msg = *result.Message
+	}
+	if result != nil && result.ValidationErrors != nil && len(*result.ValidationErrors) > 0 {
+		var fields []string
+		for k, v := range *result.ValidationErrors {
+			fields = append(fields, fmt.Sprintf("%s: %s", k, v))
+		}
+		sort.Strings(fields)
+		msg = fmt.Sprintf("%s (validation errors: %s)", msg, strings.Join(fields, "; "))
+	}
+	return msg
+}
+
+// scmErrorDetail extracts the most useful detail available from an SCM API
+// error. On a 400, the generated SDK decodes the response body into a
+// ScmActionResult and stores it as the error's Model - but its own
+// Error() string only surfaces RFC7807 Title/Detail fields, which
+// ScmActionResult doesn't have, so err.Error() alone is just the bare
+// status line. Prefer the decoded model's Message/ValidationErrors; fall
+// back to the raw response body, then to err.Error().
+func scmErrorDetail(err error) string {
+	apiErr, ok := err.(*openapi.GenericOpenAPIError)
+	if !ok {
+		return err.Error()
+	}
+	if model, ok := apiErr.Model().(openapi.ScmActionResult); ok {
+		if detail := scmActionErrorMessage(&model); detail != "unknown error" {
+			return fmt.Sprintf("%s - %s", err.Error(), detail)
+		}
+	}
+	if body := apiErr.Body(); len(body) > 0 {
+		return fmt.Sprintf("%s - Response: %s", err.Error(), string(body))
+	}
+	return err.Error()
+}
+
+func (r *scmIntegrationResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var plan scmIntegrationResourceModel
+
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	client := r.clients.V2
+	apiCtx := r.clients.ctx
+	project := plan.Project.ValueString()
+	pluginType := plan.Type.ValueString()
+
+	configBody, diags := buildScmSetupBody(ctx, plan.Config)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	setupResult, _, err := client.SCMAPI.ApiProjectSetup(apiCtx, project, r.integration, pluginType).Body(configBody).Execute()
+	if err != nil {
+		resp.Diagnostics.AddError(
+			fmt.Sprintf("Error configuring SCM %s plugin", r.integration),
+			fmt.Sprintf("Could not configure %s plugin %s for project %s: %s", r.integration, pluginType, project, scmErrorDetail(err)),
+		)
+		return
+	}
+	if setupResult != nil && setupResult.Success != nil && !*setupResult.Success {
+		resp.Diagnostics.AddError(
+			fmt.Sprintf("Error configuring SCM %s plugin", r.integration),
+			fmt.Sprintf("Rundeck rejected the %s plugin configuration for project %s: %s", r.integration, project, scmActionErrorMessage(setupResult)),
+		)
+		return
+	}
+
+	plan.ID = types.StringValue(fmt.Sprintf("%s:%s", project, pluginType))
+
+	// Seed state immediately after successful setup, before the enable call
+	// below - if enabling fails, the configured plugin must still be tracked
+	// in Terraform state rather than left orphaned (same class of bug fixed
+	// in rundeck_local_role's Create).
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// ApiProjectSetup's own documentation says it configures AND enables the
+	// plugin, but ApiProjectEnable is documented as idempotent - call the
+	// appropriate one of Enable/Disable explicitly anyway to match
+	// plan.Enabled, rather than relying on that possibly-imprecise
+	// description, since it's a harmless no-op if already in the right state.
+	r.setEnabledState(ctx, apiCtx, project, pluginType, &plan, &resp.State, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	readReq := resource.ReadRequest{State: resp.State}
+	readResp := resource.ReadResponse{State: resp.State}
+	r.Read(ctx, readReq, &readResp)
+	resp.Diagnostics.Append(readResp.Diagnostics...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.State = readResp.State
+}
+
+// setEnabledState calls ApiProjectEnable or ApiProjectDisable to match
+// plan.Enabled. On failure it corrects plan.Enabled to the actual value
+// before persisting state - an error diagnostic without a known, correct
+// final value leaves state Unknown, which the framework rejects outright
+// ("Provider returned invalid result object after apply") on top of the
+// real error underneath (confirmed live against Rundeck Enterprise
+// 6.2.0-SNAPSHOT, when ApiProjectEnable failed after a successful
+// ApiProjectSetup).
+func (r *scmIntegrationResource) setEnabledState(ctx context.Context, apiCtx context.Context, project, pluginType string, plan *scmIntegrationResourceModel, state *tfsdk.State, diags *diag.Diagnostics) {
+	client := r.clients.V2
+	wantEnabled := plan.Enabled.ValueBool()
+
+	action := "enable"
+	var result *openapi.ScmActionResult
+	var err error
+	if wantEnabled {
+		result, _, err = client.SCMAPI.ApiProjectEnable(apiCtx, project, r.integration, pluginType).Execute()
+	} else {
+		action = "disable"
+		result, _, err = client.SCMAPI.ApiProjectDisable(apiCtx, project, r.integration, pluginType).Execute()
+	}
+	actioning := strings.TrimSuffix(action, "e") + "ing"
+
+	if err == nil && (result == nil || result.Success == nil || *result.Success) {
+		return
+	}
+
+	// Neither a failed response nor a reported failure establishes that the
+	// plugin actually ended up in the opposite state: ApiProjectSetup may
+	// already have enabled it before this call, and the enable/disable
+	// request can complete server-side even when its own response fails.
+	// Read the actual state back rather than assuming !wantEnabled.
+	plan.Enabled = r.readActualEnabled(apiCtx, project, !wantEnabled)
+	diags.Append(state.Set(ctx, plan)...)
+
+	if err != nil {
+		diags.AddError(
+			fmt.Sprintf("Error %s SCM %s plugin", actioning, r.integration),
+			fmt.Sprintf("Plugin was configured but could not be %sd for project %s: %s", action, project, scmErrorDetail(err)),
+		)
+		return
+	}
+	diags.AddError(
+		fmt.Sprintf("Error %s SCM %s plugin", actioning, r.integration),
+		fmt.Sprintf("Plugin was configured but Rundeck did not %s it for project %s: %s", action, project, scmActionErrorMessage(result)),
+	)
+}
+
+// readActualEnabled re-reads the plugin's enabled state directly, for use
+// after an Enable/Disable call whose own response doesn't reliably establish
+// the result. Falls back to the caller's best guess if this read itself
+// fails too - persisting *something* known is still better than leaving
+// state Unknown, which the framework rejects outright.
+func (r *scmIntegrationResource) readActualEnabled(apiCtx context.Context, project string, fallback bool) types.Bool {
+	config, _, err := r.clients.V2.SCMAPI.ApiProjectConfig(apiCtx, project, r.integration).Execute()
+	if err != nil || config == nil || config.Enabled == nil {
+		return types.BoolValue(fallback)
+	}
+	return types.BoolValue(*config.Enabled)
+}
+
+func (r *scmIntegrationResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var state scmIntegrationResourceModel
+
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	client := r.clients.V2
+	apiCtx := r.clients.ctx
+
+	idParts := strings.SplitN(state.ID.ValueString(), ":", 2)
+	if len(idParts) != 2 {
+		resp.Diagnostics.AddError(
+			"Invalid ID format",
+			fmt.Sprintf("Expected ID format 'project:type', got: %s", state.ID.ValueString()),
+		)
+		return
+	}
+	project := idParts[0]
+
+	config, apiResp, err := client.SCMAPI.ApiProjectConfig(apiCtx, project, r.integration).Execute()
+	if apiResp != nil && apiResp.StatusCode == 404 {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+	if err != nil {
+		resp.Diagnostics.AddError(
+			fmt.Sprintf("Error reading SCM %s configuration", r.integration),
+			fmt.Sprintf("Could not read %s configuration for project %s: %s", r.integration, project, scmErrorDetail(err)),
+		)
+		return
+	}
+	if config == nil {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	state.Project = types.StringValue(project)
+	if config.Type != nil {
+		state.Type = types.StringValue(*config.Type)
+		state.ID = types.StringValue(fmt.Sprintf("%s:%s", project, *config.Type))
+	}
+	if config.Enabled != nil {
+		state.Enabled = types.BoolValue(*config.Enabled)
+	}
+
+	// config is Required, not Computed, so anything reflected back here that
+	// wasn't already known would fail apply with "inconsistent result after
+	// apply" - the schema has no way to say "this key is fine to appear on
+	// its own." Restrict the read-back to keys already in state (the ones
+	// last configured/planned) and drop anything the plugin adds beyond
+	// that, rather than reporting every key Rundeck happens to return.
+	//
+	// State has no known config yet right after ImportState (which only
+	// sets id/project/type), so there's nothing to filter against there -
+	// take the full config as-is in that case, or the resource would import
+	// as if nothing were configured.
+	//
+	// This doesn't cover a plugin normalizing the *value* of a key that was
+	// already configured (e.g. rewriting a relative path to an absolute
+	// one) - that would still surface as inconsistent, and would need
+	// config to become Optional+Computed to tolerate, which changes the
+	// "must configure something" contract this resource is meant to have.
+	hasKnownConfig := !state.Config.IsNull() && !state.Config.IsUnknown()
+	knownKeys := make(map[string]struct{})
+	priorNullKeys := make(map[string]struct{})
+	if hasKnownConfig {
+		for k, v := range state.Config.Elements() {
+			knownKeys[k] = struct{}{}
+			if v.IsNull() {
+				priorNullKeys[k] = struct{}{}
+			}
+		}
+	}
+
+	configValues := make(map[string]types.String)
+	if config.Config != nil {
+		for k, v := range *config.Config {
+			if hasKnownConfig {
+				if _, known := knownKeys[k]; !known {
+					continue
+				}
+			}
+			configValues[k] = types.StringValue(v)
+		}
+	}
+	// A key configured as null is never in config.Config above - Rundeck
+	// doesn't return keys it was never given a value for. Preserve it
+	// explicitly instead of just omitting it, or `config = { key = null }`
+	// fails apply as inconsistent (the same fix already applied to
+	// rundeck_project's resource_model_source.config, #248).
+	for k := range priorNullKeys {
+		if _, present := configValues[k]; !present {
+			configValues[k] = types.StringNull()
+		}
+	}
+	configMap, diags := types.MapValueFrom(ctx, types.StringType, configValues)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	state.Config = configMap
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+}
+
+func (r *scmIntegrationResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan scmIntegrationResourceModel
+	var state scmIntegrationResourceModel
+
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	client := r.clients.V2
+	apiCtx := r.clients.ctx
+	plan.ID = state.ID
+
+	idParts := strings.SplitN(state.ID.ValueString(), ":", 2)
+	if len(idParts) != 2 {
+		resp.Diagnostics.AddError(
+			"Invalid ID format",
+			fmt.Sprintf("Expected ID format 'project:type', got: %s", state.ID.ValueString()),
+		)
+		return
+	}
+	project := idParts[0]
+	pluginType := plan.Type.ValueString()
+
+	configBody, diags := buildScmSetupBody(ctx, plan.Config)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Re-invoke Setup with the new config - there's no separate "update"
+	// endpoint, and Setup's own semantics are configure-or-reconfigure.
+	setupResult, _, err := client.SCMAPI.ApiProjectSetup(apiCtx, project, r.integration, pluginType).Body(configBody).Execute()
+	if err != nil {
+		resp.Diagnostics.AddError(
+			fmt.Sprintf("Error updating SCM %s plugin", r.integration),
+			fmt.Sprintf("Could not update %s plugin configuration for project %s: %s", r.integration, project, scmErrorDetail(err)),
+		)
+		return
+	}
+	if setupResult != nil && setupResult.Success != nil && !*setupResult.Success {
+		resp.Diagnostics.AddError(
+			fmt.Sprintf("Error updating SCM %s plugin", r.integration),
+			fmt.Sprintf("Rundeck rejected the updated %s plugin configuration for project %s: %s", r.integration, project, scmActionErrorMessage(setupResult)),
+		)
+		return
+	}
+
+	// Seed state before the enable/disable call below, same reasoning as
+	// Create: if that call fails, the reconfigured plugin must still be
+	// tracked in Terraform state rather than left orphaned.
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Setup's own documentation says it configures AND enables the plugin,
+	// but that leaves no way to actually enforce a desired `enabled = false`
+	// - and no way to correct drift back to enabled if it was disabled
+	// out-of-band, since Setup's re-enabling is undocumented behavior this
+	// provider shouldn't rely on. Call the appropriate one of Enable/Disable
+	// explicitly to match plan.Enabled; harmless no-op if already correct.
+	r.setEnabledState(ctx, apiCtx, project, pluginType, &plan, &resp.State, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	readReq := resource.ReadRequest{State: resp.State}
+	readResp := resource.ReadResponse{State: resp.State}
+	r.Read(ctx, readReq, &readResp)
+	resp.Diagnostics.Append(readResp.Diagnostics...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.State = readResp.State
+}
+
+func (r *scmIntegrationResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state scmIntegrationResourceModel
+
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	client := r.clients.V2
+	apiCtx := r.clients.ctx
+
+	idParts := strings.SplitN(state.ID.ValueString(), ":", 2)
+	if len(idParts) != 2 {
+		resp.Diagnostics.AddError(
+			"Invalid ID format",
+			fmt.Sprintf("Expected ID format 'project:type', got: %s", state.ID.ValueString()),
+		)
+		return
+	}
+	project := idParts[0]
+	pluginType := state.Type.ValueString()
+
+	// There is no delete/clear-config endpoint for SCM plugins - Disable is
+	// the closest available operation. The plugin's configuration may still
+	// persist server-side in a disabled state; there's no way from this API
+	// to fully remove it.
+	disableResult, apiResp, err := client.SCMAPI.ApiProjectDisable(apiCtx, project, r.integration, pluginType).Execute()
+	if apiResp != nil && apiResp.StatusCode == 404 {
+		// Already gone (e.g. the project itself was removed) - nothing left
+		// to disable, so this is success, not failure.
+		return
+	}
+	if err != nil {
+		// A failed disable leaves the plugin enabled server-side. Erroring
+		// here (rather than only warning) keeps the resource in Terraform
+		// state - the framework only removes it from state when Delete
+		// returns without an error diagnostic - so the next apply retries
+		// instead of Terraform silently treating an unmanaged, still-enabled
+		// integration as gone.
+		resp.Diagnostics.AddError(
+			fmt.Sprintf("Error disabling SCM %s plugin", r.integration),
+			fmt.Sprintf("Could not disable %s plugin for project %s: %s", r.integration, project, scmErrorDetail(err)),
+		)
+		return
+	}
+	if disableResult != nil && disableResult.Success != nil && !*disableResult.Success {
+		resp.Diagnostics.AddError(
+			fmt.Sprintf("Error disabling SCM %s plugin", r.integration),
+			fmt.Sprintf("Rundeck did not disable the %s plugin for project %s: %s", r.integration, project, scmActionErrorMessage(disableResult)),
+		)
+		return
+	}
+}
+
+func (r *scmIntegrationResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	// The ID should be in format "project:type"
+	idParts := strings.SplitN(req.ID, ":", 2)
+	if len(idParts) != 2 {
+		resp.Diagnostics.AddError(
+			"Invalid Import ID",
+			fmt.Sprintf("Import ID must be in format 'project:type', got: %s", req.ID),
+		)
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), req.ID)...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("project"), idParts[0])...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("type"), idParts[1])...)
+}
