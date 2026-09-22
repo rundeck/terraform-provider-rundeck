@@ -113,6 +113,16 @@ func (r *scmIntegrationResource) Configure(_ context.Context, req resource.Confi
 		return
 	}
 
+	// SCM endpoints have shipped since API v15, well below the provider's
+	// documented overall minimum of v46 - but that minimum is a documented
+	// convention, not something the provider enforces anywhere else, so a
+	// configured api_version below 15 would otherwise reach these endpoints
+	// and fail with a raw, confusing Rundeck error instead of this clear
+	// diagnostic.
+	if !requireMinAPIVersion(&resp.Diagnostics, clients.APIVersion, 15, "SCM import/export resources") {
+		return
+	}
+
 	r.clients = clients
 }
 

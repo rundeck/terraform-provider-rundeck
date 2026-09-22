@@ -15,6 +15,13 @@ Configures and enables a project's SCM **import** plugin (e.g. `git-import`, `sv
 ## Example Usage
 
 ```hcl
+resource "rundeck_private_key" "scm" {
+  path         = "terraform/scm_import_key"
+  # Terraform's file() does not expand a leading "~" - use an absolute
+  # path, or one relative to this module (e.g. "${path.module}/rundeck_scm_deploy_key").
+  key_material = file("/home/youruser/.ssh/rundeck_scm_deploy_key")
+}
+
 resource "rundeck_project" "example" {
   name        = "example"
   description = "Example project"
@@ -30,9 +37,14 @@ resource "rundeck_scm_import" "example" {
   type    = "git-import"
 
   config = {
-    url    = "git@github.com:myorg/myproject-rundeck.git"
-    branch = "main"
-    format = "xml"
+    url                   = "git@github.com:myorg/myproject-rundeck.git"
+    dir                   = "/var/rundeck/scm/example"
+    branch                = "main"
+    pathTemplate          = "$${job.group}$${job.name}-$${job.id}.xml"
+    format                = "xml"
+    useFilePattern        = "false"
+    sshPrivateKeyPath     = "keys/${rundeck_private_key.scm.path}"
+    strictHostKeyChecking = "no"
   }
 }
 ```
@@ -43,10 +55,17 @@ resource "rundeck_scm_import" "example" {
 * `type` - (Required, Forces new resource) SCM plugin type name (e.g. `git-import`, `svn-import`). Changing this requires replacing the resource, since it amounts to reconfiguring from scratch.
 * `config` - (Required) Plugin-specific configuration key/value pairs. The set of required/valid keys is dynamic per plugin type - check Rundeck's SCM plugin setup page in the UI, or the plugin's documentation, for the exact keys it expects. Reference external secret storage for credential-like values (e.g. SSH key paths, not raw key material) rather than embedding secrets directly.
 
+  For the bundled `git-import` plugin specifically, confirmed against a live instance's plugin input schema: `dir`, `pathTemplate`, `useFilePattern`, and `strictHostKeyChecking` are required in addition to `url`, `branch`, and `format` - the same requirements as `git-export`'s `dir`/`pathTemplate`/`strictHostKeyChecking`, plus `useFilePattern` (whether to only import files matching `filePattern`, which defaults to `.*\.xml`).
+
+* `enabled` - (Optional) Whether the plugin should be enabled for the project. Defaults to `true`. Rundeck
+  treats this as an operational toggle rather than a normal argument - it's common to disable a plugin
+  out-of-band (during an incident, a migration, etc.) and expect it to stay disabled until someone
+  re-enables it. Leaving this unset (the default) corrects that drift back to enabled on the next apply;
+  set it explicitly to `false` to have Terraform respect and enforce a disabled state instead.
+
 ## Attributes Reference
 
 * `id` - The ID of this resource, in the form `"project:type"`.
-* `enabled` - Whether the plugin is currently enabled for the project.
 
 ## Import
 

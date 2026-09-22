@@ -37,7 +37,7 @@ func TestAccRundeckScmExport_basic(t *testing.T) {
 			{
 				Config: testAccRundeckScmExportConfig_basic(gitURL, keyPath, "main"),
 				Check: resource.ComposeTestCheckFunc(
-					testAccScmCheckExists("rundeck_scm_export.test", "export", &config),
+					testAccScmCheckExists("rundeck_scm_export.test", "export", true, &config),
 					resource.TestCheckResourceAttr("rundeck_scm_export.test", "type", "git-export"),
 					resource.TestCheckResourceAttr("rundeck_scm_export.test", "config.url", gitURL),
 					resource.TestCheckResourceAttr("rundeck_scm_export.test", "enabled", "true"),
@@ -49,7 +49,7 @@ func TestAccRundeckScmExport_basic(t *testing.T) {
 				// actually takes effect rather than being a no-op.
 				Config: testAccRundeckScmExportConfig_basic(gitURL, keyPath, "develop"),
 				Check: resource.ComposeTestCheckFunc(
-					testAccScmCheckExists("rundeck_scm_export.test", "export", &config),
+					testAccScmCheckExists("rundeck_scm_export.test", "export", true, &config),
 					resource.TestCheckResourceAttr("rundeck_scm_export.test", "config.branch", "develop"),
 				),
 			},
@@ -105,7 +105,7 @@ func TestAccRundeckScmExport_enabledDriftCorrection(t *testing.T) {
 			{
 				Config: testAccRundeckScmExportConfig_basic(gitURL, keyPath, "main"),
 				Check: resource.ComposeTestCheckFunc(
-					testAccScmCheckExists("rundeck_scm_export.test", "export", &config),
+					testAccScmCheckExists("rundeck_scm_export.test", "export", true, &config),
 					resource.TestCheckResourceAttr("rundeck_scm_export.test", "enabled", "true"),
 					disableOutOfBand,
 				),
@@ -124,12 +124,88 @@ func TestAccRundeckScmExport_enabledDriftCorrection(t *testing.T) {
 				// the plugin since plan.Enabled resolves to the default.
 				Config: testAccRundeckScmExportConfig_basic(gitURL, keyPath, "main"),
 				Check: resource.ComposeTestCheckFunc(
-					testAccScmCheckExists("rundeck_scm_export.test", "export", &config),
+					testAccScmCheckExists("rundeck_scm_export.test", "export", true, &config),
 					resource.TestCheckResourceAttr("rundeck_scm_export.test", "enabled", "true"),
 				),
 			},
 		},
 	})
+}
+
+// TestAccRundeckScmExport_explicitlyDisabled covers the other half of
+// enabled's contract: an explicit `enabled = false` takes the distinct
+// Setup->Disable path (rather than Setup->Enable) in both Create and
+// Update, and - unlike the default-true path - must stay disabled through
+// a refresh, not get corrected back to enabled.
+func TestAccRundeckScmExport_explicitlyDisabled(t *testing.T) {
+	gitURL := os.Getenv("RUNDECK_SCM_TEST_GIT_URL")
+	keyPath := os.Getenv("RUNDECK_SCM_TEST_SSH_KEY_PATH")
+	if gitURL == "" || keyPath == "" {
+		t.Skip("Skipping TestAccRundeckScmExport_explicitlyDisabled: RUNDECK_SCM_TEST_GIT_URL and RUNDECK_SCM_TEST_SSH_KEY_PATH must both be set")
+	}
+
+	var config openapi.ScmProjectPluginConfig
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
+		CheckDestroy:             testAccScmCheckDestroy("export"),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccRundeckScmExportConfig_explicitlyDisabled(gitURL, keyPath),
+				Check: resource.ComposeTestCheckFunc(
+					testAccScmCheckExists("rundeck_scm_export.test", "export", false, &config),
+					resource.TestCheckResourceAttr("rundeck_scm_export.test", "enabled", "false"),
+				),
+			},
+			// Core regression: unlike the default-true path, an explicit
+			// false must not get corrected back to enabled on refresh.
+			{
+				RefreshState: true,
+				PlanOnly:     true,
+			},
+		},
+	})
+}
+
+func testAccRundeckScmExportConfig_explicitlyDisabled(gitURL string, keyPath string) string {
+	return fmt.Sprintf(`
+resource "rundeck_private_key" "test" {
+  path         = "terraform_acceptance_tests/scm_export_key"
+  key_material = file(%q)
+}
+
+resource "rundeck_project" "test" {
+  name        = "test-project-scm"
+  description = "Terraform acceptance test project for SCM export"
+
+  resource_model_source {
+    type   = "local"
+    config = {}
+  }
+}
+
+resource "rundeck_scm_export" "test" {
+  project = rundeck_project.test.name
+  type    = "git-export"
+  enabled = false
+
+  config = {
+    url                   = %q
+    dir                   = "/tmp/rundeck-scm-test-export"
+    branch                = "main"
+    createBranch          = "true"
+    committerName         = "terraform-test"
+    committerEmail        = "terraform-test@example.com"
+    pathTemplate          = "$${job.group}$${job.name}-$${job.id}.xml"
+    format                = "xml"
+    sshPrivateKeyPath     = "keys/${rundeck_private_key.test.path}"
+    strictHostKeyChecking = "no"
+  }
+
+  depends_on = [rundeck_private_key.test]
+}
+`, keyPath, gitURL)
 }
 
 // TestAccRundeckScmExport_nullConfigValue covers a null config element,
@@ -154,7 +230,7 @@ func TestAccRundeckScmExport_nullConfigValue(t *testing.T) {
 			{
 				Config: testAccRundeckScmExportConfig_nullConfigValue(gitURL, keyPath),
 				Check: resource.ComposeTestCheckFunc(
-					testAccScmCheckExists("rundeck_scm_export.test", "export", &config),
+					testAccScmCheckExists("rundeck_scm_export.test", "export", true, &config),
 					resource.TestCheckResourceAttr("rundeck_scm_export.test", "config.branch", "main"),
 				),
 			},
@@ -261,7 +337,7 @@ func testAccScmCheckDestroy(integration string) resource.TestCheckFunc {
 	}
 }
 
-func testAccScmCheckExists(rn string, integration string, config *openapi.ScmProjectPluginConfig) resource.TestCheckFunc {
+func testAccScmCheckExists(rn string, integration string, wantEnabled bool, config *openapi.ScmProjectPluginConfig) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[rn]
 		if !ok {
@@ -294,8 +370,8 @@ func testAccScmCheckExists(rn string, integration string, config *openapi.ScmPro
 		if got.Type == nil || *got.Type != wantType {
 			return fmt.Errorf("api type = %v, want %q", got.Type, wantType)
 		}
-		if got.Enabled == nil || !*got.Enabled {
-			return fmt.Errorf("api enabled = %v, want true", got.Enabled)
+		if got.Enabled == nil || *got.Enabled != wantEnabled {
+			return fmt.Errorf("api enabled = %v, want %v", got.Enabled, wantEnabled)
 		}
 		if got.Config == nil {
 			return fmt.Errorf("api config is nil, want a populated config map")

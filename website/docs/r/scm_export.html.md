@@ -64,10 +64,15 @@ resource "rundeck_scm_export" "example" {
 
   **`branch` must already exist on the remote.** `createBranch` and `baseBranch` are real `git-export` plugin settings, but this resource only calls Rundeck's Setup/Enable API to configure and validate the plugin - it doesn't trigger the export action that would actually create a new branch. Setup itself does a real fetch/checkout of `branch` as part of validating the config, so it fails immediately with "Remote branch not found" if that branch doesn't exist yet, regardless of `createBranch`. Create `branch` on the remote yourself before applying. (Triggering SCM actions - import/export/commit - isn't implemented by this provider yet; see `TODO.md`.)
 
+* `enabled` - (Optional) Whether the plugin should be enabled for the project. Defaults to `true`. Rundeck
+  treats this as an operational toggle rather than a normal argument - it's common to disable a plugin
+  out-of-band (during an incident, a migration, etc.) and expect it to stay disabled until someone
+  re-enables it. Leaving this unset (the default) corrects that drift back to enabled on the next apply;
+  set it explicitly to `false` to have Terraform respect and enforce a disabled state instead.
+
 ## Attributes Reference
 
 * `id` - The ID of this resource, in the form `"project:type"`.
-* `enabled` - Whether the plugin is currently enabled for the project.
 
 ## Import
 
