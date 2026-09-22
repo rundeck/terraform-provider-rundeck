@@ -51,7 +51,7 @@ See [test/enterprise/README.md](enterprise/README.md) for detailed instructions.
 ## Test Environments
 
 ### Open Source (OSS)
-- **Version**: Rundeck 5.17.0 Community Edition
+- **Version**: Rundeck 6.2.1 Community Edition
 - **API Version**: 46+
 - **Deployment**: Docker Compose
 - **Purpose**: Basic provider functionality, compatibility testing

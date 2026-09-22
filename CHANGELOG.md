@@ -1,5 +1,13 @@
 ## Unreleased
 
+## 1.5.0
+
+**Bug Fixes**
+
+### Job Resource
+
+- **Fixed `Provider produced inconsistent result after apply` on script-based commands against Rundeck 6.2.1+** - Rundeck 6.2.1 changed how it serializes a script-based command (`script_url`, `script_file`, or `inline_script`): it now explicitly returns `expandTokenInScriptFile: false` when unset, where earlier versions omitted the field entirely. Since `expand_token_in_script_file` was a plain `Optional` (not `Computed`) attribute, a plan of `null` followed by a read-back of `false` was a hard schema-contract violation, not just drift - every apply touching such a command failed outright. Made the attribute `Optional` + `Computed`, matching the same pattern already used for `error_handler`'s `keep_going_on_success` right next to it. Confirmed this doesn't affect any other optional boolean in the job schema: the same behavior change appears in exactly one other place, `error_handler`'s own copy of `expand_token_in_script_file`, which got the identical fix; a full run of the job resource's acceptance suite against both Rundeck Community and Enterprise 6.2.1 turned up nothing else. Existing configurations are unaffected functionally, but state written before this fix will show a one-time, non-destructive `null` → `false` correction on the next apply.
+
 **Enhancements**
 
 ### Job Resource
@@ -30,6 +38,14 @@
 - **Added `runner` block to `resource_model_source`** - Runner selection settings for a resource model source (`resources.source.N.runner.filter`, `runnerFilterMode`, `runnerFilterType`, `providers`, `serviceProvidersFilter`, `checkProviders`) can now be set as first-class attributes (`filter`, `filter_mode`, `filter_type`, `providers`, `service_providers_filter`, `check_providers`) instead of via `extra_config`. When the block is present, all six attributes are required.
 
   All six keys Rundeck writes under `resources.source.N.runner.*` are mapped deliberately. `readProject` consumes that entire namespace and `updateProjectConfig` rebuilds it from the plan, so any key the block does not represent would be dropped from state on read and then erased server-side on the next apply.
+
+### SCM Resources
+
+- **Added `rundeck_scm_import` and `rundeck_scm_export`** - Manage a project's SCM import/export plugin setup (`git-export`, `git-import`, `svn-export`, `svn-import`, etc.), closing [#76](https://github.com/rundeck/terraform-provider-rundeck/issues/76). `config` is a generic string map (marked `Sensitive`) since the valid keys are plugin-specific and discovered at runtime rather than modeled client-side. Gated at API v15+, since these endpoints ship with core Rundeck rather than Enterprise.
+
+  `enabled` defaults to `true` but is a real `Optional` argument: Rundeck treats enable/disable as an operational toggle rather than ordinary desired-state, so leaving it at the default corrects an out-of-band disable back to enabled on the next apply, while setting it explicitly to `false` has Terraform respect and enforce a disabled state instead.
+
+  These resources only call Rundeck's Setup/Enable API to configure and validate the plugin - they don't trigger an actual SCM action (import/commit/synch), so a target `branch` must already exist on the remote; `createBranch`/`baseBranch` are passed through to Rundeck's plugin config but have no effect via this provider. Triggering SCM actions is tracked as a follow-up in `TODO.md`.
 
 ## 1.4.0
 

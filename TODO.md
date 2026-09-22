@@ -2,8 +2,18 @@
 
 Forward-looking tasks for the Rundeck Terraform Provider.
 
-**Current Status**: 1.4.0 merged to `main` (not yet tagged) - local roles, system execution mode, runner data sources, plus job and system runner fixes. See `CHANGELOG.md` for full details.  
-**Last Updated**: 2026-08-27 (1.4.0 merged)
+**Current Status**: 1.5.0 merged to `main` (not yet tagged) - SCM resources, settable job UUID, in-place job group moves, project runner filters, plus a Rundeck 6.2.1 compatibility fix. See `CHANGELOG.md` for full details.  
+**Last Updated**: 2026-09-22 (1.5.0 merged)
+
+---
+
+## ✅ Completed in 1.5.0
+
+- **`rundeck_scm_import`/`rundeck_scm_export`** - Configure a project's SCM import/export plugin setup, closing the long-standing [#76](https://github.com/rundeck/terraform-provider-rundeck/issues/76) ([#292](https://github.com/rundeck/terraform-provider-rundeck/pull/292)). See "SCM Action Triggering" below for what's deliberately still out of scope.
+- **Settable `uuid` on `rundeck_job`** - Pin a job's identity across rebuilds of a Rundeck instance ([#302](https://github.com/rundeck/terraform-provider-rundeck/pull/302)).
+- **`group_name` changes move the job instead of replacing it** - Reorganising a job into a different group is now an in-place update; the job keeps its UUID and execution history ([#301](https://github.com/rundeck/terraform-provider-rundeck/pull/301)).
+- **`runner` block on `resource_model_source`** - Runner selection settings for a project's resource model source, as first-class attributes instead of `extra_config` ([#300](https://github.com/rundeck/terraform-provider-rundeck/pull/300)).
+- **Rundeck 6.2.1 compatibility fix** - `expand_token_in_script_file` on script-based job commands failed every apply against 6.2.1, since Rundeck changed that field's JSON serialization; fixed to tolerate both the old and new behavior.
 
 ---
 

@@ -4,7 +4,7 @@ This directory contains a Docker-based test environment for Rundeck Open Source 
 
 ## Overview
 
-- **Rundeck Version**: 5.17.0
+- **Rundeck Version**: 6.2.1
 - **Edition**: Open Source / Community
 - **API Version**: 46
 - **Deployment**: Docker Compose

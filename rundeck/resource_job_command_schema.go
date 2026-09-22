@@ -40,6 +40,14 @@ func jobCommandNestedBlock() schema.ListNestedBlock {
 				},
 				"expand_token_in_script_file": schema.BoolAttribute{
 					Optional: true,
+					Computed: true,
+					Description: "Expand embedded tokens in the script file before executing it. Rundeck's API " +
+						"omits this field entirely when false for a shell_command, but explicitly returns " +
+						"false for a script-based command (script_url/script_file/inline_script) since " +
+						"Rundeck 6.2.1 - Computed to tolerate either.",
+					PlanModifiers: []planmodifier.Bool{
+						boolplanmodifier.UseStateForUnknown(),
+					},
 				},
 				"file_extension": schema.StringAttribute{
 					Optional:    true,
@@ -252,6 +260,14 @@ func jobCommandNestedBlock() schema.ListNestedBlock {
 							},
 							"expand_token_in_script_file": schema.BoolAttribute{
 								Optional: true,
+								Computed: true,
+								Description: "Expand embedded tokens in the script file before executing it. Rundeck's " +
+									"API omits this field entirely when false for a shell_command, but explicitly " +
+									"returns false for a script-based error handler (script_url/script_file/" +
+									"inline_script) since Rundeck 6.2.1 - Computed to tolerate either.",
+								PlanModifiers: []planmodifier.Bool{
+									boolplanmodifier.UseStateForUnknown(),
+								},
 							},
 							"file_extension": schema.StringAttribute{
 								Optional: true,
