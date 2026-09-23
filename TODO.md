@@ -2,18 +2,8 @@
 
 Forward-looking tasks for the Rundeck Terraform Provider.
 
-**Current Status**: 1.4.0 merged to `main` (not yet tagged) - local roles, system execution mode, runner data sources, plus job and system runner fixes. See `CHANGELOG.md` for full details.  
-**Last Updated**: 2026-08-27 (1.4.0 merged)
-
----
-
-## ✅ Completed in 1.4.0
-
-- **`rundeck_local_role`** - Create/read/update/delete for Enterprise local user store roles, including membership management ([#291](https://github.com/rundeck/terraform-provider-rundeck/pull/291)). `rundeck_local_user` remains blocked - see the note under "New Resources (Other)" below.
-- **`rundeck_system_execution_mode`** - Controls whether a server executes jobs (`active`/`passive`) ([#287](https://github.com/rundeck/terraform-provider-rundeck/pull/287)).
-- **Runner data sources** - `rundeck_runner`, `rundeck_runners`, `rundeck_runner_tags`, closing the long-standing `data.rundeck_runner` item below ([#290](https://github.com/rundeck/terraform-provider-rundeck/pull/290)).
-- **`rundeck_system_runner` project detachment fix** - `Update` now explicitly clears per-project dispatch settings when a project is removed, instead of relying on unreliable overwrite semantics ([#290](https://github.com/rundeck/terraform-provider-rundeck/pull/290)).
-- **Job resource enhancements** - `node_intersect` on job reference dispatch blocks, `values_list_delimiter` for option choices, `notify_avg_duration_threshold` for `on_avg_duration` notifications ([#284](https://github.com/rundeck/terraform-provider-rundeck/pull/284), [#285](https://github.com/rundeck/terraform-provider-rundeck/pull/285)).
+**Current Status**: 1.5.0 in progress on `release/1.5.0`, not yet merged to `main`. See `CHANGELOG.md` for what shipped in this and prior releases.  
+**Last Updated**: 2026-09-23
 
 ---
 
@@ -156,6 +146,20 @@ Before: Error creating job: 400 Bad Request
 After:  Error creating job "my-job" in project "prod": Rundeck returned validation error - 
         Job name already exists in this project. See: https://docs.../job-naming
 ```
+
+---
+
+### `inline_script` + `expand_token_in_script_file` still produces an inconsistent-apply error
+**Effort**: Small  
+**Why Important**: Pre-existing, unaffected by the 1.5.0 job schema fix for `expand_token_in_script_file` (see `CHANGELOG.md`).
+
+Rundeck never echoes `expandTokenInScriptFile` back for an `inline_script` command,
+regardless of what was sent, unlike `script_file`/`script_url` (which now always echo
+it since Rundeck 6.2.1). So a job with `inline_script` + `expand_token_in_script_file
+= true` still triggers `Provider produced inconsistent result after apply`. A plan-time
+validator rejecting `expand_token_in_script_file = true` when neither `script_file` nor
+`script_url` is set would turn this into a clear config error instead of a confusing
+provider bug report.
 
 ---
 

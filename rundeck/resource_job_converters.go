@@ -1802,15 +1802,14 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 		}
 
 		cmdAttrs := map[string]attr.Value{
-			"description":                 types.StringNull(),
-			"shell_command":               types.StringNull(),
-			"inline_script":               types.StringNull(),
-			"script_url":                  types.StringNull(),
-			"script_file":                 types.StringNull(),
-			"script_file_args":            types.StringNull(),
-			"file_extension":              types.StringNull(),
-			"expand_token_in_script_file": types.BoolNull(),
-			"keep_going_on_success":       types.BoolNull(),
+			"description":           types.StringNull(),
+			"shell_command":         types.StringNull(),
+			"inline_script":         types.StringNull(),
+			"script_url":            types.StringNull(),
+			"script_file":           types.StringNull(),
+			"script_file_args":      types.StringNull(),
+			"file_extension":        types.StringNull(),
+			"keep_going_on_success": types.BoolNull(),
 			// Note: script_interpreter, plugins, job, etc. are only set if they exist in the API response
 			// to avoid needing complex type definitions for all possible nested structures
 		}
@@ -1839,9 +1838,16 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 		}
 
 		// Boolean fields
+		// Rundeck omits expandTokenInScriptFile from the API response entirely
+		// for a shell_command, but explicitly returns it (false) for a
+		// script-based command since Rundeck 6.2.1 - default to a concrete
+		// false rather than leaving this null (expand_token_in_script_file is
+		// Computed to allow this).
+		expandTokenInScriptFile := false
 		if v, ok := cmd["expandTokenInScriptFile"].(bool); ok {
-			cmdAttrs["expand_token_in_script_file"] = types.BoolValue(v)
+			expandTokenInScriptFile = v
 		}
+		cmdAttrs["expand_token_in_script_file"] = types.BoolValue(expandTokenInScriptFile)
 		if v, ok := cmd["keepgoingOnSuccess"].(bool); ok {
 			cmdAttrs["keep_going_on_success"] = types.BoolValue(v)
 		}
@@ -1895,15 +1901,13 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 		// Handle error_handler
 		if handler, ok := cmd["errorhandler"].(map[string]interface{}); ok {
 			handlerAttrs := map[string]attr.Value{
-				"description":                 types.StringNull(),
-				"shell_command":               types.StringNull(),
-				"inline_script":               types.StringNull(),
-				"script_url":                  types.StringNull(),
-				"script_file":                 types.StringNull(),
-				"script_file_args":            types.StringNull(),
-				"file_extension":              types.StringNull(),
-				"expand_token_in_script_file": types.BoolNull(),
-				"keep_going_on_success":       types.BoolNull(),
+				"description":      types.StringNull(),
+				"shell_command":    types.StringNull(),
+				"inline_script":    types.StringNull(),
+				"script_url":       types.StringNull(),
+				"script_file":      types.StringNull(),
+				"script_file_args": types.StringNull(),
+				"file_extension":   types.StringNull(),
 			}
 
 			// String fields
@@ -1930,9 +1934,16 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 			}
 
 			// Boolean fields
+			// Rundeck omits expandTokenInScriptFile from the API response
+			// entirely for a shell_command, but explicitly returns it (false)
+			// for a script-based error handler since Rundeck 6.2.1 - default
+			// to a concrete false rather than leaving this null
+			// (expand_token_in_script_file is Computed to allow this).
+			expandTokenInScriptFile := false
 			if v, ok := handler["expandTokenInScriptFile"].(bool); ok {
-				handlerAttrs["expand_token_in_script_file"] = types.BoolValue(v)
+				expandTokenInScriptFile = v
 			}
+			handlerAttrs["expand_token_in_script_file"] = types.BoolValue(expandTokenInScriptFile)
 			// Rundeck omits keepgoingOnSuccess from the API response entirely when
 			// it is false, so default to a concrete false rather than leaving this
 			// null (keep_going_on_success is Computed to allow this).
