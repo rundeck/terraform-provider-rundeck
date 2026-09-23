@@ -43,11 +43,10 @@ func jobCommandNestedBlock() schema.ListNestedBlock {
 					Computed: true,
 					Description: "Expand embedded tokens in the script file before executing it. Rundeck's API " +
 						"omits this field entirely when false for a shell_command, but explicitly returns " +
-						"false for a script-based command (script_url/script_file/inline_script) since " +
-						"Rundeck 6.2.1 - Computed to tolerate either.",
-					PlanModifiers: []planmodifier.Bool{
-						boolplanmodifier.UseStateForUnknown(),
-					},
+						"false when used with script_file/script_url since Rundeck 6.2.1 - Computed to " +
+						"tolerate either. No PlanModifiers: this is a ListNestedBlock, and UseStateForUnknown " +
+						"matches prior state by list index, which would carry a value across to an unrelated " +
+						"command when the list is reordered/inserted into.",
 				},
 				"file_extension": schema.StringAttribute{
 					Optional:    true,
@@ -263,11 +262,11 @@ func jobCommandNestedBlock() schema.ListNestedBlock {
 								Computed: true,
 								Description: "Expand embedded tokens in the script file before executing it. Rundeck's " +
 									"API omits this field entirely when false for a shell_command, but explicitly " +
-									"returns false for a script-based error handler (script_url/script_file/" +
-									"inline_script) since Rundeck 6.2.1 - Computed to tolerate either.",
-								PlanModifiers: []planmodifier.Bool{
-									boolplanmodifier.UseStateForUnknown(),
-								},
+									"returns false when used with script_file/script_url since Rundeck 6.2.1 - " +
+									"Computed to tolerate either. No PlanModifiers: this is a ListNestedBlock, and " +
+									"UseStateForUnknown matches prior state by list index, which would carry a " +
+									"value across to an unrelated error handler when the list is reordered/inserted " +
+									"into.",
 							},
 							"file_extension": schema.StringAttribute{
 								Optional: true,
@@ -277,10 +276,8 @@ func jobCommandNestedBlock() schema.ListNestedBlock {
 								Computed: true,
 								Description: "Continue workflow even if error handler succeeds. Rundeck's API omits this " +
 									"field entirely when false, so it is Computed to avoid drift/inconsistent-apply " +
-									"errors on that default.",
-								PlanModifiers: []planmodifier.Bool{
-									boolplanmodifier.UseStateForUnknown(),
-								},
+									"errors on that default. No PlanModifiers, for the same list-index-carryover " +
+									"reason as expand_token_in_script_file above.",
 							},
 						},
 						Blocks: map[string]schema.Block{

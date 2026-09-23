@@ -1802,15 +1802,14 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 		}
 
 		cmdAttrs := map[string]attr.Value{
-			"description":                 types.StringNull(),
-			"shell_command":               types.StringNull(),
-			"inline_script":               types.StringNull(),
-			"script_url":                  types.StringNull(),
-			"script_file":                 types.StringNull(),
-			"script_file_args":            types.StringNull(),
-			"file_extension":              types.StringNull(),
-			"expand_token_in_script_file": types.BoolNull(),
-			"keep_going_on_success":       types.BoolNull(),
+			"description":           types.StringNull(),
+			"shell_command":         types.StringNull(),
+			"inline_script":         types.StringNull(),
+			"script_url":            types.StringNull(),
+			"script_file":           types.StringNull(),
+			"script_file_args":      types.StringNull(),
+			"file_extension":        types.StringNull(),
+			"keep_going_on_success": types.BoolNull(),
 			// Note: script_interpreter, plugins, job, etc. are only set if they exist in the API response
 			// to avoid needing complex type definitions for all possible nested structures
 		}
@@ -1902,15 +1901,13 @@ func convertCommandsFromJSON(ctx context.Context, commands []interface{}) (types
 		// Handle error_handler
 		if handler, ok := cmd["errorhandler"].(map[string]interface{}); ok {
 			handlerAttrs := map[string]attr.Value{
-				"description":                 types.StringNull(),
-				"shell_command":               types.StringNull(),
-				"inline_script":               types.StringNull(),
-				"script_url":                  types.StringNull(),
-				"script_file":                 types.StringNull(),
-				"script_file_args":            types.StringNull(),
-				"file_extension":              types.StringNull(),
-				"expand_token_in_script_file": types.BoolNull(),
-				"keep_going_on_success":       types.BoolNull(),
+				"description":      types.StringNull(),
+				"shell_command":    types.StringNull(),
+				"inline_script":    types.StringNull(),
+				"script_url":       types.StringNull(),
+				"script_file":      types.StringNull(),
+				"script_file_args": types.StringNull(),
+				"file_extension":   types.StringNull(),
 			}
 
 			// String fields

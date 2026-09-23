@@ -728,6 +728,182 @@ resource "rundeck_job" "test" {
 }
 `
 
+// TestAccJob_expandTokenInScriptFileUnset verifies a script_file command with
+// expand_token_in_script_file left unset applies cleanly and reads back as
+// "false", instead of the "Provider produced inconsistent result after
+// apply" error this attribute used to raise against Rundeck 6.2.1+.
+func TestAccJob_expandTokenInScriptFileUnset(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
+		CheckDestroy:             testAccJobCheckDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_expandTokenUnset,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("rundeck_job.test", "command.0.expand_token_in_script_file", "false"),
+				),
+			},
+			// Re-apply to confirm no drift/inconsistent-apply error on the second pass.
+			{
+				Config: testAccJobConfig_expandTokenUnset,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("rundeck_job.test", "command.0.expand_token_in_script_file", "false"),
+				),
+			},
+		},
+	})
+}
+
+const testAccJobConfig_expandTokenUnset = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-expand-unset"
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests-expand-unset.yaml"
+    }
+  }
+}
+resource "rundeck_job" "test" {
+  project_name = "${rundeck_project.test.name}"
+  name = "expand-unset-job"
+  description = "expand token unset regression"
+
+  command {
+    script_file = "/tmp/orig.sh"
+  }
+}
+`
+
+// TestAccJob_errorHandlerExpandTokenInScriptFileUnset is the error_handler
+// twin of TestAccJob_expandTokenInScriptFileUnset - the same attribute is
+// defined a second time on error_handler and needs its own coverage.
+func TestAccJob_errorHandlerExpandTokenInScriptFileUnset(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
+		CheckDestroy:             testAccJobCheckDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_errorHandlerExpandTokenUnset,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("rundeck_job.test", "command.0.error_handler.0.expand_token_in_script_file", "false"),
+				),
+			},
+			{
+				Config: testAccJobConfig_errorHandlerExpandTokenUnset,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("rundeck_job.test", "command.0.error_handler.0.expand_token_in_script_file", "false"),
+				),
+			},
+		},
+	})
+}
+
+const testAccJobConfig_errorHandlerExpandTokenUnset = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-eh-expand-unset"
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests-eh-expand-unset.yaml"
+    }
+  }
+}
+resource "rundeck_job" "test" {
+  project_name = "${rundeck_project.test.name}"
+  name = "eh-expand-unset-job"
+  description = "error handler expand token unset regression"
+
+  command {
+    shell_command = "exit 1"
+    error_handler {
+      script_file = "/tmp/recover.sh"
+    }
+  }
+}
+`
+
+// TestAccJob_expandTokenInScriptFileListIndexCarryover guards against a
+// UseStateForUnknown regression: command is a ListNestedBlock, so Terraform
+// matches prior state to plan by list index. Inserting a new command ahead
+// of an existing one must not let the new command inherit the prior
+// occupant's expand_token_in_script_file value.
+func TestAccJob_expandTokenInScriptFileListIndexCarryover(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
+		CheckDestroy:             testAccJobCheckDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccJobConfig_expandTokenCarryoverStep1,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("rundeck_job.test", "command.0.expand_token_in_script_file", "true"),
+				),
+			},
+			{
+				Config: testAccJobConfig_expandTokenCarryoverStep2,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("rundeck_job.test", "command.0.expand_token_in_script_file", "false"),
+					resource.TestCheckResourceAttr("rundeck_job.test", "command.1.expand_token_in_script_file", "true"),
+				),
+			},
+		},
+	})
+}
+
+const testAccJobConfig_expandTokenCarryoverStep1 = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-expand-carryover"
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests-expand-carryover.yaml"
+    }
+  }
+}
+resource "rundeck_job" "test" {
+  project_name = "${rundeck_project.test.name}"
+  name = "expand-carryover-job"
+  description = "expand token carryover regression"
+
+  command {
+    script_file = "/tmp/orig.sh"
+    expand_token_in_script_file = true
+  }
+}
+`
+
+const testAccJobConfig_expandTokenCarryoverStep2 = `
+resource "rundeck_project" "test" {
+  name = "terraform-acc-test-expand-carryover"
+  resource_model_source {
+    type = "file"
+    config = {
+        format = "resourceyaml"
+        file = "/tmp/terraform-acc-tests-expand-carryover.yaml"
+    }
+  }
+}
+resource "rundeck_job" "test" {
+  project_name = "${rundeck_project.test.name}"
+  name = "expand-carryover-job"
+  description = "expand token carryover regression"
+
+  command {
+    script_file = "/tmp/new.sh"
+  }
+  command {
+    script_file = "/tmp/orig.sh"
+    expand_token_in_script_file = true
+  }
+}
+`
+
 const testAccJobConfig_withLogLimit = `
 resource "rundeck_project" "test" {
   name = "terraform-acc-test-job"

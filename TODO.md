@@ -2,8 +2,8 @@
 
 Forward-looking tasks for the Rundeck Terraform Provider.
 
-**Current Status**: 1.5.0 merged to `main` (not yet tagged). See `CHANGELOG.md` for what shipped in this and prior releases.  
-**Last Updated**: 2026-09-22
+**Current Status**: 1.5.0 in progress on `release/1.5.0`, not yet merged to `main`. See `CHANGELOG.md` for what shipped in this and prior releases.  
+**Last Updated**: 2026-09-23
 
 ---
 
@@ -146,6 +146,20 @@ Before: Error creating job: 400 Bad Request
 After:  Error creating job "my-job" in project "prod": Rundeck returned validation error - 
         Job name already exists in this project. See: https://docs.../job-naming
 ```
+
+---
+
+### `inline_script` + `expand_token_in_script_file` still produces an inconsistent-apply error
+**Effort**: Small  
+**Why Important**: Pre-existing, unaffected by the 1.5.0 job schema fix for `expand_token_in_script_file` (see `CHANGELOG.md`).
+
+Rundeck never echoes `expandTokenInScriptFile` back for an `inline_script` command,
+regardless of what was sent, unlike `script_file`/`script_url` (which now always echo
+it since Rundeck 6.2.1). So a job with `inline_script` + `expand_token_in_script_file
+= true` still triggers `Provider produced inconsistent result after apply`. A plan-time
+validator rejecting `expand_token_in_script_file = true` when neither `script_file` nor
+`script_url` is set would turn this into a clear config error instead of a confusing
+provider bug report.
 
 ---
 
