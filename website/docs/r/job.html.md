@@ -553,13 +553,17 @@ A command's `job` block has the following structure:
 
 * `group_name`: (Optional) The name of the group that the target job belongs to, if any. Used with name-based references.
 
-* `project_name` - (Optional) The name of another project that holds the target job. Used with name-based references. Rundeck always resolves and returns all four identification fields for a job reference, so `uuid`/`name`/`group_name`/`project_name` are populated from the API on refresh even when only a subset was configured (e.g. a UUID-only reference).
+* `project_name` - (Optional) The name of another project that holds the target job. Used with name-based references.
+
+A reference by name is stored as configured: an identification field left out stays unset, so a reference without `project_name` targets the project of the job that holds it. For a reference by `uuid`, whatever `name`/`group_name`/`project_name` Rundeck returns is read back on refresh.
 
 **Job Execution Options:**
 
 * `run_for_each_node`: (Optional) Boolean controlling whether the job is run only once (`false`,
   the default) or whether it is run once for each node (`true`). This maps to the referenced job
-  being a node step.
+  being a node step. In an `error_handler` the default is `true`: Rundeck requires the handler of
+  a node step, such as a shell command or a script, to be a node step itself. Set it to `false`
+  for a handler under a workflow step that should run only once.
 
 * `node_step`: (Optional) Alias of `run_for_each_node`; both control whether the referenced job
   runs once per node. If both are set they must agree, and `run_for_each_node` takes precedence.
