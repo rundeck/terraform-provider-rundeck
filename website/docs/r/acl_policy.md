@@ -8,23 +8,34 @@ description: |-
 
 # rundeck\_acl_policy
 
-Control access to your automation infrastructure. ACL policies define fine-grained permissions for users and groups across projects, jobs, nodes, and key storage. Managing policies as code ensures security is reviewed, versioned, and consistently applied.
+Control access to your automation infrastructure. ACL policies define fine-grained permissions for users and groups across projects, jobs, nodes, and key storage. Managing policies as code ensures security is reviewed, versioned, and consistently applied. The resource supports both System ACLs and Project ACLs.
 
-## Example Usage
+## Example Usage (System ACL)
 
 ```hcl
 data "local_file" "acl" {
   filename = "${path.module}/acl.yaml"
 }
 
-resource "rundeck_acl_policy" "example" {
+resource "rundeck_acl_policy" "system_acl_example" {
   name = "ExampleAcl.aclpolicy"
 
   policy = "${data.local_file.acl.content}"
 }
 ```
 
-Note that the above configuration assumes the existence of an ``acl.yaml`` file in the
+## Example Usage (Project ACL)
+```hcl
+data "local_file" "acl" {
+  filename = "${path.module}/acl.yaml"
+}
+resource "rundeck_acl_policy" "project_acl_example" {
+  name    = "ExampleAcl.aclpolicy"
+  project = "example-project"
+  policy = "${data.local_file.acl.content}"
+}
+```
+Note that the above examples assumes the existence of an ``acl.yaml`` file in the
 project directory. This resource passes the raw YAML policy string to Rundeck which stores
 and returns it as-is. A future ``acl_policy_document`` data source is planned to allow defining
 the policy in terraform configuration.
@@ -37,9 +48,10 @@ The following arguments are supported:
 
 * `policy` - (Required) The name of the job, used to describe the job in the Rundeck UI.
 
-> Note: This example uses an ACL Policy file stored at the current working directory named `acl.yaml`.  Valid contents for that file are shown below.
+* `project` - (Optional) The name of the project to define the project ACL under. If this is not provided the ACL will be a system level ACL policy.
+> Note: These examples use an ACL Policy file stored at the current working directory named `acl.yaml`.  Valid contents for that file are shown below.
 
-```
+```yaml
 by:
   group: terraform
 description: Allow terraform Key Storage Access
