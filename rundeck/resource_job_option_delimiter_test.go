@@ -116,9 +116,7 @@ func TestConvertOptionsToJSON_valuesListDelimiterOmittedWhenUnset(t *testing.T) 
 	}
 }
 
-// values_list_delimiter is Optional+Computed, so an option that does not
-// configure it arrives unknown rather than null at plan time. Serializing that
-// would send an empty delimiter and overwrite the one Rundeck maintains.
+// An unknown delimiter must not be sent as an empty string.
 func TestConvertOptionsToJSON_valuesListDelimiterOmittedWhenUnknown(t *testing.T) {
 	opt, diags := types.ObjectValue(testOptionObjectType.AttrTypes,
 		testOptionAttrs(types.StringUnknown()))

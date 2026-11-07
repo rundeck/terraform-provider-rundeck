@@ -550,6 +550,15 @@ func (r *jobResource) ValidateConfig(ctx context.Context, req resource.ValidateC
 		for i, opt := range options {
 			attrs := opt.Attributes()
 
+			optionName := "unnamed"
+			if nameAttr, ok := attrs["name"]; ok {
+				if nameStr, ok := nameAttr.(types.String); ok && !nameStr.IsNull() && !nameStr.IsUnknown() {
+					optionName = nameStr.ValueString()
+				}
+			}
+
+			resp.Diagnostics.Append(validateOptionValuesListDelimiter(path.Root("option").AtListIndex(i), optionName, attrs)...)
+
 			// Check if require_predefined_choice is true
 			var requirePredefined bool
 			if reqPredefinedAttr, ok := attrs["require_predefined_choice"]; ok {
@@ -559,14 +568,6 @@ func (r *jobResource) ValidateConfig(ctx context.Context, req resource.ValidateC
 			}
 
 			if requirePredefined {
-				// Get option name for error message
-				optionName := "unnamed"
-				if nameAttr, ok := attrs["name"]; ok {
-					if nameStr, ok := nameAttr.(types.String); ok && !nameStr.IsNull() && !nameStr.IsUnknown() {
-						optionName = nameStr.ValueString()
-					}
-				}
-
 				// If value_choices_url is set, skip value_choices validation:
 				// - when it is unknown, defer validation until apply
 				// - when it is a known non-empty string, Rundeck enforces the constraint
