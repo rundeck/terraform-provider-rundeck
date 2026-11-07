@@ -120,6 +120,53 @@ func TestAccJobOptions_valuesListDelimiterRemoved(t *testing.T) {
 	})
 }
 
+// Delimiters Rundeck would not return as configured are rejected at plan time.
+func TestAccJobOptions_valuesListDelimiterRejected(t *testing.T) {
+	cases := map[string]struct {
+		option string
+		error  string
+	}{
+		"free text": {`
+  option {
+    name                  = "text"
+    values_list_delimiter = "|"
+  }`, "Values list delimiter without value choices"},
+		"empty choices": {`
+  option {
+    name                  = "empty"
+    value_choices         = []
+    values_list_delimiter = "|"
+  }`, "Values list delimiter without value choices"},
+		"choices url": {`
+  option {
+    name                  = "remote"
+    value_choices_url     = "http://localhost:4440/robots.txt"
+    values_list_delimiter = "|"
+  }`, "Values list delimiter without value choices"},
+		"empty delimiter": {`
+  option {
+    name                  = "choices"
+    value_choices         = ["a", "b"]
+    values_list_delimiter = ""
+  }`, "string length must be at least 1"},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			resource.Test(t, resource.TestCase{
+				PreCheck:                 func() { testAccPreCheck(t) },
+				ProtoV6ProviderFactories: testAccProtoV6ProviderFactories(),
+				Steps: []resource.TestStep{
+					{
+						Config:      testAccJobConfig_option_delimiter(tc.option),
+						ExpectError: regexp.MustCompile(tc.error),
+					},
+				},
+			})
+		})
+	}
+}
+
 func testAccJobConfig_option_delimiter(options ...string) string {
 	opts := ""
 	for _, o := range options {

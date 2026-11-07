@@ -456,8 +456,9 @@ The following arguments are supported:
   option's values list, and to split them apart again. Defaults to a comma. Set it when a choice
   itself contains the default separator — for example a space or a semicolon. This is distinct
   from `multi_value_delimiter`, which separates the values a user *selects* rather than the ones
-  offered. Left unset, it reads back as a comma on an option with `value_choices` and stays unset
-  otherwise. A choice containing the delimiter in effect is an error, since Rundeck would split it.
+  offered. Only valid with `value_choices` (not `value_choices_url`), and never empty; left unset,
+  it reads back as a comma there and stays unset otherwise. A choice containing the delimiter in
+  effect is an error, since Rundeck would split it.
 
 * `value_choices_url`: (Optional) Can be used instead of `value_choices` to cause Rundeck to
   obtain a list of choices dynamically by fetching this URL.

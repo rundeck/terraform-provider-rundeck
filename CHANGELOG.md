@@ -17,6 +17,8 @@
 
   On the first plan after upgrading, an option whose state holds a delimiter carried over from another option shows a one-time correction to `,`.
 
+- **A `values_list_delimiter` Rundeck would not return is now rejected at plan time** - Rundeck returns the delimiter only alongside values, and `value_choices_url` does not count, so a delimiter set on an option without `value_choices` never came back. An empty delimiter on an option with `value_choices` came back as `,`, which Rundeck substitutes for it. Either way every apply failed with `Provider produced inconsistent result after apply`. Such configurations could never be applied, so no working configuration is affected; the error now comes at plan and says what to change.
+
 ## 1.5.0
 
 **Bug Fixes**

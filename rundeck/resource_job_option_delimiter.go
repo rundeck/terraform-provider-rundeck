@@ -56,14 +56,23 @@ func (m optionValuesListDelimiterModifier) PlanModifyString(ctx context.Context,
 	resp.PlanValue = types.StringValue(optionValuesListDelimiterDefault)
 }
 
-// validateOptionValuesListDelimiter rejects choices that Rundeck, joining and
-// splitting them on the delimiter in effect, would not return as configured.
+// validateOptionValuesListDelimiter rejects what Rundeck would not return as
+// configured: a delimiter without choices, or choices it would split differently.
 func validateOptionValuesListDelimiter(option path.Path, optionName string, attrs map[string]attr.Value) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	delimiter, _ := attrs["values_list_delimiter"].(types.String)
 	choices, _ := attrs["value_choices"].(types.List)
 	if delimiter.IsUnknown() || choices.IsUnknown() {
+		return diags
+	}
+
+	if !delimiter.IsNull() && len(choices.Elements()) == 0 {
+		diags.AddAttributeError(
+			option.AtName("values_list_delimiter"),
+			"Values list delimiter without value choices",
+			fmt.Sprintf("Option %q sets values_list_delimiter but has no value_choices. Rundeck returns the delimiter only for an option with value_choices (value_choices_url does not count), so the apply would fail. Remove values_list_delimiter or set value_choices.", optionName),
+		)
 		return diags
 	}
 
