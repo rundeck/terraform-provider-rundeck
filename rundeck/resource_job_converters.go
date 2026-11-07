@@ -33,14 +33,8 @@ func jobRefNodeStep(jobAttrs map[string]attr.Value) bool {
 	return v
 }
 
-// errorHandlerJobRefNodeStepDefault is the nodeStep flag sent for an error
-// handler's job reference when neither run_for_each_node nor node_step is set.
-//
-// A command's reference defaults to false. A handler's cannot: Rundeck refuses
-// a handler that is not a node step when the step it handles is one, and that
-// is the common case — a shell command, a script or a node step plugin. A
-// handler under a workflow step that should not run once per node says so with
-// node_step = false.
+// errorHandlerJobRefNodeStepDefault is the nodeStep flag of an error handler's
+// job reference when unset: Rundeck requires it under a node step.
 const errorHandlerJobRefNodeStepDefault = true
 
 // convertCommandsToJSON converts Framework command list to JSON array

@@ -4,22 +4,15 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// A job reference lives in a list of commands, and several of its attributes
-// are Optional + Computed. UseStateForUnknown cannot plan them: it reads prior
-// state at the same path, so at the same list index, and a reordered workflow
-// hands each reference the values of whichever command used to sit there. The
-// modifiers below plan those attributes from the reference itself instead.
+// These modifiers plan a job reference from itself; UseStateForUnknown would
+// read the command that sat at the same list index in prior state.
 
-// jobRefNodeStepFromConfig plans run_for_each_node and node_step, two aliases
-// of the API's nodeStep flag: the one left out of the configuration takes the
-// value of the one that is set, and with neither set both take the value the
-// provider sends in that case. What is sent and what is read back are thus both
-// known at plan time.
+// jobRefNodeStepFromConfig plans an unset run_for_each_node or node_step from
+// its alias, or from the value the provider sends when neither is set.
 func jobRefNodeStepFromConfig() planmodifier.Bool {
 	return jobRefNodeStepModifier{unset: false}
 }
@@ -30,8 +23,7 @@ func errorHandlerJobRefNodeStepFromConfig() planmodifier.Bool {
 	return jobRefNodeStepModifier{unset: errorHandlerJobRefNodeStepDefault}
 }
 
-// jobRefNodeStepModifier holds the value both aliases take when neither is
-// configured.
+// jobRefNodeStepModifier holds the value used when neither alias is set.
 type jobRefNodeStepModifier struct {
 	unset bool
 }
@@ -49,40 +41,28 @@ func (m jobRefNodeStepModifier) PlanModifyBool(ctx context.Context, req planmodi
 		return
 	}
 
-	var runForEachNode, nodeStep types.Bool
+	// The modifier sits on both aliases; read the one it is not on.
 	jobRef := req.Path.ParentPath()
-	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, jobRef.AtName("run_for_each_node"), &runForEachNode)...)
-	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, jobRef.AtName("node_step"), &nodeStep)...)
+	alias := jobRef.AtName("node_step")
+	if req.Path.Equal(alias) {
+		alias = jobRef.AtName("run_for_each_node")
+	}
+
+	var aliasValue types.Bool
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, alias, &aliasValue)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// The alias is set, but to a value only known at apply.
-	if runForEachNode.IsUnknown() || nodeStep.IsUnknown() {
+	if aliasValue.IsNull() {
+		resp.PlanValue = types.BoolValue(m.unset)
 		return
 	}
-
-	value, explicit := jobRefNodeStepExplicit(map[string]attr.Value{
-		"run_for_each_node": runForEachNode,
-		"node_step":         nodeStep,
-	})
-	if !explicit {
-		value = m.unset
-	}
-	resp.PlanValue = types.BoolValue(value)
+	resp.PlanValue = aliasValue
 }
 
-// jobRefIdentityFromConfig plans the attributes that designate the referenced
-// job — uuid, name, group_name, project_name — when the configuration leaves
-// them out.
-//
-// A reference by name is stored by Rundeck as it was sent: what is not
-// configured is absent, and plans as null. That also clears a value that got
-// there by another route, such as a project set on the reference from the GUI.
-//
-// A reference by uuid is resolved by Rundeck, which may return the name, group
-// and project it found. Prior state is reused only when it describes that same
-// uuid; otherwise the value is left for apply to settle.
+// jobRefIdentityFromConfig plans an unset identity field: null on a reference by
+// name; on one by uuid, prior state if it holds the same uuid, else unknown.
 func jobRefIdentityFromConfig() planmodifier.String {
 	return jobRefIdentityModifier{}
 }
@@ -115,8 +95,6 @@ func (m jobRefIdentityModifier) PlanModifyString(ctx context.Context, req planmo
 		return
 	}
 
-	// From here on the plan holds either the value of an unchanged resource or
-	// the unknown the framework gives a Computed attribute of a changed one.
 	if !req.PlanValue.IsUnknown() || configUUID.IsUnknown() || req.State.Raw.IsNull() {
 		return
 	}

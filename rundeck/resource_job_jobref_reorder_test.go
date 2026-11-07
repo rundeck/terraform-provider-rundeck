@@ -8,31 +8,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 )
 
-// TestAccJob_cmd_referred_job_reorder moves job references around a workflow
-// and checks that each one keeps its own settings.
-//
-// A job reference's uuid, name, group_name, project_name, run_for_each_node
-// and node_step are Optional + Computed. They used to carry UseStateForUnknown,
-// which reads prior state at the same list index: once the commands moved, an
-// attribute left out of the configuration was filled from whichever command
-// used to sit at that position.
-//
-//   - The first reorder swaps a reference to a job of another project with a
-//     reference that names no project. The latter used to inherit the former's
-//     project_name and node_step, and Rundeck then looked for the job in the
-//     wrong project at run time.
-//   - The second reorder moves references to positions that held a plain
-//     command or a reference to another job. Attributes were planned as null
-//     where there was no prior reference, read back as false, and the apply
-//     failed with "Provider produced inconsistent result after apply".
-//
-// The reference by uuid covers the other half: Rundeck resolves it, and what
-// it returns must neither show up as a diff on the next plan nor follow the
-// reference that takes its place.
-//
-// Two commands carry an error handler that is itself a job reference, one with
-// its node-step flag left out and one with it set to false, so that the
-// handlers move along and land on each other's positions too.
+// Each job reference, error handlers' included, must keep its own settings as
+// the commands move onto each other's positions.
 func TestAccJob_cmd_referred_job_reorder(t *testing.T) {
 	const (
 		local  = "local-target"
@@ -77,9 +54,7 @@ func TestAccJob_cmd_referred_job_reorder(t *testing.T) {
     }
   }`
 
-	// checkRefs asserts what each job reference holds, given the index in the
-	// workflow of the plain command, of the reference by name, of the one to
-	// another project, and of the one by uuid.
+	// checkRefs takes the index of the plain command and of each reference.
 	checkRefs := func(execIdx, localIdx, remoteIdx, uuidIdx int) resource.TestCheckFunc {
 		eh := fmt.Sprintf("command.%d.error_handler.0.job.0.", execIdx)
 		lh := fmt.Sprintf("command.%d.error_handler.0.job.0.", localIdx)
@@ -113,8 +88,7 @@ func TestAccJob_cmd_referred_job_reorder(t *testing.T) {
 	initial := testAccJobConfig_cmd_referred_job_reorder(exec, localRef, remoteRef, uuidRef)
 	swapped := testAccJobConfig_cmd_referred_job_reorder(exec, remoteRef, localRef, uuidRef)
 	moved := testAccJobConfig_cmd_referred_job_reorder(uuidRef, localRef, exec, remoteRef)
-	// Same workflow, the handler's node_step = false taken out: it goes back
-	// to a handler's default instead of keeping the value it had.
+	// The handler's node_step = false taken out: back to the handler default.
 	unset := testAccJobConfig_cmd_referred_job_reorder(uuidRef, strings.Replace(localRef, "node_step    = false", "", 1), exec, remoteRef)
 
 	resource.Test(t, resource.TestCase{
