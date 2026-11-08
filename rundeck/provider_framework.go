@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -34,6 +35,9 @@ type frameworkProviderModel struct {
 	AuthToken    types.String `tfsdk:"auth_token"`
 	AuthUsername types.String `tfsdk:"auth_username"`
 	AuthPassword types.String `tfsdk:"auth_password"`
+	// AuthTokenDuration is the lifetime of the API token created for a
+	// username/password login.
+	AuthTokenDuration types.String `tfsdk:"auth_token_duration"`
 }
 
 func NewFrameworkProvider(version string) func() provider.Provider {
@@ -71,6 +75,12 @@ func (p *frameworkProvider) Schema(ctx context.Context, req provider.SchemaReque
 			"auth_password": schema.StringAttribute{
 				Description: "Password used to request a token for the Rundeck API.",
 				Optional:    true,
+			},
+			"auth_token_duration": schema.StringAttribute{
+				Description: "Lifetime of the API token the provider creates when it authenticates with auth_username and auth_password, " +
+					"as a whole number followed by one unit (s, m, h, d, w or y), e.g. \"30m\" or \"2h\". Defaults to \"" + DefaultAuthTokenDuration + "\". " +
+					"Ignored when auth_token is set.",
+				Optional: true,
 			},
 		},
 	}
@@ -120,13 +130,29 @@ func (p *frameworkProvider) Configure(ctx context.Context, req provider.Configur
 		authPassword = os.Getenv("RUNDECK_AUTH_PASSWORD")
 	}
 
+	authTokenDuration := config.AuthTokenDuration.ValueString()
+	if authTokenDuration == "" {
+		authTokenDuration = os.Getenv("RUNDECK_AUTH_TOKEN_DURATION")
+	}
+	if authTokenDuration == "" {
+		authTokenDuration = DefaultAuthTokenDuration
+	}
+
 	// Determine authentication method
 	var token string
 	if authToken != "" {
 		token = authToken
 	} else if authUsername != "" && authPassword != "" {
-		// Generate token from username/password (same logic as SDKv2 provider)
-		t, err := _getToken(urlString, apiVersion, authUsername, authPassword, p.version)
+		if !validAuthTokenDuration(authTokenDuration) {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("auth_token_duration"),
+				"Invalid auth_token_duration",
+				fmt.Sprintf("%q is not a valid token duration: use a whole number followed by one unit (s, m, h, d, w or y), e.g. \"30m\" or \"2h\".", authTokenDuration),
+			)
+			return
+		}
+		// Generate a short-lived token from username/password
+		t, err := _getToken(urlString, authUsername, authPassword, p.version, authTokenDuration)
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Authentication Failed",

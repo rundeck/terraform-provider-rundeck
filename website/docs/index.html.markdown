@@ -62,6 +62,20 @@ The provider configuration block accepts the following arguments:
   `RUNDECK_AUTH_USERNAME` environment variable.
 * `auth_password` - Local Rundeck password. May alternatively be set via the
   `RUNDECK_AUTH_PASSWORD` environment variable.
+* `auth_token_duration` - (Optional) Lifetime of the API token the provider creates
+  for each run, as a whole number followed by one unit (`s`, `m`, `h`, `d`, `w` or
+  `y`), e.g. `"30m"` or `"2h"`. Defaults to `"1h"`. Raise it if a single plan or
+  apply takes longer than that. It must not exceed Rundeck's maximum token
+  duration (`rundeck.api.tokens.duration.max`, 30 days by default), or Rundeck
+  refuses to create the token. May
+  alternatively be set via the `RUNDECK_AUTH_TOKEN_DURATION` environment variable.
+
+With username and password, the provider logs in and creates a new API token
+named `terraform-token` each time Terraform starts it, which is once for a plan
+and again for an apply. Rundeck only returns a token's value when it is
+created, so these tokens cannot be reused. To keep them from piling up, they are
+short-lived, and each run first deletes that user's expired `terraform-token`
+tokens.
 
 > **Note:** Username/password authentication only works with local Rundeck accounts, not SSO. 
 > API tokens are recommended for better security and to avoid storing passwords in plan files.
