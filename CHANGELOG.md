@@ -1,5 +1,21 @@
 ## Unreleased
 
+**Bug Fixes**
+
+### Job Resource
+
+- **Fixed job references taking each other's settings when commands are reordered** - A job reference's `uuid`, `name`, `group_name`, `project_name`, `run_for_each_node` and `node_step` are `Optional` + `Computed` and carried `UseStateForUnknown`. `command` and `error_handler` are list blocks, and `UseStateForUnknown` reads prior state at the same list index: once commands were inserted, removed or moved, any of these attributes left out of the configuration was filled from whichever command used to sit at that position. This is the carry-over 1.5.0 kept `expand_token_in_script_file` clear of; job references still had it.
+
+  Two things followed. A reference naming no project, landing where a reference to another project had been, inherited that `project_name`: the apply succeeded, and the job then failed at run time with `Job [...] not found by name, project: ...`. The same went for `node_step`, and a `run_for_each_node` inherited that way overrode a configured `node_step`, since it takes precedence. And a reference landing where there had been no job reference at all had the two flags planned as `null`, which read back as `false` and failed the apply with `Provider produced inconsistent result after apply`.
+
+  These attributes are now planned from the reference itself.
+
+  - `run_for_each_node` and `node_step` take the value of whichever alias is configured. With neither configured they take the value the provider sends in that case: `false` on a command, `true` on an error handler. That handler default is not new - an unset handler reference has always been sent as a node step, which Rundeck requires under a shell command or a script - but it is now what the plan shows, so removing `node_step = false` from a handler takes effect, and a flag flipped outside Terraform is reported as drift.
+  - For a reference by name, an identification field left out plans as unset, which is how Rundeck stores it (checked against Rundeck 5.8.0, 5.17.0 and 6.2.1). A `uuid`, `group_name` or `project_name` that reached a name-based reference outside Terraform is therefore reported as drift and cleared.
+  - For a reference by `uuid`, the other identification fields are reused from prior state only when it describes the same `uuid`, and are otherwise `(known after apply)`. A field that is not known at apply is no longer sent as an empty string.
+
+  On the first plan after upgrading, a name-based reference or a node-step flag that holds a carried-over value shows a one-time correction. Two cases are not corrected: a `name`, `group_name` or `project_name` carried over onto a reference by `uuid` stays in state as long as that `uuid` stays at the same position, and so does one removed from such a reference's configuration.
+
 ## 1.5.0
 
 **Bug Fixes**

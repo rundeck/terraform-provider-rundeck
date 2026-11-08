@@ -33,6 +33,10 @@ func jobRefNodeStep(jobAttrs map[string]attr.Value) bool {
 	return v
 }
 
+// errorHandlerJobRefNodeStepDefault is the nodeStep flag of an error handler's
+// job reference when unset: Rundeck requires it under a node step.
+const errorHandlerJobRefNodeStepDefault = true
+
 // convertCommandsToJSON converts Framework command list to JSON array
 func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]interface{}, diag.Diagnostics) {
 	var diags diag.Diagnostics
@@ -114,17 +118,17 @@ func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]inte
 				jobMap := make(map[string]interface{})
 
 				// UUID reference (preferred, immutable)
-				if uuid, ok := jobAttrs["uuid"].(types.String); ok && !uuid.IsNull() {
+				if uuid, ok := jobAttrs["uuid"].(types.String); ok && !uuid.IsNull() && !uuid.IsUnknown() {
 					jobMap["uuid"] = uuid.ValueString()
 				}
 				// Name-based reference (backward compatible)
-				if name, ok := jobAttrs["name"].(types.String); ok && !name.IsNull() {
+				if name, ok := jobAttrs["name"].(types.String); ok && !name.IsNull() && !name.IsUnknown() {
 					jobMap["name"] = name.ValueString()
 				}
-				if group, ok := jobAttrs["group_name"].(types.String); ok && !group.IsNull() {
+				if group, ok := jobAttrs["group_name"].(types.String); ok && !group.IsNull() && !group.IsUnknown() {
 					jobMap["group"] = group.ValueString()
 				}
-				if project, ok := jobAttrs["project_name"].(types.String); ok && !project.IsNull() {
+				if project, ok := jobAttrs["project_name"].(types.String); ok && !project.IsNull() && !project.IsUnknown() {
 					jobMap["project"] = project.ValueString()
 				}
 				// run_for_each_node (documented) and node_step are aliases for the
@@ -304,36 +308,22 @@ func convertCommandsToJSON(ctx context.Context, commandsList types.List) ([]inte
 						jobMap := make(map[string]interface{})
 
 						// UUID reference (preferred, immutable)
-						if uuid, ok := jobAttrs["uuid"].(types.String); ok && !uuid.IsNull() {
+						if uuid, ok := jobAttrs["uuid"].(types.String); ok && !uuid.IsNull() && !uuid.IsUnknown() {
 							jobMap["uuid"] = uuid.ValueString()
 						}
 						// Name-based reference (backward compatible)
-						if name, ok := jobAttrs["name"].(types.String); ok && !name.IsNull() {
+						if name, ok := jobAttrs["name"].(types.String); ok && !name.IsNull() && !name.IsUnknown() {
 							jobMap["name"] = name.ValueString()
 						}
-						if group, ok := jobAttrs["group_name"].(types.String); ok && !group.IsNull() {
+						if group, ok := jobAttrs["group_name"].(types.String); ok && !group.IsNull() && !group.IsUnknown() {
 							jobMap["group"] = group.ValueString()
 						}
-						if project, ok := jobAttrs["project_name"].(types.String); ok && !project.IsNull() {
+						if project, ok := jobAttrs["project_name"].(types.String); ok && !project.IsNull() && !project.IsUnknown() {
 							jobMap["project"] = project.ValueString()
 						}
-						// Determine if parent command is a node step or workflow step.
-						// Error handlers must match the parent command type, so this is
-						// the fallback when neither alias is set explicitly.
-						isParentNodeStep := false
-						if _, hasNodeStepPlugin := attrs["node_step_plugin"]; hasNodeStepPlugin {
-							isParentNodeStep = true
-						} else if _, hasStepPlugin := attrs["step_plugin"]; hasStepPlugin {
-							isParentNodeStep = false // step_plugin is workflow step
-						} else {
-							// shell_command, inline_script, etc. are workflow steps (not node steps)
-							isParentNodeStep = false
-						}
-
 						// run_for_each_node (documented) and node_step are aliases for the
-						// API's nodeStep flag. Prefer an explicit value, otherwise infer
-						// from the parent command type (#256).
-						nodeStepVal := isParentNodeStep
+						// API's nodeStep flag (#256).
+						nodeStepVal := errorHandlerJobRefNodeStepDefault
 						if v, explicit := jobRefNodeStepExplicit(jobAttrs); explicit {
 							nodeStepVal = v
 						}
