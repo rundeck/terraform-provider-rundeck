@@ -1,5 +1,9 @@
 ## Unreleased
 
+**Security**
+
+- **Build with Go 1.26.10 and update `golang.org/x` dependencies** - `go.mod` pinned Go 1.25.8, and since the release workflow takes its toolchain from `go.mod`, released binaries shipped with 24 standard-library vulnerabilities reachable from the provider's code (`crypto/tls`, `crypto/x509`, `net/http`, `net/url`, `encoding/asn1` and others; several are fixed only on the 1.26 line). Also bumps `golang.org/x/net` 0.58.0 → 0.62.0 (four vulnerabilities reachable from the job resource), `golang.org/x/crypto` 0.55.0 → 0.58.0 and `golang.org/x/mod` 0.38.0 → 0.42.0. `govulncheck ./...` now reports no reachable vulnerabilities.
+
 ## 1.5.0
 
 **Bug Fixes**
