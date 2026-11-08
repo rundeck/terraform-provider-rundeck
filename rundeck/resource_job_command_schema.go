@@ -1,11 +1,13 @@
 package rundeck
 
 import (
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -460,16 +462,17 @@ func jobOptionNestedBlock() schema.ListNestedBlock {
 				// Computed as well as Optional: Rundeck always returns this field
 				// once an option has values, defaulting it to a comma. Leaving it
 				// Optional-only would make an unset delimiter read back as ","
-				// and fail the apply with an inconsistent result. UseStateForUnknown
-				// keeps an unconfigured delimiter from planning as "(known after
-				// apply)" on every subsequent plan, matching run_for_each_node/
-				// node_step, the other Optional+Computed attributes on this path.
+				// and fail the apply with an inconsistent result.
 				"values_list_delimiter": schema.StringAttribute{
 					Optional:    true,
 					Computed:    true,
 					Description: "Separator used to join the value_choices into the option's values list (Rundeck defaults to a comma). Set it when a choice itself contains the default separator. Distinct from multi_value_delimiter, which separates the values a user selects.",
 					PlanModifiers: []planmodifier.String{
-						stringplanmodifier.UseStateForUnknown(),
+						optionValuesListDelimiterFromConfig(),
+					},
+					// Rundeck replaces an empty delimiter with a comma.
+					Validators: []validator.String{
+						stringvalidator.LengthAtLeast(1),
 					},
 				},
 				"value_choices_url": schema.StringAttribute{

@@ -1,5 +1,24 @@
 ## Unreleased
 
+**Bug Fixes**
+
+### Job Resource
+
+- **Fixed `values_list_delimiter` being planned from another option** - `values_list_delimiter` is `Optional` + `Computed` and carried `UseStateForUnknown`. `option` is a list block, and `UseStateForUnknown` reads prior state at the same list index, null included: an option that leaves the delimiter out was planned with the delimiter of whichever option used to sit at that position, or with none where no option, or an option without choices, used to sit.
+
+  Three things followed, all failing or corrupting an apply:
+  - An option with `value_choices` added to an existing job, or moved to where an option without choices had been, was planned with a `null` delimiter. Rundeck returns `,` alongside values, and the apply failed with `Provider produced inconsistent result after apply`.
+  - An option without choices moved to where an option with choices had been was planned with `,`. Rundeck returns no delimiter without values, and the apply failed the same way.
+  - An option moved to where an option with a custom delimiter had been inherited that delimiter, and the provider sent it to Rundeck. The option's choices were joined and split on it: the apply failed on `value_choices` if a choice contained it, and otherwise the wrong delimiter stayed in place without any diff.
+
+  An unconfigured `values_list_delimiter` is now planned from the option itself, as Rundeck returns it: `,` when the option has `value_choices`, unset when it has none, and `(known after apply)` while `value_choices` is not known.
+
+  Leaving `values_list_delimiter` out of an option with choices therefore now means a comma, and no longer whatever delimiter sat in state. That matters for a custom delimiter set on the server and never written in the configuration, typically after `terraform import` or an edit in the GUI: the next plan resets it to `,`. Since Rundeck joins the choices with the delimiter and splits them again, a choice containing it can never be applied; such an option is now rejected at plan time instead of letting the apply rewrite the job with split choices. Since it is raised by `ValidateConfig`, it blocks plan and apply, `terraform destroy` included, until the configuration sets `values_list_delimiter` explicitly (which keeps the server's value) or the choice no longer contains it.
+
+  On the first plan after upgrading, an option whose state holds a delimiter carried over from another option shows a one-time correction to `,`.
+
+- **A `values_list_delimiter` Rundeck would not return is now rejected at plan time** - Rundeck returns the delimiter only alongside values, and `value_choices_url` does not count, so a delimiter set on an option without `value_choices` never came back. An empty delimiter on an option with `value_choices` came back as `,`, which Rundeck substitutes for it. Either way every apply failed with `Provider produced inconsistent result after apply`. Such configurations could never be applied, so no working configuration is affected; the error now comes at plan and says what to change.
+
 ## 1.5.0
 
 **Bug Fixes**

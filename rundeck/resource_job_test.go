@@ -359,11 +359,8 @@ func TestAccJobOptions_value_choices_from_variable(t *testing.T) {
 
 // TestAccJobOptions_valuesListDelimiterAndNotifyThreshold covers two
 // previously-unexpressible settings against a real server:
-//   - values_list_delimiter, left unconfigured on one option (the exact
-//     scenario that regressed without UseStateForUnknown: an Optional+
-//     Computed attribute the framework would otherwise replan as unknown
-//     on every subsequent plan, not just the first one) and explicitly set
-//     on another.
+//   - values_list_delimiter, left unconfigured on one option and explicitly
+//     set on another.
 //   - notify_avg_duration_threshold at the job level.
 //
 // The RefreshState/PlanOnly step is the actual regression check: it fails
@@ -385,10 +382,6 @@ func TestAccJobOptions_valuesListDelimiterAndNotifyThreshold(t *testing.T) {
 					resource.TestCheckResourceAttr("rundeck_job.test", "option.1.values_list_delimiter", ";"),
 				),
 			},
-			// Core regression check: no diff on refresh with nothing in
-			// config changed. Without UseStateForUnknown on
-			// values_list_delimiter, option.0's unconfigured delimiter
-			// would show up here as "(known after apply)" every time.
 			{
 				RefreshState: true,
 				PlanOnly:     true,
