@@ -1,5 +1,17 @@
 ## Unreleased
 
+**Bug Fixes**
+
+### Provider
+
+- **Fixed username/password authentication** - With `auth_username`/`auth_password`, every `terraform apply` failed with `(unauthenticated) is not authorized`. Since 1.1.1 the provider tried to reuse the `terraform-token` created by an earlier run, but Rundeck only returns a token's value when the token is created, never when tokens are listed, so the reused token was always empty. Terraform configures the provider separately for plan and for apply, so even the first apply on a fresh server failed. The provider now creates a new token on each run again; to keep tokens from piling up (the reason reuse was added), each token is short-lived and each run first deletes that user's expired `terraform-token` tokens. Also fixed a crash when the token request failed at the network level, and a wrong password is now reported as a rejected login instead of a confusing token error.
+
+**Enhancements**
+
+### Provider
+
+- **Added `auth_token_duration`** (env `RUNDECK_AUTH_TOKEN_DURATION`) - Lifetime of the token created for a username/password login, e.g. `"30m"` or `"2h"`. Defaults to `"1h"`. Tokens created by earlier versions requested Rundeck's maximum lifetime (30 days by default); they are deleted once they expire.
+
 ## 1.5.0
 
 **Bug Fixes**
